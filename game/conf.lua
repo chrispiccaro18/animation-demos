@@ -37,8 +37,8 @@ function love.conf(t)
 
   t.window.title          = product_config["PRODUCT_NAME"]
   t.window.icon           = nil
-  t.window.width          = 1920
-  t.window.height         = 1080
+  t.window.width          = 1280
+  t.window.height         = 720
   t.window.borderless     = false
   t.window.resizable      = false
   t.window.minwidth       = 1
@@ -65,12 +65,13 @@ function love.conf(t)
   t.modules.keyboard      = true
   t.modules.math          = true
   t.modules.mouse         = true
-  t.modules.physics       = true
   t.modules.sound         = true
   t.modules.system        = true
   t.modules.thread        = true
   t.modules.timer         = true
   t.modules.touch         = true
-  t.modules.video         = true
   t.modules.window        = true
+
+  t.modules.physics       = false
+  t.modules.video         = false
 end
