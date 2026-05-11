@@ -5,6 +5,10 @@ local events = require("lib.events")
 
 local shipAsset = nil
 local cardAsset = nil
+local slotBottomAsset = nil
+local slotTopAsset = nil
+local slotText = ""
+
 local cardStartingX = 600
 local cardStartingY = 400
 local card = {
@@ -72,7 +76,8 @@ local function playCardSequence()
   events.push({
     fn = function()
       card.target.x = playArea.x + (playArea.w - card.w) / 2
-      card.target.y = playArea.y + (playArea.h - card.h) / 2
+      card.target.y = playArea.y
+      -- card.target.y = playArea.y + (playArea.h - card.h) / 2
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
@@ -81,6 +86,7 @@ local function playCardSequence()
   events.push({
     fn = function()
       card.target.scale = 1.2
+      slotText = "+1 Progress"
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
@@ -104,6 +110,7 @@ local function playCardSequence()
   -- Drop to bottom of screen
   events.push({
     fn = function()
+      slotText = ""
       card.target.y = cardStartingY
       -- card.target.y = love.graphics.getHeight() - card.h
     end,
@@ -183,6 +190,8 @@ function love.load()
   -- Your game load here
   shipAsset = love.graphics.newImage("assets/main-ship.png")
   cardAsset = love.graphics.newImage("assets/card-template-front.png")
+  slotBottomAsset = love.graphics.newImage("assets/slot-bottom.png")
+  slotTopAsset = love.graphics.newImage("assets/slot-top.png")
   events.load()
   overlayStats.load() -- Should always be called last
 end
@@ -197,6 +206,32 @@ function love.draw()
   love.graphics.setColor(playArea.color)
   love.graphics.rectangle("line", playArea.x, playArea.y, playArea.w, playArea.h)
   love.graphics.setColor(1, 1, 1, 1)
+  if slotBottomAsset then
+    love.graphics.draw(
+      slotBottomAsset,
+      playArea.x + (playArea.w - slotBottomAsset:getWidth()) / 2,
+      playArea.y
+    )
+  end
+
+  if card.drag.is then
+    if slotTopAsset then
+      love.graphics.draw(
+        slotTopAsset,
+        playArea.x + (playArea.w - slotTopAsset:getWidth()) / 2,
+        playArea.y
+      )
+      love.graphics.setColor(0, 0, 0, 1)
+      love.graphics.printf(
+        slotText,
+        playArea.x,
+        playArea.y + slotTopAsset:getHeight() / 2,
+        playArea.w,
+        "center"
+      )
+      love.graphics.setColor(1, 1, 1, 1)
+    end
+  end
 
   if cardAsset then
     love.graphics.push()
@@ -205,6 +240,25 @@ function love.draw()
     love.graphics.scale(card.current.scale, card.current.scale)
     love.graphics.draw(cardAsset, -card.w / 2, -card.h / 2)
     love.graphics.pop()
+  end
+
+  if not card.drag.is then
+    if slotTopAsset then
+      love.graphics.draw(
+        slotTopAsset,
+        playArea.x + (playArea.w - slotTopAsset:getWidth()) / 2,
+        playArea.y
+      )
+      love.graphics.setColor(0, 0, 0, 1)
+      love.graphics.printf(
+        slotText,
+        playArea.x,
+        playArea.y + 10,
+        playArea.w,
+        "center"
+      )
+      love.graphics.setColor(1, 1, 1, 1)
+    end
   end
   overlayStats.draw() -- Should always be called last
 end
