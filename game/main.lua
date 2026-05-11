@@ -5,13 +5,20 @@ local events = require("lib.events")
 
 local shipAsset = nil
 local cardAsset = nil
+local chompedCardAsset = nil
 local slotBottomAsset = nil
 local slotTopAsset = nil
 local slotText = ""
+local discardSlotText = ""
+
+local textObjectScale = 1
+local playTextObject = nil
+local discardTextObject = nil
 
 local cardStartingX = 600
 local cardStartingY = 400
 local card = {
+  asset = nil,
   hover = {
     is = false,
     can = true,
@@ -45,8 +52,16 @@ local card = {
 local playArea = {
   x = 0,
   y = 0,
-  w = love.graphics.getWidth() / 2,
-  h = love.graphics.getHeight() / 2,
+  w = love.graphics.getWidth() / 2 - 10,
+  h = love.graphics.getHeight() / 2 - 10,
+  color = {0.5, 0.5, 0.5, 1},
+}
+
+local discardArea = {
+  x = love.graphics.getWidth() / 2 + 10,
+  y = 0,
+  w = love.graphics.getWidth() / 2 - 10,
+  h = love.graphics.getHeight() / 2 - 10,
   color = {0.5, 0.5, 0.5, 1},
 }
 
@@ -127,6 +142,95 @@ local function playCardSequence()
   })
 end
 
+local function discardCardSequence()
+  -- Anticipation: nudge card slightly down before launching up
+  events.push({
+    fn = function()
+      card.hover.is = false
+      card.hover.can = false
+      card.drag.is = false
+      card.drag.can = false
+      card.target.scale = 0.95
+      card.target.x = discardArea.x + (discardArea.w - card.w) / 2
+      card.target.y = discardArea.y + (discardArea.h - card.h / 2)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.y = discardArea.y + (discardArea.h - card.h / 2) + 30
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  -- Move to center of discard area, elevated
+  events.push({
+    fn = function()
+      card.target.x = discardArea.x + (discardArea.w - card.w) / 2
+      card.target.y = discardArea.y
+      -- card.target.y = discardArea.y + (discardArea.h - card.h) / 2
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  -- Scale up
+  events.push({
+    fn = function()
+      card.target.scale = 1.2
+      card.asset = chompedCardAsset
+      discardSlotText = "+1 RAM"
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  -- Scale back down
+  events.push({
+    fn = function()
+      card.target.scale = 0.95
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.y = card.current.y - 30
+      -- card.target.y = love.graphics.getHeight() - card.h
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  -- Drop to bottom of screen
+  events.push({
+    fn = function()
+      slotText = "+1 RAM"
+      discardSlotText = ""
+      card.target.y = cardStartingY + 152
+      -- card.target.y = love.graphics.getHeight() - card.h
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.hover.can = true
+      card.drag.can = true
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
+      slotText = ""
+      card.asset = cardAsset
+      card.target.y = cardStartingY
+      card.current.y = cardStartingY
+    end,
+    blocking = true, blockable = true, persistent = true,
+    delay = 0.5, type = "before",
+  })
+end
+
 local function mouseInCard(x, y)
   return x >= card.current.x and x <= card.current.x + card.w and y >= card.current.y and y <= card.current.y + card.h
 end
@@ -135,11 +239,22 @@ local function mouseInPlayArea(x, y)
   return x >= playArea.x and x <= playArea.x + playArea.w and y >= playArea.y and y <= playArea.y + playArea.h
 end
 
+local function mouseInDiscardArea(x, y)
+  return x >= discardArea.x and x <= discardArea.x + discardArea.w and y >= discardArea.y and y <= discardArea.y + discardArea.h
+end
+
 local function cardInPlayArea()
   return card.current.x >= playArea.x and card.current.x + card.w <= playArea.x + playArea.w and
          card.current.y >= playArea.y and card.current.y <= playArea.y + playArea.h
   -- return card.current.x >= playArea.x and card.current.x + card.w <= playArea.x + playArea.w and
   --        card.current.y >= playArea.y and card.current.y + card.h <= playArea.y + playArea.h
+end
+
+local function cardInDiscardArea()
+  return card.current.x >= discardArea.x and card.current.x + card.w <= discardArea.x + discardArea.w and
+         card.current.y >= discardArea.y and card.current.y <= discardArea.y + discardArea.h
+  -- return card.current.x >= discardArea.x and card.current.x + card.w <= discardArea.x + discardArea.w and
+  --        card.current.y >= discardArea.y and card.current.y + card.h <= discardArea.y + discardArea.h
 end
 
 local function lerp(a, b, t)
@@ -190,8 +305,13 @@ function love.load()
   -- Your game load here
   shipAsset = love.graphics.newImage("assets/main-ship.png")
   cardAsset = love.graphics.newImage("assets/card-template-front.png")
+  chompedCardAsset = love.graphics.newImage("assets/chomped-card.png")
   slotBottomAsset = love.graphics.newImage("assets/slot-bottom.png")
   slotTopAsset = love.graphics.newImage("assets/slot-top.png")
+  local notoSansFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 40)
+  playTextObject = love.graphics.newText(notoSansFont, "PLAY")
+  discardTextObject = love.graphics.newText(notoSansFont, "DISCARD")
+  card.asset = cardAsset
   events.load()
   overlayStats.load() -- Should always be called last
 end
@@ -206,27 +326,68 @@ function love.draw()
   love.graphics.setColor(playArea.color)
   love.graphics.rectangle("line", playArea.x, playArea.y, playArea.w, playArea.h)
   love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setColor(discardArea.color)
+  love.graphics.rectangle("line", discardArea.x, discardArea.y, discardArea.w, discardArea.h)
+  love.graphics.setColor(1, 1, 1, 1)
+
   if slotBottomAsset then
     love.graphics.draw(
       slotBottomAsset,
       playArea.x + (playArea.w - slotBottomAsset:getWidth()) / 2,
       playArea.y
     )
+    love.graphics.draw(
+      slotBottomAsset,
+      discardArea.x + (discardArea.w - slotBottomAsset:getWidth()) / 2,
+      discardArea.y
+    )
   end
 
   if card.drag.is then
+    if playTextObject then
+      love.graphics.draw(
+        playTextObject,
+        playArea.x,
+        playArea.y + playArea.h - playTextObject:getHeight() * textObjectScale - 10,
+        0,
+        textObjectScale,
+        textObjectScale
+      )
+    end
+    if discardTextObject then
+      love.graphics.draw(
+        discardTextObject,
+        discardArea.x + discardArea.w - discardTextObject:getWidth() * textObjectScale,
+        discardArea.y + discardArea.h - discardTextObject:getHeight() * textObjectScale - 10,
+        0,
+        textObjectScale,
+        textObjectScale
+      )
+    end
     if slotTopAsset then
       love.graphics.draw(
         slotTopAsset,
         playArea.x + (playArea.w - slotTopAsset:getWidth()) / 2,
         playArea.y
       )
+      love.graphics.draw(
+        slotTopAsset,
+        discardArea.x + (discardArea.w - slotTopAsset:getWidth()) / 2,
+        discardArea.y
+      )
       love.graphics.setColor(0, 0, 0, 1)
       love.graphics.printf(
         slotText,
         playArea.x,
-        playArea.y + slotTopAsset:getHeight() / 2,
+        playArea.y + 10,
         playArea.w,
+        "center"
+      )
+      love.graphics.printf(
+        discardSlotText,
+        discardArea.x,
+        discardArea.y + 10,
+        discardArea.w,
         "center"
       )
       love.graphics.setColor(1, 1, 1, 1)
@@ -238,7 +399,7 @@ function love.draw()
     love.graphics.translate(card.current.x + card.w / 2, card.current.y + card.h / 2)
     love.graphics.rotate(card.current.r)
     love.graphics.scale(card.current.scale, card.current.scale)
-    love.graphics.draw(cardAsset, -card.w / 2, -card.h / 2)
+    love.graphics.draw(card.asset, -card.w / 2, -card.h / 2)
     love.graphics.pop()
   end
 
@@ -249,12 +410,24 @@ function love.draw()
         playArea.x + (playArea.w - slotTopAsset:getWidth()) / 2,
         playArea.y
       )
+      love.graphics.draw(
+        slotTopAsset,
+        discardArea.x + (discardArea.w - slotTopAsset:getWidth()) / 2,
+        discardArea.y
+      )
       love.graphics.setColor(0, 0, 0, 1)
       love.graphics.printf(
         slotText,
         playArea.x,
         playArea.y + 10,
         playArea.w,
+        "center"
+      )
+      love.graphics.printf(
+        discardSlotText,
+        discardArea.x,
+        discardArea.y + 10,
+        discardArea.w,
         "center"
       )
       love.graphics.setColor(1, 1, 1, 1)
@@ -276,6 +449,16 @@ function love.update(dt)
     playArea.color = {0.5, 0.5, 0.5, 1} -- Default color
   end
 
+  if mouseInDiscardArea(mouseX, mouseY) and card.drag.is then
+    discardArea.color = {0.5, 0.5, 1, 1} -- Blue
+  elseif cardInDiscardArea() then
+    discardArea.color = {1, 1, 1, 1} -- White
+  elseif mouseInDiscardArea(mouseX, mouseY) then
+    discardArea.color = {0.5, 1, 0.5, 1} -- Green
+  else
+    discardArea.color = {0.5, 0.5, 0.5, 1} -- Default color
+  end
+
 
   if card.drag.is and not love.mouse.isDown(1) then
     card.drag.is = false
@@ -283,6 +466,8 @@ function love.update(dt)
     -- is mouse is in play area, trigger play sequence
     if mouseInPlayArea(mouseX, mouseY) then
       playCardSequence()
+    elseif mouseInDiscardArea(mouseX, mouseY) then
+      discardCardSequence()
     else
       -- reset card position
       card.target.x = cardStartingX
