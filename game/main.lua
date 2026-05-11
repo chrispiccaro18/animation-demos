@@ -1,6 +1,7 @@
 https = nil
 local overlayStats = require("lib.overlayStats")
 local runtimeLoader = require("runtime.loader")
+local events = require("lib.events")
 
 local shipAsset = nil
 local cardAsset = nil
@@ -26,13 +27,13 @@ local card = {
     y = cardStartingY,
     r = 0,
     rVel = 0,
-    scale = 1,
+    scale = 0.95,
   },
   target = {
     x = cardStartingX,
     y = cardStartingY,
     r = 0,
-    scale = 1,
+    scale = 0.95,
   },
   horizontalVelocity = 0
 }
@@ -45,12 +46,79 @@ local playArea = {
   color = {0.5, 0.5, 0.5, 1},
 }
 
--- need a small event system for when card is placed in play area
--- detect when "placed in play area": card.drag.is and not love.mouse.isDown(1) and mouseInPlayArea(mouseX, mouseY)
--- now it get's a target of the anticipation position
--- then give it a target position higher in the center
--- then scale up and scale back down
--- then drop it from play area to bottom of screen (card target y = love.graphics.getHeight() + card.h)
+local function playCardSequence()
+  -- Anticipation: nudge card slightly down before launching up
+  events.push({
+    fn = function()
+      card.hover.is = false
+      card.hover.can = false
+      card.drag.is = false
+      card.drag.can = false
+      card.target.scale = 0.95
+      card.target.x = playArea.x + (playArea.w - card.w) / 2
+      card.target.y = playArea.y + (playArea.h - card.h / 2)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.y = playArea.y + (playArea.h - card.h / 2) + 30
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  -- Move to center of play area, elevated
+  events.push({
+    fn = function()
+      card.target.x = playArea.x + (playArea.w - card.w) / 2
+      card.target.y = playArea.y + (playArea.h - card.h) / 2
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  -- Scale up
+  events.push({
+    fn = function()
+      card.target.scale = 1.2
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  -- Scale back down
+  events.push({
+    fn = function()
+      card.target.scale = 0.95
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.y = card.current.y - 30
+      -- card.target.y = love.graphics.getHeight() - card.h
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  -- Drop to bottom of screen
+  events.push({
+    fn = function()
+      card.target.y = cardStartingY
+      -- card.target.y = love.graphics.getHeight() - card.h
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.hover.can = true
+      card.drag.can = true
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+end
 
 local function mouseInCard(x, y)
   return x >= card.current.x and x <= card.current.x + card.w and y >= card.current.y and y <= card.current.y + card.h
@@ -115,6 +183,7 @@ function love.load()
   -- Your game load here
   shipAsset = love.graphics.newImage("assets/main-ship.png")
   cardAsset = love.graphics.newImage("assets/card-template-front.png")
+  events.load()
   overlayStats.load() -- Should always be called last
 end
 
@@ -157,10 +226,9 @@ function love.update(dt)
   if card.drag.is and not love.mouse.isDown(1) then
     card.drag.is = false
     card.drag.can = true
-    -- is mouse is in play area, snap card to center of play area
+    -- is mouse is in play area, trigger play sequence
     if mouseInPlayArea(mouseX, mouseY) then
-      card.target.x = playArea.x + (playArea.w - card.w) / 2
-      card.target.y = playArea.y + (playArea.h - card.h / 2)
+      playCardSequence()
     else
       -- reset card position
       card.target.x = cardStartingX
@@ -175,32 +243,34 @@ function love.update(dt)
 
   if card.hover.can and not card.drag.is and mouseInCard(mouseX, mouseY) then
     card.hover.is = true
-    card.hover.can = false
+    -- card.hover.can = false
     card.target.scale = 1.05
   elseif mouseInCard(mouseX, mouseY) and card.drag.is then
     card.target.scale = 1.125
-  elseif not mouseInCard(mouseX, mouseY) and not card.drag.is then
+  elseif not mouseInCard(mouseX, mouseY) and not card.drag.is and card.hover.can then
     card.hover.is = false
-    card.hover.can = true
-    card.target.scale = 1
+    -- card.hover.can = true
+    card.target.scale = 0.95
   elseif mouseInCard(mouseX, mouseY) and not card.drag.is then
     card.target.scale = 1.05
   end
 
-  if cardInPlayArea() and card.stationary and not card.drag.is and not card.hover.is then
-    card.target.y = playArea.y + (playArea.h - card.h) / 2
-  end
+  -- if cardInPlayArea() and card.stationary and not card.drag.is and not card.hover.is then
+  --   card.target.y = playArea.y + (playArea.h - card.h) / 2
+  -- end
 
   updateCardPosition(dt)
   updateCardStationary()
+  events.update(dt)
   overlayStats.update(dt) -- Should always be called last
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
   if button == 1 and mouseInCard(x, y) then
     if card.drag.can then
+      -- events.clear()
       card.hover.is = false
-      card.hover.can = false
+      -- card.hover.can = false
       card.drag.is = true
       card.drag.can = false
       card.drag.offsetX = x - card.current.x
@@ -212,6 +282,8 @@ end
 function love.keypressed(key)
   if key == "escape" and love.system.getOS() ~= "Web" then
     love.event.quit()
+  elseif key == "space" then
+    print(card.hover.can)
   else
     overlayStats.handleKeyboard(key) -- Should always be called last
   end
