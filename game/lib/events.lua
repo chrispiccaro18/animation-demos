@@ -5,6 +5,7 @@
 ---@field delay number Seconds of delay
 ---@field type "immediate"|"before"|"after" When the delay happens relative to fn
 ---@field persistent boolean If true, events.clear() cannot cancel this event
+---@field realTime boolean? If true, timer uses realDt instead of gameDt (default: false)
 
 ---@class EventsModule
 ---@field _queue Event[] Pending events waiting their turn
@@ -85,24 +86,23 @@ function events.push(event)
   end
 end
 
----Updates the event system each frame. Call from love.update(dt) before overlayStats.
----@param dt number Delta time in seconds
-function events.update(dt)
+---Updates the event system each frame. Call from love.update() before overlayStats.
+---Reads globals realDt and gameDt; each event's realTime field selects which timer to use.
+function events.update()
   -- Tick background (non-blocking / immediate-fire) events
   local i = 1
   while i <= #_background do
     local entry = _background[i]
+    local dt = entry.event.realTime and realDt or gameDt
     local done = false
 
     if entry.phase == "wait" then
-      -- "before" type: waiting before calling fn
       entry.timer = entry.timer - dt
       if entry.timer <= 0 then
         entry.event.fn()
         done = true
       end
     elseif entry.phase == "fn_done" then
-      -- "after" type: fn already called, now waiting out the delay
       entry.timer = entry.timer - dt
       if entry.timer <= 0 then
         done = true
@@ -118,6 +118,7 @@ function events.update(dt)
 
   -- Tick active blocking event
   if _active then
+    local dt = _active.event.realTime and realDt or gameDt
     if _active.phase == "before_wait" then
       _active.timer = _active.timer - dt
       if _active.timer <= 0 then
