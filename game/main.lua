@@ -5,7 +5,9 @@ local events = require("lib.events")
 local areas  = require("core.areas")
 local Card   = require("core.card")
 local Hand   = require("core.hand")
-local config = require("lib.config")
+local config       = require("lib.config")
+local Projectile   = require("core.projectile")
+local projectiles  = require("core.projectiles")
 
 local shipAsset = nil
 local hand = Hand.new()
@@ -16,6 +18,10 @@ function love.load()
   local cardAsset        = love.graphics.newImage("assets/card-template-front.png")
   local chompedCardAsset = love.graphics.newImage("assets/chomped-card.png")
   areas.load()
+  local projFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 18)
+  projectiles.ram = Projectile.new({ asset = love.graphics.newImage("assets/large-ram.png"), font = projFont })
+  projectiles.progress = Projectile.new({ asset = love.graphics.newImage("assets/progress.png"), font = projFont })
+  projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/threat.png"), font = projFont })
   hand:add(Card.new(600, 400, cardAsset, chompedCardAsset))
   events.load()
   overlayStats.load()
@@ -28,6 +34,7 @@ function love.draw()
   areas.drawBefore(hand:isDragging())
   hand:draw()
   areas.drawAfter(hand:isDragging())
+  for _, proj in pairs(projectiles) do proj:draw() end
   overlayStats.draw()
 end
 
@@ -37,6 +44,7 @@ function love.update(dt)
   local mouseX, mouseY = love.mouse.getPosition()
   hand:update(mouseX, mouseY)
   areas.update()
+  for _, proj in pairs(projectiles) do proj:update() end
   events.update()
   overlayStats.update(dt)
 end

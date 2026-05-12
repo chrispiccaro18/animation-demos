@@ -32,15 +32,25 @@ areas.endTurn = {
   color = {1, 0, 0, 1},
 }
 
+areas.ram = { value = 0, x = 0, y = 0, w = 0, h = 0 }
+
 local slotBottomAsset = nil
 local slotTopAsset    = nil
 local playTextObject  = nil
 local discardTextObject = nil
 local textObjectScale = 1
+local ramAsset = nil
+local ramFont  = nil
 
 function areas.load()
   slotBottomAsset   = love.graphics.newImage("assets/slot-bottom.png")
   slotTopAsset      = love.graphics.newImage("assets/slot-top.png")
+  ramAsset          = love.graphics.newImage("assets/large-ram.png")
+  ramFont           = love.graphics.newFont("assets/NotoSans-Medium.ttf", 18)
+  areas.ram.w = ramAsset:getWidth()
+  areas.ram.h = ramAsset:getHeight()
+  areas.ram.x = (W - areas.ram.w) / 2
+  areas.ram.y = 0
   local font        = love.graphics.newFont("assets/NotoSans-Medium.ttf", 40)
   playTextObject    = love.graphics.newText(font, "PLAY")
   discardTextObject = love.graphics.newText(font, "DISCARD")
@@ -130,6 +140,24 @@ function areas.drawBefore(isDragging)
       deg180, 1, 1,
       slotBottomAsset:getWidth(), slotBottomAsset:getHeight()
     )
+  end
+
+  if ramAsset then
+    local rx = (W - ramAsset:getWidth()) / 2
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(ramAsset, rx, 0)
+    local prevFont = love.graphics.getFont()
+    love.graphics.setFont(ramFont)
+    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.printf(
+      tostring(areas.ram.value),
+      rx,
+      (ramAsset:getHeight() - ramFont:getHeight()) / 2,
+      ramAsset:getWidth(),
+      "center"
+    )
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(prevFont)
   end
 
   if isDragging then

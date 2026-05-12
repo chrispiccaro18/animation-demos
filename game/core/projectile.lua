@@ -1,0 +1,71 @@
+local animation = require("lib.animation")
+
+local Projectile = {}
+Projectile.__index = Projectile
+
+-- config: { asset = img, text = "str", font = font }
+-- asset OR text provides the visual body; font is used for both text rendering and label overlay.
+function Projectile.new(config)
+  local self = setmetatable({}, Projectile)
+  self.asset   = config.asset
+  self.text    = config.text
+  self.font    = config.font
+  self.label   = ""
+  self.visible = false
+  self.current = { x = 0, y = 0 }
+  self.target  = { x = 0, y = 0 }
+  if self.asset then
+    self.w = self.asset:getWidth()
+    self.h = self.asset:getHeight()
+  elseif self.font and self.text then
+    self.w = self.font:getWidth(self.text)
+    self.h = self.font:getHeight()
+  else
+    self.w, self.h = 0, 0
+  end
+  return self
+end
+
+function Projectile:launch(fromX, fromY, toX, toY, label)
+  self.current.x = fromX
+  self.current.y = fromY
+  self.target.x  = toX
+  self.target.y  = toY
+  self.label     = label or ""
+  self.visible   = true
+end
+
+function Projectile:hide()
+  self.visible = false
+end
+
+function Projectile:update()
+  if not self.visible then return end
+  self.current.x = animation.expDecay(self.current.x, self.target.x, 6, realDt)
+  self.current.y = animation.expDecay(self.current.y, self.target.y, 6, realDt)
+end
+
+function Projectile:draw()
+  if not self.visible then return end
+  local px = self.current.x - self.w / 2
+  local py = self.current.y - self.h / 2
+  love.graphics.setColor(1, 1, 1, 1)
+  if self.asset then
+    love.graphics.draw(self.asset, px, py)
+  elseif self.text and self.font then
+    local prev = love.graphics.getFont()
+    love.graphics.setFont(self.font)
+    love.graphics.print(self.text, px, py)
+    love.graphics.setFont(prev)
+  end
+  if self.label ~= "" and self.font then
+    local prev = love.graphics.getFont()
+    love.graphics.setFont(self.font)
+    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.printf(self.label, px, py + (self.h - self.font:getHeight()) / 2, self.w, "center")
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(prev)
+  end
+end
+
+return Projectile
