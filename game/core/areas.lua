@@ -50,7 +50,7 @@ function areas.load()
   areas.ram.w = ramAsset:getWidth()
   areas.ram.h = ramAsset:getHeight()
   areas.ram.x = (W - areas.ram.w) / 2
-  areas.ram.y = 0
+  areas.ram.y = 2
   local font        = love.graphics.newFont("assets/NotoSans-Medium.ttf", 40)
   playTextObject    = love.graphics.newText(font, "PLAY")
   discardTextObject = love.graphics.newText(font, "DISCARD")
@@ -143,16 +143,17 @@ function areas.drawBefore(isDragging)
   end
 
   if ramAsset then
-    local rx = (W - ramAsset:getWidth()) / 2
+    local rx = areas.ram.x
+    local ry = areas.ram.y
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(ramAsset, rx, 0)
+    love.graphics.draw(ramAsset, rx, ry)
     local prevFont = love.graphics.getFont()
     love.graphics.setFont(ramFont)
     love.graphics.setColor(0, 0, 0, 1)
     love.graphics.printf(
       tostring(areas.ram.value),
       rx,
-      (ramAsset:getHeight() - ramFont:getHeight()) / 2,
+      ry + (ramAsset:getHeight() - ramFont:getHeight()) / 2,
       ramAsset:getWidth(),
       "center"
     )

@@ -1,3 +1,4 @@
 .direnv/
 .vscode/settings.json
 game/log.txt
+.DS_Store
