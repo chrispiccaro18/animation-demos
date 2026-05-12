@@ -57,12 +57,28 @@ local playArea = {
   color = {0.5, 0.5, 0.5, 1},
 }
 
+local discardStartingX = love.graphics.getWidth() / 2 + 10
+local discardStartingY = 0
 local discardArea = {
-  x = love.graphics.getWidth() / 2 + 10,
-  y = 0,
+  current = {
+    y = discardStartingY,
+  },
+  target = {
+    y = discardStartingY,
+  },
+  x = discardStartingX,
+  -- y = discardStartingY,
   w = love.graphics.getWidth() / 2 - 10,
   h = love.graphics.getHeight() / 2 - 10,
   color = {0.5, 0.5, 0.5, 1},
+}
+
+local endTurnArea = {
+  x = love.graphics.getWidth() / 2 + 194,
+  y = love.graphics.getHeight() - 74,
+  w = 260,
+  h = 74,
+  color = {1, 0, 0, 1},
 }
 
 local function playCardSequence()
@@ -152,14 +168,14 @@ local function discardCardSequence()
       card.drag.can = false
       card.target.scale = 0.95
       card.target.x = discardArea.x + (discardArea.w - card.w) / 2
-      card.target.y = discardArea.y + (discardArea.h - card.h / 2)
+      card.target.y = discardStartingY + (discardArea.h - card.h / 2)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
   })
   events.push({
     fn = function()
-      card.target.y = discardArea.y + (discardArea.h - card.h / 2) + 30
+      card.target.y = discardStartingY + (discardArea.h - card.h / 2) + 30
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after",
@@ -168,8 +184,7 @@ local function discardCardSequence()
   events.push({
     fn = function()
       card.target.x = discardArea.x + (discardArea.w - card.w) / 2
-      card.target.y = discardArea.y
-      -- card.target.y = discardArea.y + (discardArea.h - card.h) / 2
+      card.target.y = discardStartingY
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
@@ -205,8 +220,96 @@ local function discardCardSequence()
     fn = function()
       slotText = "+1 RAM"
       discardSlotText = ""
-      card.target.y = cardStartingY + 152
+      card.target.y = love.graphics.getHeight() - card.asset:getHeight()
       -- card.target.y = love.graphics.getHeight() - card.h
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.hover.can = false
+      card.drag.can = false
+      slotText = ""
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+  -- events.push({
+  --   fn = function()
+  --     slotText = ""
+  --     card.hover.can = true
+  --     card.drag.can = true
+  --     card.asset = cardAsset
+  --     card.target.y = cardStartingY
+  --     card.current.y = cardStartingY
+  --   end,
+  --   blocking = true, blockable = true, persistent = true,
+  --   delay = 0.5, type = "before",
+  -- })
+end
+
+local function endTurnSequence()
+  events.push({
+    fn = function()
+      discardArea.target.y = love.graphics.getHeight() - 60 * 2
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      discardSlotText = "+1 Threat"
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      discardArea.target.y = discardStartingY
+      card.target.y = discardStartingY
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.65, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.y = card.current.y - 270
+    end,
+    blocking = true,
+    blockable = true,
+    persistent = false,
+    delay = 0.65,
+    type = "after",
+  })
+  events.push({
+    fn = function()
+      card.asset = cardAsset
+      card.target.y = discardStartingY
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.65, type = "after",
+  })
+  events.push({
+    fn = function()
+      discardSlotText = ""
+      card.target.y = card.current.y - 30
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      discardSlotText = ""
+      -- card.target.x = playArea.x + (playArea.w - card.w) / 2
+      card.target.y = cardStartingY
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.055, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.x = playArea.x + (playArea.w - card.w) / 2
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after",
@@ -216,18 +319,8 @@ local function discardCardSequence()
       card.hover.can = true
       card.drag.can = true
     end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
-  })
-  events.push({
-    fn = function()
-      slotText = ""
-      card.asset = cardAsset
-      card.target.y = cardStartingY
-      card.current.y = cardStartingY
-    end,
     blocking = true, blockable = true, persistent = true,
-    delay = 0.5, type = "before",
+    delay = 0, type = "immediate",
   })
 end
 
@@ -240,7 +333,12 @@ local function mouseInPlayArea(x, y)
 end
 
 local function mouseInDiscardArea(x, y)
-  return x >= discardArea.x and x <= discardArea.x + discardArea.w and y >= discardArea.y and y <= discardArea.y + discardArea.h
+  return x >= discardArea.x and x <= discardArea.x + discardArea.w and y >= discardStartingY and
+      y <= discardStartingY + discardArea.h
+end
+
+local function mouseInEndTurnArea(x, y)
+  return x >= endTurnArea.x and x <= endTurnArea.x + endTurnArea.w and y >= endTurnArea.y and y <= endTurnArea.y + endTurnArea.h
 end
 
 local function cardInPlayArea()
@@ -252,9 +350,7 @@ end
 
 local function cardInDiscardArea()
   return card.current.x >= discardArea.x and card.current.x + card.w <= discardArea.x + discardArea.w and
-         card.current.y >= discardArea.y and card.current.y <= discardArea.y + discardArea.h
-  -- return card.current.x >= discardArea.x and card.current.x + card.w <= discardArea.x + discardArea.w and
-  --        card.current.y >= discardArea.y and card.current.y + card.h <= discardArea.y + discardArea.h
+         card.current.y >= discardStartingY and card.current.y <= discardStartingY + discardArea.h
 end
 
 local function lerp(a, b, t)
@@ -270,6 +366,10 @@ local function springDecay(pos, vel, target, stiffness, damping, dt)
   vel = vel + force * dt
   pos = pos + vel * dt
   return pos, vel
+end
+
+local function degreesToRadians(degrees)
+  return degrees * math.pi / 180
 end
 
 local stiffness = 80
@@ -288,6 +388,7 @@ local function updateCardPosition(dt)
   card.current.rVel = card.current.rVel + rForce * dt
   card.current.r = card.current.r + card.current.rVel * dt
   card.current.scale = expDecay(card.current.scale, card.target.scale, 18, dt)
+  discardArea.current.y = expDecay(discardArea.current.y, discardArea.target.y, 10, dt)
 end
 
 local function updateCardStationary()
@@ -327,7 +428,10 @@ function love.draw()
   love.graphics.rectangle("line", playArea.x, playArea.y, playArea.w, playArea.h)
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.setColor(discardArea.color)
-  love.graphics.rectangle("line", discardArea.x, discardArea.y, discardArea.w, discardArea.h)
+  love.graphics.rectangle("line", discardArea.x, discardStartingY, discardArea.w, discardArea.h)
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setColor(endTurnArea.color)
+  love.graphics.rectangle("line", endTurnArea.x, endTurnArea.y, endTurnArea.w, endTurnArea.h)
   love.graphics.setColor(1, 1, 1, 1)
 
   if slotBottomAsset then
@@ -339,7 +443,17 @@ function love.draw()
     love.graphics.draw(
       slotBottomAsset,
       discardArea.x + (discardArea.w - slotBottomAsset:getWidth()) / 2,
-      discardArea.y
+      discardArea.current.y
+    )
+    love.graphics.draw(
+      slotBottomAsset,
+      discardArea.x + (discardArea.w - slotBottomAsset:getWidth()) / 2,
+      love.graphics.getHeight() - slotBottomAsset:getHeight(),
+      degreesToRadians(180),
+      1,
+      1,
+      slotBottomAsset:getWidth(),
+      slotBottomAsset:getHeight()
     )
   end
 
@@ -358,7 +472,7 @@ function love.draw()
       love.graphics.draw(
         discardTextObject,
         discardArea.x + discardArea.w - discardTextObject:getWidth() * textObjectScale,
-        discardArea.y + discardArea.h - discardTextObject:getHeight() * textObjectScale - 10,
+        discardArea.current.y + discardArea.h - discardTextObject:getHeight() * textObjectScale - 10,
         0,
         textObjectScale,
         textObjectScale
@@ -373,7 +487,7 @@ function love.draw()
       love.graphics.draw(
         slotTopAsset,
         discardArea.x + (discardArea.w - slotTopAsset:getWidth()) / 2,
-        discardArea.y
+        discardArea.current.y
       )
       love.graphics.setColor(0, 0, 0, 1)
       love.graphics.printf(
@@ -386,11 +500,20 @@ function love.draw()
       love.graphics.printf(
         discardSlotText,
         discardArea.x,
-        discardArea.y + 10,
+        discardArea.current.y + 10,
         discardArea.w,
         "center"
       )
       love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.draw(
+        slotTopAsset,
+        discardArea.x + (discardArea.w - slotTopAsset:getWidth()) / 2,
+        love.graphics.getHeight() - slotTopAsset:getHeight(),
+        degreesToRadians(180),
+        1, 1,
+        slotTopAsset:getWidth(),
+        slotTopAsset:getHeight()
+      )
     end
   end
 
@@ -413,7 +536,7 @@ function love.draw()
       love.graphics.draw(
         slotTopAsset,
         discardArea.x + (discardArea.w - slotTopAsset:getWidth()) / 2,
-        discardArea.y
+        discardArea.current.y
       )
       love.graphics.setColor(0, 0, 0, 1)
       love.graphics.printf(
@@ -426,11 +549,20 @@ function love.draw()
       love.graphics.printf(
         discardSlotText,
         discardArea.x,
-        discardArea.y + 10,
+        discardArea.current.y + 10,
         discardArea.w,
         "center"
       )
       love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.draw(
+        slotTopAsset,
+        discardArea.x + (discardArea.w - slotTopAsset:getWidth()) / 2,
+        love.graphics.getHeight() - slotTopAsset:getHeight(),
+        degreesToRadians(180),
+        1, 1,
+        slotTopAsset:getWidth(),
+        slotTopAsset:getHeight()
+      )
     end
   end
   overlayStats.draw() -- Should always be called last
@@ -490,7 +622,7 @@ function love.update(dt)
     card.hover.is = false
     -- card.hover.can = true
     card.target.scale = 0.95
-  elseif mouseInCard(mouseX, mouseY) and not card.drag.is then
+  elseif mouseInCard(mouseX, mouseY) and card.hover.can and not card.drag.is then
     card.target.scale = 1.05
   end
 
@@ -505,7 +637,14 @@ function love.update(dt)
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
-  if button == 1 and mouseInCard(x, y) then
+  if button == 1 and mouseInEndTurnArea(x, y) then
+    if card.asset == chompedCardAsset and card.stationary then
+      endTurnSequence()
+      print("Ending turn with card in discard pile")
+    elseif card.asset == cardAsset then
+      print("Ending turn with card in play")
+    end
+  elseif button == 1 and mouseInCard(x, y) then
     if card.drag.can then
       -- events.clear()
       card.hover.is = false
