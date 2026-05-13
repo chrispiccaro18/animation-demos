@@ -128,26 +128,11 @@ function sequences.play(card, areas)
   })
   events.push({
     fn = function()
-      card.target.y = p.y + (p.h - card.h / 2) + 30
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.25, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.target.x = p.x + (p.w - card.w) / 2
-      card.target.y = p.y
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after",
-  })
-    events.push({
-    fn = function()
       areas.ram.value = areas.ram.value - 1
       projectiles.ram:launch(
         areas.ram.x + areas.ram.w / 2,
         areas.ram.y + areas.ram.h / 2,
-        p.x + p.w / 2,
+        areas.play.x + areas.play.w / 2,
         areas.ram.y + areas.ram.h / 2,
         "1"
       )
@@ -157,51 +142,87 @@ function sequences.play(card, areas)
   })
   events.push({
     fn = function()
-      card.target.scale = 1.2
-      p.slotText = "+1 Progress"
-      projectiles.ram:hide()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.target.scale = 0.95
-      projectiles.progress:launch(
-        p.x + p.w / 2,
-        areas.ram.y + areas.ram.h / 2,
-        areas.progress.x + areas.progress.w / 2,
-        areas.progress.y + areas.progress.h / 2,
-        "1"
-      )
-      p.slotText = ""
+      sequences.insertMiddle(card, areas)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
   })
-  events.push({
-    fn = function()
-      return projectiles.progress:isNearTarget()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    type = "poll",
-  })
-  events.push({
-    fn = function()
-      projectiles.progress:hide()
-      areas.progress.current.scale = 1.4
-      areas.progress.value = areas.progress.value + 1
-      if checkWin(areas) then
-        sequences.win(card, areas)
-      elseif checkLoss(areas) then
-        sequences.loss(card, areas)
-      else
-        sequences.ejectCard(card, areas)
-      end
-    end,
-    blocking = true, blockable = true, persistent = false,
-    type = "immediate",
-  })
+  -- events.push({
+  --   fn = function()
+  --     card.target.y = p.y + (p.h - card.h / 2) + 30
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.25, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.target.x = p.x + (p.w - card.w) / 2
+  --     card.target.y = p.y
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "after",
+  -- })
+  --   events.push({
+  --   fn = function()
+  --     areas.ram.value = areas.ram.value - 1
+  --     projectiles.ram:launch(
+  --       areas.ram.x + areas.ram.w / 2,
+  --       areas.ram.y + areas.ram.h / 2,
+  --       p.x + p.w / 2,
+  --       areas.ram.y + areas.ram.h / 2,
+  --       "1"
+  --     )
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.target.scale = 1.2
+  --     p.slotText = "+1 Progress"
+  --     projectiles.ram:hide()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.target.scale = 0.95
+  --     projectiles.progress:launch(
+  --       p.x + p.w / 2,
+  --       areas.ram.y + areas.ram.h / 2,
+  --       areas.progress.x + areas.progress.w / 2,
+  --       areas.progress.y + areas.progress.h / 2,
+  --       "1"
+  --     )
+  --     p.slotText = ""
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     return projectiles.progress:isNearTarget()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   type = "poll",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     projectiles.progress:hide()
+  --     areas.progress.current.scale = 1.4
+  --     areas.progress.value = areas.progress.value + 1
+  --     if checkWin(areas) then
+  --       sequences.win(card, areas)
+  --     elseif checkLoss(areas) then
+  --       sequences.loss(card, areas)
+  --     else
+  --       sequences.ejectCard(card, areas)
+  --     end
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   type = "immediate",
+  -- })
 end
 
 -- NEW discard sequence:
@@ -434,14 +455,15 @@ function sequences.popTopOff(card, areas)
 end
 
 -- Animation 2: fly a middle section down onto the card, then split at the seam
-function sequences.insertMiddle(card)
+function sequences.insertMiddle(card, areas)
   local a = card.partAssets
   events.push({
     fn = function()
+      projectiles.ram:hide()
       card:setParts({
-        { asset = a.middleBottom, yOffset = 32 },
-        { asset = a.middle, yOffset = -115, dy = -400 },
-        { asset = a.top,    yOffset = 0   },
+        { id = "middleBottom", asset = a.middleBottom, yOffset = 32 },
+        { id = "middle", asset = a.middle, yOffset = -115, dy = -400 },
+        { id = "top", asset = a.top,    yOffset = 0   },
       })
       card.parts[2].target.dy = 0
     end,
@@ -458,16 +480,118 @@ function sequences.insertMiddle(card)
   })
   events.push({
     fn = function()
-      -- card:setParts({
-      --   { asset = a.middleBottom, yOffset = 32 },
-      --   { asset = a.middleTop,    yOffset = 0  },
-      -- })
-      -- card.parts[1].target.dy =  50
       card.parts[1].target.dy = 100
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.7, type = "after",
+  })
+  events.push({
+    fn = function()
+      card:removePart("top")
+      card:removePart("middle")
+      card:setParts({
+        { id = "middleBottom", asset = a.middleBottom, yOffset = 132 },
+        { id = "middleTop",    asset = a.middleTop,    yOffset = -115  },
+      })
+      -- card.parts[1].target.dy =  50
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
   })
+  events.push({
+    fn = function()
+      card.parts[2].target.dy = areas.play.y - card.current.y + 35
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.7, type = "after",
+  })
+  events.push({
+    fn = function()
+      -- card.target.scale = 1.2
+      areas.play.slotText = "+1 Progress"
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      -- card.target.scale = 0.95
+      projectiles.progress:launch(
+        areas.play.x + areas.play.w / 2,
+        areas.ram.y + areas.ram.h / 2,
+        areas.progress.x + areas.progress.w / 2,
+        areas.progress.y + areas.progress.h / 2,
+        "1"
+      )
+      areas.play.slotText = ""
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
+      return projectiles.progress:isNearTarget()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "poll",
+  })
+  events.push({
+    fn = function()
+      projectiles.progress:hide()
+      areas.progress.current.scale = 1.4
+      areas.progress.value = areas.progress.value + 1
+      -- if checkWin(areas) then
+      --   sequences.win(card, areas)
+      -- elseif checkLoss(areas) then
+      --   sequences.loss(card, areas)
+      -- else
+      --   -- sequences.ejectCard(card, areas)
+      -- end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "after", delay = 0.5,
+  })
+  events.push({
+    fn = function()
+      card:removePart("middleTop")
+      card:setParts({
+        { id = "middleBottom", asset = a.middleBottom, yOffset = 132 },
+        { id = "top",    asset = a.top, yOffset = -180  },
+      })
+      card.parts[2].target.dy = card.current.y + 65
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "after", delay = 0.5,
+  })
+  -- events.push({
+  --   fn = function()
+  --     card.parts[1].target.dy = 0   -- back to natural (yOffset=32)
+  --     card.parts[2].target.dy = 0   -- back to natural (yOffset=0)
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   type = "after", delay = 0.5,
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card:convergeParts()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   type = "immediate", delay = 0,
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     return card:partsSettled()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   type = "poll", delay = 0,
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card:clearParts()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   type = "immediate", delay = 0,
+  -- })
 end
 
 return sequences

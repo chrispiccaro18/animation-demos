@@ -47,6 +47,36 @@ function Card:clearParts()
   self.parts = nil
 end
 
+function Card:snapParts()
+  if not self.parts then return end
+  for _, part in ipairs(self.parts) do
+    part.current.dx = 0  part.target.dx = 0
+    part.current.dy = 0  part.target.dy = 0
+    part.current.dr = 0  part.target.dr = 0
+  end
+end
+
+function Card:convergeParts()
+  if not self.parts then return end
+  for _, part in ipairs(self.parts) do
+    part.target.dx = 0
+    part.target.dy = 0
+    part.target.dr = 0
+  end
+end
+
+function Card:partsSettled()
+  if not self.parts then return true end
+  for _, part in ipairs(self.parts) do
+    if math.abs(part.current.dx) > 0.5
+    or math.abs(part.current.dy) > 0.5
+    or math.abs(part.current.dr) > 0.01 then
+      return false
+    end
+  end
+  return true
+end
+
 function Card:removePart(id)
   if not self.parts then return end
   for i, part in ipairs(self.parts) do
