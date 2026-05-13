@@ -8,6 +8,7 @@ local Hand   = require("core.hand")
 local config       = require("lib.config")
 local Projectile   = require("core.projectile")
 local projectiles  = require("core.projectiles")
+local sequences    = require("core.sequences")
 
 local shipAsset = nil
 local hand = Hand.new()
@@ -22,7 +23,15 @@ function love.load()
   projectiles.ram = Projectile.new({ asset = love.graphics.newImage("assets/large-ram.png"), font = projFont })
   projectiles.progress = Projectile.new({ asset = love.graphics.newImage("assets/progress.png"), font = projFont, fontColor = {1, 1, 1, 1} })
   projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
-  hand:add(Card.new(600, 400, cardAsset, chompedCardAsset))
+  local card = Card.new(600, 400, cardAsset, chompedCardAsset)
+  card.partAssets = {
+    top          = love.graphics.newImage("assets/card-top-play.png"),
+    middle       = love.graphics.newImage("assets/card-middle-discard.png"),
+    bottom       = love.graphics.newImage("assets/card-bottom-dtor.png"),
+    middleTop    = love.graphics.newImage("assets/card-middle-top.png"),
+    middleBottom = love.graphics.newImage("assets/card-middle-bottom.png"),
+  }
+  hand:add(card)
   -- hand:add(Card.new(200, 400, cardAsset, chompedCardAsset))
   events.load()
   overlayStats.load()
@@ -63,6 +72,15 @@ function love.keypressed(key)
   elseif key == "tab" then
     config.cycleSpeed()
     print("Speed: " .. config.speed .. "x")
+  elseif key == "1" then
+    local card = hand.cards[1]
+    if card then sequences.popTopOff(card, areas) end
+  elseif key == "2" then
+    local card = hand.cards[1]
+    if card then sequences.insertMiddle(card) end
+  elseif key == "0" then
+    local card = hand.cards[1]
+    if card then card:clearParts() end
   else
     overlayStats.handleKeyboard(key)
   end

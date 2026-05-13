@@ -21,7 +21,40 @@ function Card.new(x, y, defaultAsset, chompedAsset)
   self._startY = y
   self.current = { x = x, y = y, r = 0, rVel = 0, scale = 0.95 }
   self.target  = { x = x, y = y, r = 0, scale = 0.95 }
+  self.parts = nil
+  self.partAssets = nil
   return self
+end
+
+function Card:setParts(config)
+  self.parts = {}
+  for _, p in ipairs(config) do
+    local dx = p.dx or 0
+    local dy = p.dy or 0
+    local dr = p.dr or 0
+    table.insert(self.parts, {
+      id      = p.id,
+      asset   = p.asset,
+      yOffset = p.yOffset,
+      origin  = p.origin or { x = 0, y = 0 },
+      current = { dx = dx, dy = dy, dr = dr },
+      target  = { dx = p.targetDx or dx, dy = p.targetDy or dy, dr = p.targetDr or dr },
+    })
+  end
+end
+
+function Card:clearParts()
+  self.parts = nil
+end
+
+function Card:removePart(id)
+  if not self.parts then return end
+  for i, part in ipairs(self.parts) do
+    if part.id == id then
+      table.remove(self.parts, i)
+      return
+    end
+  end
 end
 
 function Card:update()
@@ -44,6 +77,14 @@ function Card:update()
   else
     self.stationary = false
   end
+
+  if self.parts then
+    for _, part in ipairs(self.parts) do
+      part.current.dx = animation.expDecay(part.current.dx, part.target.dx, 10, dt)
+      part.current.dy = animation.expDecay(part.current.dy, part.target.dy, 10, dt)
+      part.current.dr = animation.expDecay(part.current.dr, part.target.dr, 10, dt)
+    end
+  end
 end
 
 function Card:draw()
@@ -51,7 +92,17 @@ function Card:draw()
   love.graphics.translate(self.current.x + self.w / 2, self.current.y + self.h / 2)
   love.graphics.rotate(self.current.r)
   love.graphics.scale(self.current.scale, self.current.scale)
-  love.graphics.draw(self.asset, -self.w / 2, -self.h / 2)
+  if self.parts then
+    for _, part in ipairs(self.parts) do
+      local px = -self.w / 2 + part.current.dx
+      local py = -self.h / 2 + part.yOffset + part.current.dy
+      local ox = part.origin.x
+      local oy = part.origin.y
+      love.graphics.draw(part.asset, px + ox, py + oy, part.current.dr, 1, 1, ox, oy)
+    end
+  else
+    love.graphics.draw(self.asset, -self.w / 2, -self.h / 2)
+  end
   love.graphics.pop()
 end
 

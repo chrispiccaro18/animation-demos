@@ -1,5 +1,6 @@
 local events        = require("lib.events")
 local projectiles   = require("core.projectiles")
+local animation    = require("lib.animation")
 
 local sequences = {}
 
@@ -242,74 +243,18 @@ function sequences.discard(card, areas)
   events.push({
     fn = function()
       card.target.x = d.x + (d.w - card.w) / 2
-      card.target.y = et.y - card.h * 0.7
+      card.target.y = et.y - card.h * 0.8
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
   })
-  -- events.push({
-  --   fn = function()
-  --     card.target.scale = 1.2
-  --     card.asset = card.assets.chomped
-  --     d.slotText = "+1 RAM"
-  --   end,
-  --   blocking = true, blockable = true, persistent = false,
-  --   delay = 0.5, type = "after",
-  -- })
-  -- events.push({
-  --   fn = function()
-  --     projectiles.ram:launch(
-  --       d.x + d.w / 2,
-  --       areas.ram.y + areas.ram.h / 2,
-  --       areas.ram.x + areas.ram.w / 2,
-  --       areas.ram.y + areas.ram.h / 2,
-  --       "1"
-  --     )
-  --     card.target.scale = 0.95
-  --     d.slotText = ""
-  --   end,
-  --   blocking = true, blockable = true, persistent = false,
-  --   delay = 0, type = "immediate",
-  -- })
-  -- events.push({
-  --   fn = function()
-  --     return projectiles.ram:isNearTarget()
-  --   end,
-  --   blocking = true, blockable = true, persistent = false,
-  --   type = "poll",
-  -- })
-  -- events.push({
-  --   fn = function()
-  --     projectiles.ram:hide()
-  --     areas.ram.current.scale = 1.4
-  --     areas.ram.value = areas.ram.value + 1
-  --   end,
-  --   blocking = true, blockable = true, persistent = false,
-  --   delay = 0, type = "immediate",
-  -- })
-  -- events.push({
-  --   fn = function()
-  --     card.target.y = card.current.y - 30
-  --   end,
-  --   blocking = true, blockable = true, persistent = false,
-  --   delay = 0.25, type = "after",
-  -- })
-  -- events.push({
-  --   fn = function()
-  --     card.target.y = love.graphics.getHeight() - card.asset:getHeight()
-  --   end,
-  --   blocking = true, blockable = true, persistent = false,
-  --   delay = 0.25, type = "after",
-  -- })
-  -- events.push({
-  --   fn = function()
-  --     card.hover.can = false
-  --     card.drag.can  = false
-  --     p.slotText = ""
-  --   end,
-  --   blocking = true, blockable = true, persistent = false,
-  --   delay = 0, type = "immediate",
-  -- })
+  events.push({
+    fn = function()
+      sequences.popTopOff(card, areas)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
 end
 
 function sequences.endTurn(card, areas)
@@ -363,6 +308,162 @@ function sequences.endTurn(card, areas)
       else
         sequences.ejectFromDiscard(card, areas)
       end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+end
+
+-- Animation 1: pop the top section off, then split middle and bottom apart
+function sequences.popTopOff(card, areas)
+  local a = card.partAssets
+  events.push({
+    fn = function()
+      card:setParts({
+        { asset = a.middleBottom, yOffset = 32 },
+        { id = "top", asset = a.top, yOffset = 0, origin = { x = 180, y = 56 } },
+      })
+      card.parts[2].target.dy = -80
+      card.parts[2].target.dx =  200
+      card.parts[2].target.dr =  animation.degreesToRadians(145)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
+      -- print(card.parts[2].current.dy)
+      return math.abs(card.parts[2].current.dx - card.parts[2].target.dx) < 1
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "poll",
+  })
+  -- events.push({
+  --   fn = function()
+  --     card:removePart("top")
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "before",
+  -- })
+  events.push({
+    fn = function()
+      card:removePart("top")
+      -- local topDy = card.parts[2].current.dy
+      card:setParts({
+        { id = "middle", asset = a.middle, yOffset = 32  },
+        { id = "bottom", asset = a.bottom, yOffset = 151 },
+      })
+      card.parts[1].target.dy =  areas.discard.current.y - card.current.y - 32
+      -- card.parts[2].target.dy = -25
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.parts[1].target.dy = areas.discard.current.y - card.current.y - 22
+      card.parts[2].target.dy = -10
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.parts[1].target.dy = areas.discard.current.y - card.current.y - 300
+      card.parts[2].target.dy = 200
+      areas.discard.slotText = "+1 RAM"
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.7, type = "after",
+  })
+  events.push({
+    fn = function()
+      card:removePart("middle")
+      card:removePart("bottom")
+      projectiles.ram:launch(
+        areas.discard.x + areas.discard.w / 2,
+        areas.ram.y + areas.ram.h / 2,
+        areas.ram.x + areas.ram.w / 2,
+        areas.ram.y + areas.ram.h / 2,
+        "1"
+      )
+      areas.discard.slotText = ""
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
+      return projectiles.ram:isNearTarget()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "poll",
+  })
+  events.push({
+    fn = function()
+      projectiles.ram:hide()
+      areas.ram.current.scale = 1.4
+      areas.ram.value = areas.ram.value + 1
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+  -- events.push({
+  --   fn = function()
+  --     card.target.y = card.current.y - 30
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.25, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.target.y = love.graphics.getHeight() - card.asset:getHeight()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.25, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.hover.can = false
+  --     card.drag.can  = false
+  --     p.slotText = ""
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate",
+  -- })
+end
+
+-- Animation 2: fly a middle section down onto the card, then split at the seam
+function sequences.insertMiddle(card)
+  local a = card.partAssets
+  events.push({
+    fn = function()
+      card:setParts({
+        { asset = a.middleBottom, yOffset = 32 },
+        { asset = a.middle, yOffset = -115, dy = -400 },
+        { asset = a.top,    yOffset = 0   },
+      })
+      card.parts[2].target.dy = 0
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 1, type = "after",
+  })
+  events.push({
+    fn = function()
+      -- print(card.parts[2].current.dy)
+      return math.abs(card.parts[2].current.dy) < 2
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "poll",
+  })
+  events.push({
+    fn = function()
+      -- card:setParts({
+      --   { asset = a.middleBottom, yOffset = 32 },
+      --   { asset = a.middleTop,    yOffset = 0  },
+      -- })
+      -- card.parts[1].target.dy =  50
+      card.parts[1].target.dy = 100
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
