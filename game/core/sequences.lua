@@ -3,6 +3,112 @@ local projectiles   = require("core.projectiles")
 
 local sequences = {}
 
+local function checkWin(areas)
+  return areas.progress.value == 2
+end
+
+local function checkLoss(areas)
+  return areas.threat.value == 2
+end
+
+function sequences.ejectCard(card, areas)
+  events.push({
+    fn = function()
+      card.target.y = card.current.y - 30
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.y = card._startY
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.hover.can = true
+      card.drag.can  = true
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+end
+
+function sequences.ejectFromDiscard(card, areas)
+  local p = areas.play
+  local d = areas.discard
+
+  events.push({
+    fn = function()
+      d.target.y = d.startY
+      card.target.y = d.startY
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.7, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.y = card.current.y - 270
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.65, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.asset = card.assets.default
+      card.target.y = d.startY
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.65, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.y = card.current.y - 30
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      d.slotText = ""
+      card.target.y = card._startY
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.055, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.x = p.x + (p.w - card.w) / 2
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.hover.can = true
+      card.drag.can  = true
+    end,
+    blocking = true, blockable = true, persistent = true,
+    delay = 0, type = "immediate",
+  })
+end
+
+function sequences.win(card, areas)
+  areas.message.textColor = {0, 1, 0, 1}
+  areas.message.text = "WIN"
+  areas.message.current.scale = 4
+  areas.message.target.scale  = 1.0
+end
+
+function sequences.loss(card, areas)
+  areas.message.textColor = {1, 0, 0, 1}
+  areas.message.text = "LOSS"
+  areas.message.current.scale = 4
+  areas.message.target.scale  = 1.0
+end
+
 function sequences.play(card, areas)
   local p = areas.play
 
@@ -63,38 +169,37 @@ function sequences.play(card, areas)
       projectiles.progress:launch(
         p.x + p.w / 2,
         areas.ram.y + areas.ram.h / 2,
-        love.graphics.getWidth() / 2,
-        love.graphics.getHeight() / 2,
-        ""
+        areas.progress.x + areas.progress.w / 2,
+        areas.progress.y + areas.progress.h / 2,
+        "1"
       )
       p.slotText = ""
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.target.y = card.current.y - 30
-      projectiles.progress:hide()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.25, type = "after",
-  })
-  events.push({
-    fn = function()
-      -- p.slotText = ""
-      card.target.y = card._startY
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.25, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.hover.can = true
-      card.drag.can  = true
-    end,
-    blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
+      return projectiles.progress:isNearTarget()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "poll",
+  })
+  events.push({
+    fn = function()
+      projectiles.progress:hide()
+      areas.progress.current.scale = 1.4
+      areas.progress.value = areas.progress.value + 1
+      if checkWin(areas) then
+        sequences.win(card, areas)
+      elseif checkLoss(areas) then
+        sequences.loss(card, areas)
+      else
+        sequences.ejectCard(card, areas)
+      end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "immediate",
   })
 end
 
@@ -152,13 +257,27 @@ function sequences.discard(card, areas)
       d.slotText = ""
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after",
+    delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
+      return projectiles.ram:isNearTarget()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "poll",
+  })
+  events.push({
+    fn = function()
+      projectiles.ram:hide()
+      areas.ram.current.scale = 1.4
+      areas.ram.value = areas.ram.value + 1
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
   })
   events.push({
     fn = function()
       card.target.y = card.current.y - 30
-      areas.ram.value = areas.ram.value + 1
-      projectiles.ram:hide()
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after",
@@ -205,67 +324,35 @@ function sequences.endTurn(card, areas)
       projectiles.threat:launch(
         d.x + d.w / 2,
         d.current.y,
-        love.graphics.getWidth() / 2,
-        love.graphics.getHeight() / 2,
-        ""
+        areas.threat.x + areas.threat.w / 2,
+        areas.threat.y + areas.threat.h / 2,
+        "1"
       )
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after",
+    delay = 0, type = "immediate",
   })
   events.push({
     fn = function()
-      d.target.y = d.startY
-      card.target.y = d.startY
+      return projectiles.threat:isNearTarget()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "poll",
+  })
+  events.push({
+    fn = function()
       projectiles.threat:hide()
-    end,
-    blocking = true, blockable = true, persistent = false, realTime = true,
-    delay = 0.65, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.target.y = card.current.y - 270
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.65, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.asset = card.assets.default
-      card.target.y = d.startY
+      areas.threat.current.scale = 1.4
+      areas.threat.value = areas.threat.value + 1
+      if checkWin(areas) then
+        sequences.win(card, areas)
+      elseif checkLoss(areas) then
+        sequences.loss(card, areas)
+      else
+        sequences.ejectFromDiscard(card, areas)
+      end
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0.65, type = "after",
-  })
-  events.push({
-    fn = function()
-      -- d.slotText = ""
-      card.target.y = card.current.y - 30
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.25, type = "after",
-  })
-  events.push({
-    fn = function()
-      d.slotText = ""
-      card.target.y = card._startY
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.055, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.target.x = p.x + (p.w - card.w) / 2
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.25, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.hover.can = true
-      card.drag.can  = true
-    end,
-    blocking = true, blockable = true, persistent = true,
     delay = 0, type = "immediate",
   })
 end

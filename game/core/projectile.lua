@@ -10,6 +10,7 @@ function Projectile.new(config)
   self.asset   = config.asset
   self.text    = config.text
   self.font    = config.font
+  self.fontColor = config.fontColor or {0, 0, 0, 1}
   self.label   = ""
   self.visible = false
   self.current = { x = 0, y = 0 }
@@ -39,6 +40,12 @@ function Projectile:hide()
   self.visible = false
 end
 
+function Projectile:isNearTarget(threshold)
+  threshold = threshold or 2
+  return math.abs(self.current.x - self.target.x) < threshold
+     and math.abs(self.current.y - self.target.y) < threshold
+end
+
 function Projectile:update()
   if not self.visible then return end
   self.current.x = animation.expDecay(self.current.x, self.target.x, 6, realDt)
@@ -61,7 +68,7 @@ function Projectile:draw()
   if self.label ~= "" and self.font then
     local prev = love.graphics.getFont()
     love.graphics.setFont(self.font)
-    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.setColor(self.fontColor)
     love.graphics.printf(self.label, px, py + (self.h - self.font:getHeight()) / 2, self.w, "center")
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setFont(prev)

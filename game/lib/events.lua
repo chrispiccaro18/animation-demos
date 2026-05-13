@@ -49,6 +49,8 @@ local function startActive(event)
   elseif event.type == "after" then
     event.fn()
     _active = { event = event, timer = event.delay or 0, phase = "after_wait" }
+  elseif event.type == "poll" then
+    _active = { event = event, phase = "poll" }
   end
 end
 
@@ -128,6 +130,10 @@ function events.update()
     elseif _active.phase == "after_wait" then
       _active.timer = _active.timer - dt
       if _active.timer <= 0 then
+        _active = nil
+      end
+    elseif _active.phase == "poll" then
+      if _active.event.fn() then
         _active = nil
       end
     end

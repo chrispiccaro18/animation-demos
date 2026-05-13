@@ -18,23 +18,25 @@ function love.load()
   local cardAsset        = love.graphics.newImage("assets/card-template-front.png")
   local chompedCardAsset = love.graphics.newImage("assets/chomped-card.png")
   areas.load()
-  local projFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 18)
+  local projFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
   projectiles.ram = Projectile.new({ asset = love.graphics.newImage("assets/large-ram.png"), font = projFont })
-  projectiles.progress = Projectile.new({ asset = love.graphics.newImage("assets/progress.png"), font = projFont })
-  projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/threat.png"), font = projFont })
+  projectiles.progress = Projectile.new({ asset = love.graphics.newImage("assets/progress.png"), font = projFont, fontColor = {1, 1, 1, 1} })
+  projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
   hand:add(Card.new(600, 400, cardAsset, chompedCardAsset))
+  -- hand:add(Card.new(200, 400, cardAsset, chompedCardAsset))
   events.load()
   overlayStats.load()
 end
 
 function love.draw()
-  if shipAsset then
-    love.graphics.draw(shipAsset, 0, 0)
-  end
+  -- if shipAsset then
+  --   love.graphics.draw(shipAsset, 0, 0)
+  -- end
   areas.drawBefore(hand:isDragging())
   hand:draw()
   areas.drawAfter(hand:isDragging())
   for _, proj in pairs(projectiles) do proj:draw() end
+  areas.drawStatic()
   overlayStats.draw()
 end
 
