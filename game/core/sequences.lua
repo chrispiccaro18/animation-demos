@@ -203,9 +203,21 @@ function sequences.play(card, areas)
   })
 end
 
+-- NEW discard sequence:
+-- Move full card to discard x, center y
+-- Move card up by 30
+-- Move card down to bottom right slot y
+-- Pop off top (play part of card)
+-- Top left slot goes down to top of card (now top of discard part)
+-- Top left slot and middle part of card go back update
+-- Top left slot "eats" middle
+-- RAM projectile: slot -> RAM pool
+
+
 function sequences.discard(card, areas)
   local p = areas.play
   local d = areas.discard
+  local et = areas.endTurn
 
   events.push({
     fn = function()
@@ -222,7 +234,7 @@ function sequences.discard(card, areas)
   })
   events.push({
     fn = function()
-      card.target.y = d.startY + (d.h - card.h / 2) + 30
+      card.target.y = d.startY + (d.h - card.h / 2) - 30
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after",
@@ -230,74 +242,74 @@ function sequences.discard(card, areas)
   events.push({
     fn = function()
       card.target.x = d.x + (d.w - card.w) / 2
-      card.target.y = d.startY
+      card.target.y = et.y - card.h * 0.7
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
   })
-  events.push({
-    fn = function()
-      card.target.scale = 1.2
-      card.asset = card.assets.chomped
-      d.slotText = "+1 RAM"
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after",
-  })
-  events.push({
-    fn = function()
-      projectiles.ram:launch(
-        d.x + d.w / 2,
-        areas.ram.y + areas.ram.h / 2,
-        areas.ram.x + areas.ram.w / 2,
-        areas.ram.y + areas.ram.h / 2,
-        "1"
-      )
-      card.target.scale = 0.95
-      d.slotText = ""
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
-  })
-  events.push({
-    fn = function()
-      return projectiles.ram:isNearTarget()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    type = "poll",
-  })
-  events.push({
-    fn = function()
-      projectiles.ram:hide()
-      areas.ram.current.scale = 1.4
-      areas.ram.value = areas.ram.value + 1
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
-  })
-  events.push({
-    fn = function()
-      card.target.y = card.current.y - 30
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.25, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.target.y = love.graphics.getHeight() - card.asset:getHeight()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.25, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.hover.can = false
-      card.drag.can  = false
-      p.slotText = ""
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
-  })
+  -- events.push({
+  --   fn = function()
+  --     card.target.scale = 1.2
+  --     card.asset = card.assets.chomped
+  --     d.slotText = "+1 RAM"
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     projectiles.ram:launch(
+  --       d.x + d.w / 2,
+  --       areas.ram.y + areas.ram.h / 2,
+  --       areas.ram.x + areas.ram.w / 2,
+  --       areas.ram.y + areas.ram.h / 2,
+  --       "1"
+  --     )
+  --     card.target.scale = 0.95
+  --     d.slotText = ""
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     return projectiles.ram:isNearTarget()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   type = "poll",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     projectiles.ram:hide()
+  --     areas.ram.current.scale = 1.4
+  --     areas.ram.value = areas.ram.value + 1
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.target.y = card.current.y - 30
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.25, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.target.y = love.graphics.getHeight() - card.asset:getHeight()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.25, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.hover.can = false
+  --     card.drag.can  = false
+  --     p.slotText = ""
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate",
+  -- })
 end
 
 function sequences.endTurn(card, areas)
