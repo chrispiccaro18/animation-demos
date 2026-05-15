@@ -23,6 +23,10 @@ function Card.new(x, y, defaultAsset, chompedAsset)
   self.target  = { x = x, y = y, r = 0, scale = 0.95 }
   self.parts = nil
   self.partAssets = nil
+  self.shader = nil
+  self.dissolveAmount = 0
+  self.dissolveTime = 0
+  self.dissolving = false
   return self
 end
 
@@ -35,7 +39,8 @@ function Card:setParts(config)
     table.insert(self.parts, {
       id      = p.id,
       asset   = p.asset,
-      yOffset = p.yOffset,
+      yOffset = p.yOffset or 0,
+      xOffset = p.xOffset or 0,
       origin  = p.origin or { x = 0, y = 0 },
       current = { dx = dx, dy = dy, dr = dr },
       target  = { dx = p.targetDx or dx, dy = p.targetDy or dy, dr = p.targetDr or dr },
@@ -65,6 +70,16 @@ function Card:convergeParts()
   end
 end
 
+function Card:startDissolve()
+  self.dissolving = true
+end
+
+function Card:resetDissolve()
+  self.dissolving = false
+  self.dissolveAmount = 0
+  self.dissolveTime = 0
+end
+
 function Card:partsSettled()
   if not self.parts then return true end
   for _, part in ipairs(self.parts) do
@@ -82,6 +97,18 @@ function Card:removePart(id)
   for i, part in ipairs(self.parts) do
     if part.id == id then
       table.remove(self.parts, i)
+      return
+    end
+  end
+end
+
+function Card:updatePartById(id, targetDx, targetDy, targetDr)
+  if not self.parts then return end
+  for _, part in ipairs(self.parts) do
+    if part.id == id then
+      part.target.dx = targetDx or part.target.dx
+      part.target.dy = targetDy or part.target.dy
+      part.target.dr = targetDr or part.target.dr
       return
     end
   end
@@ -115,25 +142,59 @@ function Card:update()
       part.current.dr = animation.expDecay(part.current.dr, part.target.dr, 10, dt)
     end
   end
+
+  if self.dissolving then
+    self.dissolveTime   = self.dissolveTime + dt
+    self.dissolveAmount = math.min(self.dissolveAmount + dt * 0.9, 1)
+  end
+end
+
+function Card:_applyDissolveUniforms(asset)
+  local iw, ih = asset:getDimensions()
+  self.shader:send("dissolve",        self.dissolveAmount)
+  self.shader:send("time",            self.dissolveTime)
+  self.shader:send("texture_details", { 0, 0, iw, ih })
+  self.shader:send("image_details",   { iw, ih })
+  self.shader:send("shadow",          false)
+  self.shader:send("burn_colour_1",   { 1.0, 0.5, 0.0, 1.0 })
+  self.shader:send("burn_colour_2",   { 0.5, 0.5, 1.0, 0.5 })
+  -- self.shader:send("burn_colour_2",   { 0.6, 0.1, 0.0, 1.0 })
+  self.shader:send("mouse_screen_pos",{ 0, 0 })
+  self.shader:send("hovering",        0.0)
+  self.shader:send("screen_scale",    1.0)
 end
 
 function Card:draw()
+  local useShader = self.shader ~= nil and self.dissolveAmount > 0.001
+
   love.graphics.push()
   love.graphics.translate(self.current.x + self.w / 2, self.current.y + self.h / 2)
   love.graphics.rotate(self.current.r)
   love.graphics.scale(self.current.scale, self.current.scale)
   if self.parts then
     for _, part in ipairs(self.parts) do
-      local px = -self.w / 2 + part.current.dx
+      if useShader and part.id == "base" then
+        self:_applyDissolveUniforms(part.asset)
+        love.graphics.setShader(self.shader)
+      end
+      local px = -self.w / 2 + part.xOffset + part.current.dx
       local py = -self.h / 2 + part.yOffset + part.current.dy
       local ox = part.origin.x
       local oy = part.origin.y
       love.graphics.draw(part.asset, px + ox, py + oy, part.current.dr, 1, 1, ox, oy)
     end
   else
+    if useShader then
+      self:_applyDissolveUniforms(self.asset)
+      love.graphics.setShader(self.shader)
+    end
     love.graphics.draw(self.asset, -self.w / 2, -self.h / 2)
   end
   love.graphics.pop()
+
+  if useShader then
+    love.graphics.setShader()
+  end
 end
 
 function Card:containsPoint(x, y)

@@ -29,6 +29,13 @@ function sequences.ejectCard(card, areas)
   })
   events.push({
     fn = function()
+      return math.abs(card.current.y - card.target.y) < 1
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
       card.hover.can = true
       card.drag.can  = true
     end,
@@ -41,29 +48,29 @@ function sequences.ejectFromDiscard(card, areas)
   local p = areas.play
   local d = areas.discard
 
-  events.push({
-    fn = function()
-      d.target.y = d.startY
-      card.target.y = d.startY
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.7, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.target.y = card.current.y - 270
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.65, type = "after",
-  })
-  events.push({
-    fn = function()
-      card.asset = card.assets.default
-      card.target.y = d.startY
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.65, type = "after",
-  })
+  -- events.push({
+  --   fn = function()
+  --     d.target.y = d.startY
+  --     card.target.y = d.startY
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.7, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.target.y = card.current.y - 270
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.65, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.asset = card.assets.default
+  --     card.target.y = d.startY
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.65, type = "after",
+  -- })
   events.push({
     fn = function()
       card.target.y = card.current.y - 30
@@ -119,7 +126,8 @@ function sequences.play(card, areas)
       card.hover.can = false
       card.drag.is   = false
       card.drag.can  = false
-      card.target.scale = 0.95
+      card.target.scale = 1
+      -- card.target.scale = 0.95
       card.target.x = p.x + (p.w - card.w) / 2
       card.target.y = p.y + (p.h - card.h / 2)
     end,
@@ -128,32 +136,152 @@ function sequences.play(card, areas)
   })
   events.push({
     fn = function()
-      areas.ram.value = areas.ram.value - 1
-      projectiles.ram:launch(
-        areas.ram.x + areas.ram.w / 2,
-        areas.ram.y + areas.ram.h / 2,
-        areas.play.x + areas.play.w / 2,
-        areas.ram.y + areas.ram.h / 2,
-        "1"
-      )
+      card.target.y = card.current.y + 30
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
   })
   events.push({
     fn = function()
-      sequences.insertMiddle(card, areas)
+      return math.abs(card.current.y - card.target.y) < 1
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      projectiles.ramChip:launch(
+        projectiles.ramChip.current.x,
+        projectiles.ramChip.current.y,
+        card.target.x + 30,
+        card.target.y + 25,
+        ""
+      )
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      projectiles.ramChip2:launch(
+        projectiles.ramChip2.current.x,
+        projectiles.ramChip2.current.y,
+        card.target.x + 55,
+        card.target.y + 25,
+        ""
+      )
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      return projectiles.ramChip2:isNearTarget()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      -- move spider part up 150 px
+      card:updatePartById("spiderGuy", nil, -110, nil)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.6, type = "after",
+  })
+  events.push({
+    fn = function()
+      local travelY = p.y + 20
+      card.target.y = travelY
+      projectiles.ramChip:launch(
+        projectiles.ramChip.current.x,
+        projectiles.ramChip.current.y,
+        projectiles.ramChip.current.x,
+        travelY,
+        "",
+        6
+      )
+      projectiles.ramChip2:launch(
+        projectiles.ramChip2.current.x,
+        projectiles.ramChip2.current.y,
+        projectiles.ramChip2.current.x,
+        travelY,
+        "",
+        6
+      )
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "before",
+  })
+  events.push({
+    fn = function()
+      return math.abs(card.current.y - card.target.y) < 5
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  -- events.push({
+  --   fn = function()
+  --     areas.ram.value = areas.ram.value - 1
+  --     projectiles.ram:launch(
+  --       areas.ram.x + areas.ram.w / 2,
+  --       areas.ram.y + areas.ram.h / 2,
+  --       areas.play.x + areas.play.w / 2,
+  --       areas.ram.y + areas.ram.h / 2,
+  --       "1"
+  --     )
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "after",
+  -- })
+  events.push({
+    fn = function()
+      projectiles.ram:hide()
+      projectiles.ramChip:hide()
+      projectiles.ramChip2:hide()
+      p.slotText = "+1 Progress"
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      projectiles.progress:launch(
+        p.x + p.w / 2,
+        areas.ram.y + areas.ram.h / 2,
+        areas.progress.x + areas.progress.w / 2,
+        areas.progress.y + areas.progress.h / 2,
+        "1"
+      )
+      p.slotText = ""
+      card:updatePartById("spiderGuy", nil, 0, nil)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
   })
-  -- events.push({
-  --   fn = function()
-  --     card.target.y = p.y + (p.h - card.h / 2) + 30
-  --   end,
-  --   blocking = true, blockable = true, persistent = false,
-  --   delay = 0.25, type = "after",
-  -- })
+  events.push({
+    fn = function()
+      return projectiles.progress:isNearTarget()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    type = "poll",
+  })
+  events.push({
+    fn = function()
+      projectiles.progress:hide()
+      areas.progress.current.scale = 1.4
+      areas.progress.value = areas.progress.value + 1
+      if checkWin(areas) then
+        sequences.win(card, areas)
+      elseif checkLoss(areas) then
+        sequences.loss(card, areas)
+      else
+        sequences.ejectCard(card, areas)
+      end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
   -- events.push({
   --   fn = function()
   --     card.target.x = p.x + (p.w - card.w) / 2
@@ -256,26 +384,176 @@ function sequences.discard(card, areas)
   })
   events.push({
     fn = function()
-      card.target.y = d.startY + (d.h - card.h / 2) - 30
+      card.target.y = d.startY + (d.h - card.h / 2) + 30
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after",
   })
+  -- events.push({
+  --   fn = function()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate",
+  -- })
   events.push({
     fn = function()
-      card.target.x = d.x + (d.w - card.w) / 2
-      card.target.y = et.y - card.h * 0.8
+      if card then card:startDissolve() end
+      projectiles.ramChip:launch(
+        card.current.x + card.w - 67,
+        card.current.y + card.h - 40,
+        card.current.x + card.w - 67,
+        card.current.y + card.h - 40,
+        ""
+      )
+      projectiles.ramChip2:launch(
+        card.current.x + card.w - 40,
+        card.current.y + card.h - 40,
+        card.current.x + card.w - 40,
+        card.current.y + card.h - 40,
+        ""
+      )
+      projectiles.spiderThreat:launch(
+        card.target.x + 90,
+        card.target.y + 180,
+        card.target.x + 90,
+        card.target.y + 180,
+        ""
+      )
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.7, type = "after",
+  })
+  events.push({
+    fn = function()
+      projectiles.spiderThreat:launch(
+        projectiles.spiderThreat.current.x,
+        projectiles.spiderThreat.current.y,
+        projectiles.spiderThreat.current.x,
+        areas.discard.current.y - 20,
+        ""
+      )
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
   })
   events.push({
     fn = function()
-      sequences.popTopOff(card, areas)
+      projectiles.ramChip:launch(
+        projectiles.ramChip.current.x,
+        projectiles.ramChip.current.y,
+        areas.discard.x + areas.discard.w / 2,
+        areas.discard.current.y + areas.discard.h / 2,
+        ""
+      )
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      projectiles.ramChip2:launch(
+        projectiles.ramChip2.current.x,
+        projectiles.ramChip2.current.y,
+        areas.discard.x + areas.discard.w / 2 + 40,
+        areas.discard.current.y + areas.discard.h / 2 + 10,
+        ""
+      )
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.7, type = "after",
+  })
+  events.push({
+    fn = function()
+      card.target.x = card._startX
+      card.target.y = card._startY
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
+      projectiles.spiderThreat:hide()
+      card.hover.can = true
+      card.drag.can  = true
+      card:resetDissolve()
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
   })
+  -- events.push({
+  --   fn = function()
+  --     card.target.x = d.x + (d.w - card.w) / 2
+  --     card.target.y = d.current.y
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     return math.abs(card.current.y - card.target.y) < 5
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "poll",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --    d.slotText = "+1 RAM"
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     projectiles.ram:launch(
+  --       areas.discard.x + areas.discard.w / 2,
+  --       areas.ram.y + areas.ram.h / 2,
+  --       areas.ram.x + areas.ram.w / 2,
+  --       areas.ram.y + areas.ram.h / 2,
+  --       "1"
+  --     )
+  --     areas.discard.slotText = ""
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate",
+  -- })
+  --   events.push({
+  --   fn = function()
+  --     return projectiles.ram:isNearTarget()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "poll",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     projectiles.ram:hide()
+  --     areas.ram.current.scale = 1.4
+  --     areas.ram.value = areas.ram.value + 1
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     card.target.y = card.current.y - card.h
+  --     areas.discard.slotText = "DTOR enqueued."
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.75, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     areas.discard.slotText = ""
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "after",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     sequences.popTopOff(card, areas)
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate",
+  -- })
 end
 
 function sequences.endTurn(card, areas)
@@ -284,17 +562,34 @@ function sequences.endTurn(card, areas)
 
   events.push({
     fn = function()
-      d.target.y = love.graphics.getHeight() - 60 * 2
+      card.current.x = d.x + (d.w - card.w) / 2
+      card.current.y = d.startY - card.h
+      card.target.x = card.current.x
+      card.target.y = card.current.y
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after",
+    delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
+      card.target.y = d.startY
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
+      return math.abs(card.current.y - card.target.y) < 5
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
   })
   events.push({
     fn = function()
       d.slotText = "+1 Threat"
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0.25, type = "after",
+    delay = 0.5, type = "after",
   })
   events.push({
     fn = function()

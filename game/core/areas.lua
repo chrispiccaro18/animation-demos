@@ -32,7 +32,7 @@ areas.endTurn = {
   color = {1, 0, 0, 1},
 }
 
-areas.ram      = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
+areas.ram      = { value = 1, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
 areas.progress = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
 areas.threat   = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
 areas.message  = { text = "", textColor = {1, 1, 1, 1}, current = { scale = 1 }, target = { scale = 1 } }
@@ -52,8 +52,10 @@ function areas.load()
   slotBottomAsset   = love.graphics.newImage("assets/slot-bottom.png")
   slotTopAsset      = love.graphics.newImage("assets/slot-top.png")
   ramAsset          = love.graphics.newImage("assets/large-ram.png")
-  progressAsset     = love.graphics.newImage("assets/progress.png")
-  threatAsset       = love.graphics.newImage("assets/threat.png")
+  progressAsset     = love.graphics.newImage("assets/new-progress.png")
+  -- progressAsset     = love.graphics.newImage("assets/progress.png")
+  threatAsset       = love.graphics.newImage("assets/new-threat.png")
+  -- threatAsset       = love.graphics.newImage("assets/threat.png")
   statFont          = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
   messageFont       = love.graphics.newFont("assets/NotoSans-Medium.ttf", 120)
 
@@ -132,13 +134,13 @@ local function drawSlotTops()
   love.graphics.printf(p.slotText, p.x, p.y + 10, p.w, "center")
   love.graphics.printf(d.slotText, d.x, d.current.y + 10, d.w, "center")
   love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.draw(
-    slotTopAsset,
-    d.x + (d.w - slotTopAsset:getWidth()) / 2,
-    love.graphics.getHeight() - slotTopAsset:getHeight(),
-    deg180, 1, 1,
-    slotTopAsset:getWidth(), slotTopAsset:getHeight()
-  )
+  -- love.graphics.draw(
+  --   slotTopAsset,
+  --   d.x + (d.w - slotTopAsset:getWidth()) / 2,
+  --   love.graphics.getHeight() - slotTopAsset:getHeight(),
+  --   deg180, 1, 1,
+  --   slotTopAsset:getWidth(), slotTopAsset:getHeight()
+  -- )
 end
 
 -- Call before drawing cards. Draws area outlines, slot bottoms, and (when dragging)
@@ -162,13 +164,13 @@ function areas.drawBefore(isDragging)
   if slotBottomAsset then
     love.graphics.draw(slotBottomAsset, p.x + (p.w - slotBottomAsset:getWidth()) / 2, p.y)
     love.graphics.draw(slotBottomAsset, d.x + (d.w - slotBottomAsset:getWidth()) / 2, d.current.y)
-    love.graphics.draw(
-      slotBottomAsset,
-      d.x + (d.w - slotBottomAsset:getWidth()) / 2,
-      love.graphics.getHeight() - slotBottomAsset:getHeight(),
-      deg180, 1, 1,
-      slotBottomAsset:getWidth(), slotBottomAsset:getHeight()
-    )
+    -- love.graphics.draw(
+    --   slotBottomAsset,
+    --   d.x + (d.w - slotBottomAsset:getWidth()) / 2,
+    --   love.graphics.getHeight() - slotBottomAsset:getHeight(),
+    --   deg180, 1, 1,
+    --   slotBottomAsset:getWidth(), slotBottomAsset:getHeight()
+    -- )
   end
 
   if isDragging then
@@ -204,23 +206,23 @@ if statFont then
   local prevFont = love.graphics.getFont()
   love.graphics.setFont(statFont)
 
-  if ramAsset then
-    local ra = areas.ram
-    love.graphics.push()
-    love.graphics.translate(ra.x + ra.w / 2, ra.y + ra.h / 2)
-    love.graphics.scale(ra.current.scale, ra.current.scale)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(ramAsset, -ra.w / 2, -ra.h / 2)
-    love.graphics.setColor(0, 0, 0, 1)
-    love.graphics.printf(
-      tostring(ra.value),
-      -ra.w / 2,
-      -ra.h / 2 + (ra.h - statFont:getHeight()) / 2,
-      ra.w,
-      "center"
-    )
-    love.graphics.pop()
-  end
+  -- if ramAsset then
+  --   local ra = areas.ram
+  --   love.graphics.push()
+  --   love.graphics.translate(ra.x + ra.w / 2, ra.y + ra.h / 2)
+  --   love.graphics.scale(ra.current.scale, ra.current.scale)
+  --   love.graphics.setColor(1, 1, 1, 1)
+  --   love.graphics.draw(ramAsset, -ra.w / 2, -ra.h / 2)
+  --   love.graphics.setColor(0, 0, 0, 1)
+  --   love.graphics.printf(
+  --     tostring(ra.value),
+  --     -ra.w / 2,
+  --     -ra.h / 2 + (ra.h - statFont:getHeight()) / 2,
+  --     ra.w,
+  --     "center"
+  --   )
+  --   love.graphics.pop()
+  -- end
 
   if progressAsset then
     local pr = areas.progress

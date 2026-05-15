@@ -91,12 +91,12 @@ end
 function Hand:mousepressed(x, y, button)
   if button == 1 and areas.mouseInEndTurn(x, y) then
     for _, card in ipairs(self.cards) do
-      if card.asset == card.assets.chomped and card.stationary then
-        sequences.endTurn(card, areas)
-        print("Ending turn with card in discard pile")
-      elseif card.asset == card.assets.default then
-        print("Ending turn with card in play")
-      end
+      sequences.endTurn(card, areas)
+      -- if card.asset == card.assets.chomped and card.stationary then
+      --   print("Ending turn with card in discard pile")
+      -- elseif card.asset == card.assets.default then
+      --   print("Ending turn with card in play")
+      -- end
     end
     return
   end
