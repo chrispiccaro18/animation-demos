@@ -2,7 +2,7 @@ local config = {}
 
 config.speedPresets = {0.5, 1.0, 2.0}
 config.speedIndex   = 2
-config.speed        = 1.0
+config.speed        = 0.5
 
 function config.cycleSpeed()
   config.speedIndex = (config.speedIndex % #config.speedPresets) + 1

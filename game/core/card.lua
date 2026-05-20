@@ -23,10 +23,12 @@ function Card.new(x, y, defaultAsset, chompedAsset)
   self.target  = { x = x, y = y, r = 0, scale = 0.95 }
   self.parts = nil
   self.partAssets = nil
+  self._excluded = false
   self.shader = nil
   self.dissolveAmount = 0
   self.dissolveTime = 0
   self.dissolving = false
+  self.reverseDissolving = false
   return self
 end
 
@@ -71,13 +73,26 @@ function Card:convergeParts()
 end
 
 function Card:startDissolve()
+  self.reverseDissolving = false
   self.dissolving = true
+end
+
+function Card:startReverseDissolve()
+  self.dissolving = false
+  self.dissolveAmount = 1.0
+  self.dissolveTime = 0
+  self.reverseDissolving = true
 end
 
 function Card:resetDissolve()
   self.dissolving = false
+  self.reverseDissolving = false
   self.dissolveAmount = 0
   self.dissolveTime = 0
+end
+
+function Card:isDissolving()
+  return self.dissolving or self.reverseDissolving
 end
 
 function Card:partsSettled()
@@ -146,6 +161,14 @@ function Card:update()
   if self.dissolving then
     self.dissolveTime   = self.dissolveTime + dt
     self.dissolveAmount = math.min(self.dissolveAmount + dt * 0.9, 1)
+  end
+
+  if self.reverseDissolving then
+    self.dissolveTime   = self.dissolveTime + dt
+    self.dissolveAmount = math.max(self.dissolveAmount - dt * 0.9, 0)
+    if self.dissolveAmount <= 0 then
+      self.reverseDissolving = false
+    end
   end
 end
 

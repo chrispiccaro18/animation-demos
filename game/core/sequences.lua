@@ -117,9 +117,15 @@ function sequences.loss(card, areas)
   areas.message.target.scale  = 1.0
 end
 
-function sequences.play(card, areas)
+function sequences.play(card, areas, onStart, onDone)
   local p = areas.play
+  local chip1x, chip1y, chip2x, chip2y
 
+  events.push({
+    fn = function() if onStart then onStart() end end,
+    blocking = false, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
   events.push({
     fn = function()
       card.hover.is = false
@@ -150,26 +156,17 @@ function sequences.play(card, areas)
   })
   events.push({
     fn = function()
-      projectiles.ramChip:launch(
-        projectiles.ramChip.current.x,
-        projectiles.ramChip.current.y,
-        card.target.x + 30,
-        card.target.y + 25,
-        ""
-      )
+      local chips = areas.consumePoolChips(2)
+      chip1x, chip1y = chips[1].x, chips[1].y
+      chip2x, chip2y = chips[2].x, chips[2].y
+      projectiles.ramChip:launch(chip1x, chip1y, card.target.x + 30, card.target.y + 25, "")
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after",
   })
   events.push({
     fn = function()
-      projectiles.ramChip2:launch(
-        projectiles.ramChip2.current.x,
-        projectiles.ramChip2.current.y,
-        card.target.x + 55,
-        card.target.y + 25,
-        ""
-      )
+      projectiles.ramChip2:launch(chip2x, chip2y, card.target.x + 55, card.target.y + 25, "")
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after",
@@ -275,8 +272,8 @@ function sequences.play(card, areas)
         sequences.win(card, areas)
       elseif checkLoss(areas) then
         sequences.loss(card, areas)
-      else
-        sequences.ejectCard(card, areas)
+      elseif onDone then
+        onDone()
       end
     end,
     blocking = true, blockable = true, persistent = false,
@@ -364,11 +361,20 @@ end
 -- RAM projectile: slot -> RAM pool
 
 
-function sequences.discard(card, areas)
+function sequences.discard(card, areas, onStart, onDone)
   local p = areas.play
   local d = areas.discard
   local et = areas.endTurn
+  local klakBG = areas.klakBG
+  local klak = areas.klak
+  local pos1x, pos1y = areas.randomPoolPosition()
+  local pos2x, pos2y = areas.randomPoolPosition()
 
+  events.push({
+    fn = function() if onStart then onStart() end end,
+    blocking = false, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
   events.push({
     fn = function()
       card.hover.is = false
@@ -376,25 +382,29 @@ function sequences.discard(card, areas)
       card.drag.is   = false
       card.drag.can  = false
       card.target.scale = 0.95
-      card.target.x = d.x + (d.w - card.w) / 2
-      card.target.y = d.startY + (d.h - card.h / 2)
+      card.target.x = klakBG.x + klakBG.w / 2 - card.w / 2
+      card.target.y = klakBG.y + klakBG.h / 2 - card.h / 2
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
   })
   events.push({
     fn = function()
-      card.target.y = d.startY + (d.h - card.h / 2) + 30
+      klak.text.color = {1, 0.5, 0, 1}
+      klak.text.value = "DESTROY"
+      -- card.target.y = d.startY
+      -- card.target.y = d.startY + (d.h - card.h / 2) + 30
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      klak.target.y = klak.downY
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after",
   })
-  -- events.push({
-  --   fn = function()
-  --   end,
-  --   blocking = true, blockable = true, persistent = false,
-  --   delay = 0, type = "immediate",
-  -- })
   events.push({
     fn = function()
       if card then card:startDissolve() end
@@ -429,7 +439,8 @@ function sequences.discard(card, areas)
         projectiles.spiderThreat.current.x,
         projectiles.spiderThreat.current.y,
         projectiles.spiderThreat.current.x,
-        areas.discard.current.y - 20,
+        klak.current.y + klak.h / 2,
+        -- areas.discard.current.y - 20,
         ""
       )
     end,
@@ -438,11 +449,27 @@ function sequences.discard(card, areas)
   })
   events.push({
     fn = function()
+      return projectiles.spiderThreat:isNearTarget()
+
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      klak.text.color = {0.8, 0.2, 0, 1}
+      klak.text.value = "+1 THREAT"
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+  events.push({
+    fn = function()
       projectiles.ramChip:launch(
         projectiles.ramChip.current.x,
         projectiles.ramChip.current.y,
-        areas.discard.x + areas.discard.w / 2,
-        areas.discard.current.y + areas.discard.h / 2,
+        pos1x + projectiles.ramChip.w / 2,
+        pos1y + projectiles.ramChip.h / 2,
         ""
       )
     end,
@@ -454,8 +481,8 @@ function sequences.discard(card, areas)
       projectiles.ramChip2:launch(
         projectiles.ramChip2.current.x,
         projectiles.ramChip2.current.y,
-        areas.discard.x + areas.discard.w / 2 + 40,
-        areas.discard.current.y + areas.discard.h / 2 + 10,
+        pos2x + projectiles.ramChip2.w / 2,
+        pos2y + projectiles.ramChip2.h / 2,
         ""
       )
     end,
@@ -464,18 +491,22 @@ function sequences.discard(card, areas)
   })
   events.push({
     fn = function()
-      card.target.x = card._startX
-      card.target.y = card._startY
+      return projectiles.ramChip:isNearTarget()
+         and projectiles.ramChip2:isNearTarget()
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0.25, type = "after",
+    delay = 0, type = "poll",
   })
   events.push({
     fn = function()
+      areas.addPoolChip(pos1x, pos1y)
+      areas.addPoolChip(pos2x, pos2y)
+      projectiles.ramChip:hide()
+      projectiles.ramChip2:hide()
       projectiles.spiderThreat:hide()
-      card.hover.can = true
-      card.drag.can  = true
-      card:resetDissolve()
+      -- d.slotText = "+1 Threat"
+      klak.target.y = klak.upY
+      if onDone then onDone() end
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
@@ -556,61 +587,87 @@ function sequences.discard(card, areas)
   -- })
 end
 
-function sequences.endTurn(card, areas)
+function sequences.endTurn(card, areas, onDone)
   local p = areas.play
   local d = areas.discard
+  local klak = areas.klak
+  local klakBG = areas.klakBG
 
   events.push({
     fn = function()
-      card.current.x = d.x + (d.w - card.w) / 2
-      card.current.y = d.startY - card.h
+      card:setParts({})
+      card.hover.is = false
+      card.hover.can = false
+      card.drag.is   = false
+      card.drag.can  = false
+      card.current.x = klakBG.x + klakBG.w / 2 - card.w / 2
+      card.current.y = klakBG.y + klakBG.h / 2 - card.h / 2
+      -- card.current.x = d.x + (d.w - card.w) / 2
+      -- card.current.y = d.startY - card.h
       card.target.x = card.current.x
       card.target.y = card.current.y
+      -- projectiles.spiderThreat:launch(
+      --   card.current.x + 90,
+      --   areas.discard.current.y - 20,
+      --   card.current.x + 90,
+      --   areas.discard.current.y - 20,
+      --   ""
+      -- )
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
   })
   events.push({
     fn = function()
-      card.target.y = d.startY
+      -- projectiles.spiderThreat:launch(
+      --   projectiles.spiderThreat.current.x,
+      --   projectiles.spiderThreat.current.y,
+      --   projectiles.spiderThreat.current.x,
+      --   love.graphics.getHeight() / 2,
+      --   ""
+      -- )
+      klak.target.y = klak.downY
+      card.target.y = d.startY + d.h - card.h * 0.65
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
   })
   events.push({
     fn = function()
-      return math.abs(card.current.y - card.target.y) < 5
+      return math.abs(klak.current.y - klak.target.y) < 5
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "poll",
   })
   events.push({
     fn = function()
-      d.slotText = "+1 Threat"
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after",
-  })
-  events.push({
-    fn = function()
-      d.slotText = ""
+      -- d.slotText = ""
+      klak.text.color = {1, 1, 1, 1}
+      klak.text.value = ""
       projectiles.threat:launch(
-        d.x + d.w / 2,
-        d.current.y,
+        klak.current.x,
+        klak.current.y + klak.h / 2,
         areas.threat.x + areas.threat.w / 2,
         areas.threat.y + areas.threat.h / 2,
-        "1"
+        ""
       )
+      -- projectiles.threat:launch(
+      --   projectiles.spiderThreat.current.x,
+      --   projectiles.spiderThreat.current.y,
+      --   areas.threat.x + areas.threat.w / 2,
+      --   areas.threat.y + areas.threat.h / 2,
+      --   ""
+      -- )
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
+    delay = 0.25, type = "before",
   })
-  events.push({
+   events.push({
     fn = function()
       return projectiles.threat:isNearTarget()
     end,
     blocking = true, blockable = true, persistent = false,
-    type = "poll",
+    type = "poll", delay = 0,
   })
   events.push({
     fn = function()
@@ -622,12 +679,77 @@ function sequences.endTurn(card, areas)
       elseif checkLoss(areas) then
         sequences.loss(card, areas)
       else
-        sequences.ejectFromDiscard(card, areas)
+        -- sequences.ejectFromDiscard(card, areas)
+        klak.target.y = klak.upY
       end
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
   })
+  events.push({
+    fn = function()
+      print(card.current.y, card.target.y)
+      return math.abs(card.current.y - card.target.y) < 5
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      -- d.slotText = "+1 Threat"
+      klak.text.value = "EMPTY"
+      print("Setting card parts")
+      card:setParts({
+        { id = "base", asset = card.partAssets.base, yOffset = 0},
+        { id = "ramChip", asset = card.partAssets.ramChip, xOffset = card.w - 67, yOffset = card.h - 40, },
+        { id = "ramChip2", asset = card.partAssets.ramChip, xOffset = card.w - 40, yOffset = card.h - 40, },
+        { id = "spiderGuy", asset = card.partAssets.spiderGuy, xOffset = 21, yOffset = 156, },
+        { id = "threat", asset = card.partAssets.threat, xOffset = 67, yOffset = 164, },
+        { id = "progress", asset = card.partAssets.progress, xOffset = 67, yOffset = 54, },
+      })
+      card:startReverseDissolve()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+  events.push({
+    fn = function()
+      return not card:isDissolving()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      -- projectiles.spiderThreat:hide()
+      if onDone then onDone() end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "before",
+  })
+  -- events.push({
+  --   fn = function()
+  --     return projectiles.threat:isNearTarget()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   type = "poll",
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     projectiles.threat:hide()
+  --     areas.threat.current.scale = 1.4
+  --     areas.threat.value = areas.threat.value + 1
+  --     if checkWin(areas) then
+  --       sequences.win(card, areas)
+  --     elseif checkLoss(areas) then
+  --       sequences.loss(card, areas)
+  --     else
+  --       sequences.ejectFromDiscard(card, areas)
+  --     end
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate",
+  -- })
 end
 
 -- Animation 1: pop the top section off, then split middle and bottom apart

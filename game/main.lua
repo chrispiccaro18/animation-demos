@@ -36,30 +36,27 @@ function love.load()
   projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/new-threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
   projectiles.spiderThreat = Projectile.new({ asset = love.graphics.newImage("assets/spider-guy-w-threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
   -- projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
-  local card = Card.new(600, 400, cardAsset, chompedCardAsset)
-  card.partAssets = {
-    base         = cardAsset,
-    -- top          = love.graphics.newImage("assets/card-top-play.png"),
-    -- middle       = love.graphics.newImage("assets/card-middle-discard.png"),
-    -- bottom       = love.graphics.newImage("assets/card-bottom-dtor.png"),
-    -- middleTop    = love.graphics.newImage("assets/card-middle-top.png"),
-    -- middleBottom = love.graphics.newImage("assets/card-middle-bottom.png"),
-    ramChip      = love.graphics.newImage("assets/ram-chip.png"),
-    spiderGuy     = love.graphics.newImage("assets/spider-guy.png"),
-    threat = love.graphics.newImage("assets/new-threat.png"),
-    progress = love.graphics.newImage("assets/new-progress.png"),
+  local partAssets = {
+    base      = cardAsset,
+    ramChip   = love.graphics.newImage("assets/ram-chip.png"),
+    spiderGuy = love.graphics.newImage("assets/spider-guy.png"),
+    threat    = love.graphics.newImage("assets/new-threat.png"),
+    progress  = love.graphics.newImage("assets/new-progress.png"),
   }
-  card:setParts({
-    { id = "base", asset = card.partAssets.base, yOffset = 0},
-    { id = "ramChip", asset = card.partAssets.ramChip, xOffset = card.w - 67, yOffset = card.h - 40, },
-    { id = "ramChip2", asset = card.partAssets.ramChip, xOffset = card.w - 40, yOffset = card.h - 40, },
-    { id = "spiderGuy", asset = card.partAssets.spiderGuy, xOffset = 21, yOffset = 156, },
-    { id = "threat", asset = card.partAssets.threat, xOffset = 67, yOffset = 164, },
-    { id = "progress", asset = card.partAssets.progress, xOffset = 67, yOffset = 54, },
-  })
-  card.shader = dissolveShader
-  hand:add(card)
-  -- hand:add(Card.new(200, 400, cardAsset, chompedCardAsset))
+  for _ = 1, 3 do
+    local card = Card.new(0, 0, cardAsset, chompedCardAsset)
+    card.partAssets = partAssets
+    card:setParts({
+      { id = "base",      asset = partAssets.base,      yOffset = 0 },
+      { id = "ramChip",   asset = partAssets.ramChip,   xOffset = card.w - 67, yOffset = card.h - 40 },
+      { id = "ramChip2",  asset = partAssets.ramChip,   xOffset = card.w - 40, yOffset = card.h - 40 },
+      { id = "spiderGuy", asset = partAssets.spiderGuy, xOffset = 21,          yOffset = 156 },
+      { id = "threat",    asset = partAssets.threat,    xOffset = 67,          yOffset = 164 },
+      { id = "progress",  asset = partAssets.progress,  xOffset = 67,          yOffset = 54  },
+    })
+    card.shader = dissolveShader
+    hand:add(card, true)
+  end
   events.load()
   overlayStats.load()
 end
@@ -122,7 +119,8 @@ function love.keypressed(key)
     if card then sequences.insertMiddle(card) end
   elseif key == "d" then
     local card = hand.cards[1]
-    if card then card:startDissolve() end
+    if card then card:startReverseDissolve() end
+    -- if card then card:startDissolve() end
 
     -- events.push({
     --   fn = function()
@@ -189,6 +187,13 @@ function love.keypressed(key)
     if card then
       -- card:clearParts()
       card:resetDissolve()
+    end
+  elseif key == "k" then
+    local klak = areas.klak
+    if klak.target.y == klak.upY then
+      klak.target.y = klak.downY
+    else
+      klak.target.y = klak.upY
     end
   else
     overlayStats.handleKeyboard(key)
