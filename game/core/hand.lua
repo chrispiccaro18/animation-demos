@@ -119,6 +119,7 @@ function Hand:update(mouseX, mouseY)
       self:layout()
       if areas.mouseInPlay(mouseX, mouseY) then
         if #areas.pool.chips < 2 then
+          screenshake.triggerH()
           card._excluded = false
           self:layout()
           card.target.x = card._startX
@@ -167,6 +168,8 @@ function Hand:update(mouseX, mouseY)
     if card.hover.can and not card.drag.is and card:containsPoint(mouseX, mouseY) then
       card.hover.is     = true
       card.target.scale = 1.05
+      card.mouseX = mouseX
+      card.mouseY = mouseY
     elseif card:containsPoint(mouseX, mouseY) and card.drag.is then
       card.target.scale = 1.125
     elseif not card:containsPoint(mouseX, mouseY) and not card.drag.is and card.hover.can then
@@ -189,6 +192,7 @@ end
 
 function Hand:mousepressed(x, y, button)
   if button == 1 and areas.mouseInEndTurn(x, y) then
+    areas.endTurn.state = "click"
     -- for _, card in ipairs(self.cards) do
     --   local c = card
     --   sequences.endTurn(c, areas, function() self:remove(c) end)
@@ -205,13 +209,15 @@ function Hand:mousepressed(x, y, button)
         self.lastDiscarded = nil
 
       end)
-      -- events.push({
-      --   fn = function()
-      --   end,
-      --   blocking = true, blockable = true, persistent = false,
-      --   delay = 0, type = "immediate",
-      -- })
     end
+
+    events.push({
+      fn = function()
+        areas.endTurn.state = "idle"
+      end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0.5, type = "before",
+    })
     return
   end
 

@@ -30,6 +30,10 @@ areas.endTurn = {
   w = 305,
   h = 118,
   color = {1, 0, 0, 1},
+  baseAsset = nil,
+  hoverAsset = nil,
+  clickAsset = nil,
+  state = "idle" -- "idle", "hover", "click"
 }
 
 areas.destructor = {
@@ -51,6 +55,8 @@ local playTextObject  = nil
 local discardTextObject = nil
 local textObjectScale = 1
 local endTurnAsset  = nil
+local endTurnHoverAsset = nil
+local endTurnClickAsset = nil
 local ramAsset      = nil
 local ramTinyAsset  = nil
 local progressAsset = nil
@@ -65,6 +71,13 @@ function areas.load()
   slotBottomAsset   = love.graphics.newImage("assets/slot-bottom.png")
   slotTopAsset      = love.graphics.newImage("assets/slot-top.png")
   endTurnAsset      = love.graphics.newImage("assets/kilo-end-turn.png")
+  endTurnHoverAsset = love.graphics.newImage("assets/kilo-end-turn-hover.png")
+  endTurnClickAsset = love.graphics.newImage("assets/kilo-end-turn-click.png")
+
+  areas.endTurn.baseAsset  = endTurnAsset
+  areas.endTurn.hoverAsset = endTurnHoverAsset
+  areas.endTurn.clickAsset = endTurnClickAsset
+
   ramAsset          = love.graphics.newImage("assets/large-ram.png")
   ramTinyAsset      = love.graphics.newImage("assets/ram-chip.png")
   progressAsset     = love.graphics.newImage("assets/new-progress.png")
@@ -138,6 +151,11 @@ function areas.load()
   local font        = love.graphics.newFont("assets/NotoSans-Medium.ttf", 40)
   playTextObject    = love.graphics.newText(font, "PLAY")
   discardTextObject = love.graphics.newText(font, "DISCARD")
+
+  -- local pos1x, pos1y = areas.randomPoolPosition()
+  -- local pos2x, pos2y = areas.randomPoolPosition()
+  -- areas.addPoolChip(pos1x, pos1y)
+  -- areas.addPoolChip(pos2x, pos2y)
 end
 
 function areas.addPoolChip(x, y)
@@ -160,7 +178,15 @@ function areas.randomPoolPosition()
     p.y + pad + math.random() * (p.h - pad * 2)
 end
 
-function areas.update()
+function areas.update(mouseX, mouseY)
+  if areas.endTurn.state == "click" then
+    -- no-op
+  elseif areas.mouseInEndTurn(mouseX, mouseY) then
+    areas.endTurn.state = "hover"
+  else
+    areas.endTurn.state = "idle"
+  end
+
   areas.discard.current.y = animation.expDecay(areas.discard.current.y, areas.discard.target.y, 10, realDt)
   local ra = areas.ram
   ra.current.scale = animation.expDecay(ra.current.scale, ra.target.scale, 8, realDt)
@@ -267,9 +293,15 @@ function areas.drawBefore(isDragging)
   -- love.graphics.rectangle("line", e.x, e.y, e.w, e.h)
   love.graphics.setColor(1, 1, 1, 1)
 
+  love.graphics.rectangle("line", e.x, e.y, e.w, e.h)
 
-  if endTurnAsset then
+
+  if e.state == "idle" and endTurnAsset then
     love.graphics.draw(endTurnAsset, e.x, e.y)
+  elseif e.state == "hover" and endTurnHoverAsset then
+    love.graphics.draw(endTurnHoverAsset, e.x, e.y)
+  elseif e.state == "click" and endTurnClickAsset then
+    love.graphics.draw(endTurnClickAsset, e.x, e.y)
   end
 
   if slotBottomAsset then
@@ -294,10 +326,10 @@ function areas.drawBefore(isDragging)
     end
   end
 
-  if klakBGAsset then
-    local klakBG = areas.klakBG
-    love.graphics.draw(klakBGAsset, klakBG.x, klakBG.y)
-  end
+  -- if klakBGAsset then
+  --   local klakBG = areas.klakBG
+  --   love.graphics.draw(klakBGAsset, klakBG.x, klakBG.y)
+  -- end
 
   if isDragging then
     if playTextObject then

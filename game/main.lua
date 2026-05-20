@@ -12,6 +12,8 @@ local sequences    = require("core.sequences")
 
 local shipAsset = nil
 local dissolveShader = nil
+local tiltShader = nil
+screenshake = require("lib.screenshake")
 -- local ramChipAsset = nil
 -- local erdnaseAsset = nil
 local hand = Hand.new()
@@ -26,6 +28,7 @@ function love.load()
   -- ramChipAsset = love.graphics.newImage("assets/ram-chip-tiny.png")
   -- erdnaseAsset = love.graphics.newImage("assets/erdnase.png")
   dissolveShader = love.graphics.newShader("assets/dissolve.fs")
+  tiltShader = love.graphics.newShader("assets/tilt.fs")
   areas.load()
   local projFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
   projectiles.ram = Projectile.new({ asset = love.graphics.newImage("assets/large-ram.png"), font = projFont })
@@ -55,6 +58,7 @@ function love.load()
       { id = "progress",  asset = partAssets.progress,  xOffset = 67,          yOffset = 54  },
     })
     card.shader = dissolveShader
+    card.tiltShader = tiltShader
     hand:add(card, true)
   end
   events.load()
@@ -74,6 +78,10 @@ function love.draw()
   love.graphics.setColor(hexToRGBA("#20222E"))
   love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(1, 1, 1, 1)
+
+  local sx, sy = screenshake.getOffset()
+  love.graphics.push()
+  love.graphics.translate(sx, sy)
   -- if shipAsset then
   --   love.graphics.draw(shipAsset, 0, 0)
   -- end
@@ -85,15 +93,18 @@ function love.draw()
   for _, proj in pairs(projectiles) do proj:draw() end
   areas.drawAfter(hand:isDragging())
   areas.drawStatic()
+  love.graphics.pop()
+
   overlayStats.draw()
 end
 
 function love.update(dt)
   realDt = dt
   gameDt = dt * config.speed
+  screenshake.update(realDt)
   local mouseX, mouseY = love.mouse.getPosition()
   hand:update(mouseX, mouseY)
-  areas.update()
+  areas.update(mouseX, mouseY)
   for _, proj in pairs(projectiles) do proj:update() end
   events.update()
   overlayStats.update(dt)
@@ -108,6 +119,8 @@ function love.keypressed(key)
     love.event.quit()
   elseif key == "space" then
     if hand.cards[1] then print(hand.cards[1].hover.can) end
+  elseif key == "s" then
+    screenshake.trigger()
   elseif key == "tab" then
     config.cycleSpeed()
     print("Speed: " .. config.speed .. "x")
@@ -119,7 +132,8 @@ function love.keypressed(key)
     if card then sequences.insertMiddle(card) end
   elseif key == "d" then
     local card = hand.cards[1]
-    if card then card:startReverseDissolve() end
+    card:shake()
+    -- if card then card:startReverseDissolve() end
     -- if card then card:startDissolve() end
 
     -- events.push({
