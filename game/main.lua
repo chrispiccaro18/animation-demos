@@ -118,7 +118,7 @@ function love.keypressed(key)
   if key == "escape" and love.system.getOS() ~= "Web" then
     love.event.quit()
   elseif key == "space" then
-    if hand.cards[1] then print(hand.cards[1].hover.can) end
+    if hand.cards[1] then print(hand.cards[1].current.r) end
   elseif key == "s" then
     screenshake.trigger()
   elseif key == "tab" then

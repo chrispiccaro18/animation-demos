@@ -208,11 +208,14 @@ end
 function Card:_applyTiltUniforms()
   self.tiltShader:send("mouse_screen_pos", { self.mouseX, self.mouseY })
   self.tiltShader:send("hovering",         1.0)
-  self.tiltShader:send("screen_scale",     self.w)
+  self.tiltShader:send("screen_scale",     self.w * 0.75)
+  self.tiltShader:send("card_angle",       self.current.r)
+  self.tiltShader:send("card_center_x",    self.current.x + self.w / 2)
 end
 
 function Card:draw()
   local useShader = self.shader ~= nil and self.dissolveAmount > 0.001
+  -- local useTilt = self.tiltShader ~= nil and self.hover.is
   local useTilt = self.tiltShader ~= nil and (self.hover.is or self.drag.is)
 
   local skox, skoy = 0, 0
@@ -283,9 +286,10 @@ function Card:draw()
   end
 end
 
+local BUFFER = 5
 function Card:containsPoint(x, y)
-  return x >= self.current.x and x <= self.current.x + self.w
-     and y >= self.current.y and y <= self.current.y + self.h
+  return x >= self.current.x - BUFFER * self.current.scale and x <= self.current.x + self.w + BUFFER * self.current.scale
+     and y >= self.current.y - BUFFER * self.current.scale and y <= self.current.y + self.h + BUFFER * self.current.scale
 end
 
 return Card

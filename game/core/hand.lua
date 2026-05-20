@@ -162,6 +162,8 @@ function Hand:update(mouseX, mouseY)
     if card.drag.is then
       card.target.x = mouseX - card.drag.offsetX
       card.target.y = mouseY - card.drag.offsetY
+      card.mouseX = mouseX
+      card.mouseY = mouseY
     end
 
     -- Hover scale
