@@ -9,17 +9,19 @@ extern MY_HIGHP_OR_MEDIUMP float hovering;
 extern MY_HIGHP_OR_MEDIUMP float screen_scale;
 extern MY_HIGHP_OR_MEDIUMP float card_angle;
 extern MY_HIGHP_OR_MEDIUMP float card_center_x;
+extern MY_HIGHP_OR_MEDIUMP float card_center_y;
 
 #ifdef VERTEX
 vec4 position( mat4 transform_projection, vec4 vertex_position )
 {
-    if (hovering <= 0.){
+    if (hovering <= 0.0){
         return transform_projection * vertex_position;
     }
-    float mid_dist = length(vertex_position.xy - 0.5*love_ScreenSize.xy)/length(love_ScreenSize.xy);
+    vec2 mouse_to_card = (mouse_screen_pos - vec2(card_center_x, card_center_y)) / screen_scale;
+    float mouse_card_dist = clamp(length(vec2(mouse_to_card.x, mouse_to_card.y * 0.75)), 0.3, 1.25);
+
     vec2 mouse_offset = (vertex_position.xy - mouse_screen_pos.xy)/screen_scale;
-    float scale = 0.2*(-0.03 - 0.3*max(0., 0.3-mid_dist))
-                *hovering*(length(mouse_offset)*length(mouse_offset))/(2. -mid_dist);
+    float scale = 0.2 * -0.03* hovering*(length(mouse_offset)*length(mouse_offset))/(2. - mouse_card_dist);
     float angle_scale = hovering * card_angle * (vertex_position.x - card_center_x) / screen_scale * 0.05;
 
     return transform_projection * vertex_position + vec4(0,0,0,scale + angle_scale);

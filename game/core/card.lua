@@ -144,8 +144,8 @@ end
 function Card:update()
   local dt = realDt
   if not self.stationary then
-    self.current.x = animation.expDecay(self.current.x, self.target.x, 10, dt)
-    self.current.y = animation.expDecay(self.current.y, self.target.y, 10, dt)
+    self.current.x = animation.expDecay(self.current.x, self.target.x, 12, dt)
+    self.current.y = animation.expDecay(self.current.y, self.target.y, 12, dt)
     self.horizontalVelocity = (self.current.x - self.target.x) / dt
   end
 
@@ -172,9 +172,9 @@ function Card:update()
 
   if self.parts then
     for _, part in ipairs(self.parts) do
-      part.current.dx = animation.expDecay(part.current.dx, part.target.dx, 10, dt)
-      part.current.dy = animation.expDecay(part.current.dy, part.target.dy, 10, dt)
-      part.current.dr = animation.expDecay(part.current.dr, part.target.dr, 10, dt)
+      part.current.dx = animation.expDecay(part.current.dx, part.target.dx, 12, dt)
+      part.current.dy = animation.expDecay(part.current.dy, part.target.dy, 12, dt)
+      part.current.dr = animation.expDecay(part.current.dr, part.target.dr, 12, dt)
     end
   end
 
@@ -223,6 +223,7 @@ function Card:_applyTiltUniforms(includeMouse)
   self.tiltShader:send("screen_scale",     self.w * 0.75)
   self.tiltShader:send("card_angle",       self.current.r)
   self.tiltShader:send("card_center_x",    self.current.x + self.w / 2)
+  self.tiltShader:send("card_center_y", self.current.y + self.h / 2)
 end
 
 function Card:draw()
@@ -258,7 +259,10 @@ function Card:draw()
     love.graphics.translate(cardCX - shadowDX + skox, cardCY + shadowDY + skoy)
     -- love.graphics.translate(cardCX + shadowDX, cardCY + shadowDY)
     love.graphics.rotate(self.current.r)
-    love.graphics.scale(self.current.scale, self.current.scale)
+    -- if we have an angle let's make the shadow a bit thinner
+    -- but only reduce it by up to 20%
+    local scaleX = self.current.scale * math.max(0.9, math.cos(self.current.r))
+    love.graphics.scale(scaleX, self.current.scale)
     love.graphics.draw(shadowAsset, -self.w / 2, -self.h / 2)
     love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)
