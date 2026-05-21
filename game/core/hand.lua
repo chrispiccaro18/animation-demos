@@ -127,10 +127,14 @@ function Hand:update(mouseX, mouseY)
         else
           sequences.play(card, areas,
             function()
-              -- self:unlockHand()
+              self:unlockHand()
             end,
             function()
-              self:remove(card)
+              card._excluded = false
+              self:layout()
+              card.hover.can = true
+              card.drag.can  = true
+              -- self:remove(card)
               -- self:unlockHand()
             end
           )

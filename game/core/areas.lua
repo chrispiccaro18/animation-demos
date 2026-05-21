@@ -6,22 +6,22 @@ local H = love.graphics.getHeight()
 local areas = {}
 
 areas.play = {
-  x = 0, y = 0,
-  w = W / 2 - 80,
-  h = H / 2 - 10,
+  x = 1, y = 1,
+  w = W / 2 - 82,
+  h = H / 2,
   color = {0.5, 0.5, 0.5, 1},
   slotText = "",
 }
 
 areas.discard = {
-  x = W / 2 + 80,
-  startY = 0,
-  w = W / 2 - 80,
-  h = H / 2 - 10,
+  x = W / 2 + 81,
+  startY = 1,
+  w = W / 2 - 82,
+  h = H / 2,
   color = {0.5, 0.5, 0.5, 1},
   slotText = "",
-  current = { y = 0 },
-  target  = { y = 0 },
+  current = { y = 1 },
+  target  = { y = 1 },
 }
 
 areas.endTurn = {
@@ -92,17 +92,19 @@ function areas.load()
 
   local klakBGW = klakBGAsset:getWidth()
   local klakBGH = klakBGAsset:getHeight()
+  local klakW = klakAsset:getWidth()
+  local klakH = klakAsset:getHeight()
+
   areas.klakBG = {
-    x = areas.endTurn.x + areas.endTurn.w / 2 - klakBGW / 2,
+    x = areas.discard.x + areas.discard.w / 2 - klakBGW / 2,
+    -- x = areas.endTurn.x + areas.endTurn.w / 2 - klakBGW / 2,
     -- x = W / 2 + W / 4 - klakBGW / 2,
-    y = H / 2 - klakBGH / 2 - 65,
+    -- y = H / 2 - klakBGH / 2 - 65,
+    y = areas.pool.h + klakH / 2,
     w = klakBGW,
     h = klakBGH,
   }
 
-
-  local klakW = klakAsset:getWidth()
-  local klakH = klakAsset:getHeight()
   areas.klak = {
     w = klakW,
     h = klakH,
@@ -123,10 +125,47 @@ function areas.load()
       yOffset = 19,
       w = 308,
       h = 48,
-      value = "EMPTY",
+      value = "DISCARD",
       color = {1, 1, 1, 1},
     }
   }
+
+  areas.playKlakBG = {
+    x = areas.play.x + areas.play.w / 2 - klakBGW / 2,
+    -- x = W / 2 + W / 4 - klakBGW / 2,
+    y = areas.pool.h + klakH / 2,
+    -- y = H / 2 - klakBGH / 2 - 65,
+    w = klakBGW,
+    h = klakBGH,
+  }
+
+  areas.playKlak = {
+    w = klakW,
+    h = klakH,
+    upY = areas.playKlakBG.y - klakH / 2,
+    downY = areas.playKlakBG.y + areas.playKlakBG.h - klakH / 2,
+    current = {
+      x = areas.playKlakBG.x + areas.playKlakBG.w / 2 - klakW / 2,
+      y = areas.playKlakBG.y - klakH / 2,
+      scale = 1,
+    },
+    target = {
+      x = areas.playKlakBG.x + areas.playKlakBG.w / 2 - klakW / 2,
+      y = areas.playKlakBG.y - klakH / 2,
+      scale = 1,
+    },
+    text = {
+      xOffset = 22,
+      yOffset = 19,
+      w = 308,
+      h = 48,
+      value = "PLAY",
+      color = {1, 1, 1, 1},
+    }
+  }
+
+  areas.discard.h = areas.klakBG.y + areas.klakBG.h
+  areas.play.h = areas.playKlakBG.y + areas.playKlakBG.h
 
 
   areas.ram.w = ramAsset:getWidth()
@@ -135,27 +174,31 @@ function areas.load()
   areas.ram.y = 2
 
   areas.pool.x = (W - areas.pool.w) / 2
-  areas.pool.y = 0
+  areas.pool.y = 1
   -- areas.pool.y = H * 0.55
 
   areas.progress.w = progressAsset:getWidth()
   areas.progress.h = progressAsset:getHeight()
-  areas.progress.x = W / 2 - areas.progress.w - 5
-  areas.progress.y = H / 2 - areas.progress.h / 2
+  areas.progress.x = areas.play.x + areas.play.w / 2 - areas.progress.w / 2
+  areas.progress.y = areas.play.y + 20
+  -- areas.progress.x = W / 2 - areas.progress.w - 5
+  -- areas.progress.y = H / 2 - areas.progress.h / 2
 
   areas.threat.w = threatAsset:getWidth()
   areas.threat.h = threatAsset:getHeight()
-  areas.threat.x = W / 2 + 5
-  areas.threat.y = H / 2 - areas.threat.h / 2
+  areas.threat.x = areas.discard.x + areas.discard.w / 2 - areas.threat.w / 2
+  areas.threat.y = areas.discard.startY + 20
+  -- areas.threat.x = W / 2 + 5
+  -- areas.threat.y = H / 2 - areas.threat.h / 2
 
   local font        = love.graphics.newFont("assets/NotoSans-Medium.ttf", 40)
   playTextObject    = love.graphics.newText(font, "PLAY")
   discardTextObject = love.graphics.newText(font, "DISCARD")
 
-  -- local pos1x, pos1y = areas.randomPoolPosition()
-  -- local pos2x, pos2y = areas.randomPoolPosition()
-  -- areas.addPoolChip(pos1x, pos1y)
-  -- areas.addPoolChip(pos2x, pos2y)
+  local pos1x, pos1y = areas.randomPoolPosition()
+  local pos2x, pos2y = areas.randomPoolPosition()
+  areas.addPoolChip(pos1x, pos1y)
+  areas.addPoolChip(pos2x, pos2y)
 end
 
 function areas.addPoolChip(x, y)
@@ -201,6 +244,11 @@ function areas.update(mouseX, mouseY)
   klak.current.x = animation.expDecay(klak.current.x, klak.target.x, 20, realDt)
   klak.current.y = animation.expDecay(klak.current.y, klak.target.y, 20, realDt)
   klak.current.scale = animation.expDecay(klak.current.scale, klak.target.scale, 20, realDt)
+
+  local playKlak = areas.playKlak
+  playKlak.current.x = animation.expDecay(playKlak.current.x, playKlak.target.x, 20, realDt)
+  playKlak.current.y = animation.expDecay(playKlak.current.y, playKlak.target.y, 20, realDt)
+  playKlak.current.scale = animation.expDecay(playKlak.current.scale, playKlak.target.scale, 20, realDt)
 end
 
 -- Hit detection
@@ -240,12 +288,12 @@ local function drawSlotTops()
   local d = areas.discard
   local deg180 = animation.degreesToRadians(180)
 
-  love.graphics.draw(slotTopAsset, p.x + (p.w - slotTopAsset:getWidth()) / 2, p.y)
-  -- love.graphics.draw(slotTopAsset, d.x + (d.w - slotTopAsset:getWidth()) / 2, d.current.y)
-  love.graphics.setColor(0, 0, 0, 1)
-  love.graphics.printf(p.slotText, p.x, p.y + 10, p.w, "center")
-  -- love.graphics.printf(d.slotText, d.x, d.current.y + 10, d.w, "center")
-  love.graphics.setColor(1, 1, 1, 1)
+  -- love.graphics.draw(slotTopAsset, p.x + (p.w - slotTopAsset:getWidth()) / 2, p.y)
+  -- -- love.graphics.draw(slotTopAsset, d.x + (d.w - slotTopAsset:getWidth()) / 2, d.current.y)
+  -- love.graphics.setColor(0, 0, 0, 1)
+  -- love.graphics.printf(p.slotText, p.x, p.y + 10, p.w, "center")
+  -- -- love.graphics.printf(d.slotText, d.x, d.current.y + 10, d.w, "center")
+  -- love.graphics.setColor(1, 1, 1, 1)
   -- love.graphics.draw(
   --   slotTopAsset,
   --   d.x + (d.w - slotTopAsset:getWidth()) / 2,
@@ -266,6 +314,21 @@ local function drawSlotTops()
       klak.text.w,
       "center"
     )
+
+    love.graphics.setColor(1, 1, 1, 1)
+    local playKlak = areas.playKlak
+    love.graphics.draw(klakAsset, playKlak.current.x, playKlak.current.y, 0, playKlak.current.scale, playKlak.current.scale)
+    love.graphics.setColor(playKlak.text.color)
+    local previousFont = love.graphics.getFont()
+    if statFont then love.graphics.setFont(statFont) end
+    love.graphics.printf(
+      playKlak.text.value,
+      playKlak.current.x + playKlak.text.xOffset,
+      playKlak.current.y + playKlak.text.yOffset,
+      playKlak.text.w,
+      "center"
+    )
+
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setFont(previousFont)
   end
@@ -365,7 +428,7 @@ function areas.drawBefore(isDragging)
   end
 
   if slotBottomAsset then
-    love.graphics.draw(slotBottomAsset, p.x + (p.w - slotBottomAsset:getWidth()) / 2, p.y)
+    -- love.graphics.draw(slotBottomAsset, p.x + (p.w - slotBottomAsset:getWidth()) / 2, p.y)
     -- love.graphics.draw(slotBottomAsset, d.x + (d.w - slotBottomAsset:getWidth()) / 2, d.current.y)
     -- love.graphics.draw(
     --   slotBottomAsset,
@@ -386,10 +449,12 @@ function areas.drawBefore(isDragging)
     end
   end
 
-  -- if klakBGAsset then
-  --   local klakBG = areas.klakBG
-  --   love.graphics.draw(klakBGAsset, klakBG.x, klakBG.y)
-  -- end
+  if klakBGAsset then
+    local klakBG = areas.klakBG
+    love.graphics.draw(klakBGAsset, klakBG.x, klakBG.y)
+    local playKlakBG = areas.playKlakBG
+    love.graphics.draw(klakBGAsset, playKlakBG.x, playKlakBG.y)
+  end
 
   if isDragging then
     if playTextObject then

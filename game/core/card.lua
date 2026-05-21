@@ -152,6 +152,14 @@ function Card:update()
   local rForce = -self.current.r * stiffness - self.current.rVel * damping + self.horizontalVelocity * -influence
   self.current.rVel = self.current.rVel + rForce * dt
   self.current.r    = self.current.r + self.current.rVel * dt
+  -- let's cap r at 90 and -90 to avoid weird flipping issues
+  if self.current.r > math.pi / 2 then
+    self.current.r = math.pi / 2
+    -- self.current.rVel = 0
+  elseif self.current.r < -math.pi / 2 then
+    self.current.r = -math.pi / 2
+    -- self.current.rVel = 0
+  end
   self.current.scale = animation.expDecay(self.current.scale, self.target.scale, 18, dt)
 
   if math.abs(self.current.x - self.target.x) < 0.1 and math.abs(self.current.y - self.target.y) < 0.1 then
@@ -205,8 +213,12 @@ function Card:_applyDissolveUniforms(asset)
   self.shader:send("screen_scale",    1.0)
 end
 
-function Card:_applyTiltUniforms()
-  self.tiltShader:send("mouse_screen_pos", { self.mouseX, self.mouseY })
+function Card:_applyTiltUniforms(includeMouse)
+  if includeMouse then
+    self.tiltShader:send("mouse_screen_pos", { self.mouseX, self.mouseY })
+  else
+    self.tiltShader:send("mouse_screen_pos", { self.current.x + self.w / 2, self.current.y + self.h / 2 })
+  end
   self.tiltShader:send("hovering",         1.0)
   self.tiltShader:send("screen_scale",     self.w * 0.75)
   self.tiltShader:send("card_angle",       self.current.r)
@@ -216,7 +228,8 @@ end
 function Card:draw()
   local useShader = self.shader ~= nil and self.dissolveAmount > 0.001
   -- local useTilt = self.tiltShader ~= nil and self.hover.is
-  local useTilt = self.tiltShader ~= nil and (self.hover.is or self.drag.is)
+  local useTilt = self.tiltShader ~= nil
+  -- local useTilt = self.tiltShader ~= nil and (self.hover.is or self.drag.is)
 
   local skox, skoy = 0, 0
   local sk = self._shake
@@ -252,7 +265,7 @@ function Card:draw()
   end
 
   if useTilt then
-    self:_applyTiltUniforms()
+    self:_applyTiltUniforms(self.hover.is or self.drag.is)
     love.graphics.setShader(self.tiltShader)
   end
 
@@ -286,7 +299,7 @@ function Card:draw()
   end
 end
 
-local BUFFER = 5
+local BUFFER = 7
 function Card:containsPoint(x, y)
   return x >= self.current.x - BUFFER * self.current.scale and x <= self.current.x + self.w + BUFFER * self.current.scale
      and y >= self.current.y - BUFFER * self.current.scale and y <= self.current.y + self.h + BUFFER * self.current.scale
