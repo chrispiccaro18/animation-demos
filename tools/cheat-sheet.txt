@@ -1,0 +1,61 @@
+# Fatal Exception Build Cheat Sheet
+
+# --------------------------------------------------
+# LOVE package (.love)
+# --------------------------------------------------
+
+rm -rf builds/*
+bash tools/build.sh love
+
+# Output:
+# builds/1/Fatal-Exception-Demo.love/Fatal-Exception-Demo.love
+
+
+# --------------------------------------------------
+# Linux builds (AppImage + tar.gz)
+# --------------------------------------------------
+
+rm -rf builds/*
+bash tools/build.sh linux
+
+# Outputs:
+# builds/1/Fatal-Exception-Demo.AppImage/Fatal-Exception-Demo.AppImage
+# builds/1/Fatal-Exception-Demo.tar.gz/Fatal-Exception-Demo.tar.gz
+
+
+# --------------------------------------------------
+# HTML/Web build
+# --------------------------------------------------
+
+rm -rf builds/*
+bash tools/build.sh html
+
+# Output:
+# builds/1/Fatal-Exception-Demo-html/Fatal-Exception-Demo-html.zip
+
+
+# --------------------------------------------------
+# Local HTML test
+# --------------------------------------------------
+
+tools/test-html.sh 
+
+
+# --------------------------------------------------
+# Notes
+# --------------------------------------------------
+
+# PRODUCT_NAME should avoid shell-special characters.
+# Good:
+#   Fatal Exception Demo
+#
+# Bad:
+#   Fatal Exception (Demo)
+
+# resources/icon.png is required for Linux + HTML builds.
+
+# HTML build patch:
+# .github/actions/build-html/action.yml
+#
+# Added:
+# sed -i "s/player.js/player.js?g=game.love/" ./tools/love.js-main/index.html
