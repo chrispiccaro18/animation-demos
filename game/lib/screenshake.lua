@@ -11,7 +11,7 @@ local _yScale = 1.0
 function screenshake.trigger(intensity, duration)
   _intensity = intensity or 10
   _duration  = duration  or 0.4
-  _yScale = 1.0
+  _yScale = 1.5
   trauma     = 1
   elapsed    = 0
 end

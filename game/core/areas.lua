@@ -269,6 +269,66 @@ local function drawSlotTops()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setFont(previousFont)
   end
+
+  if statFont then
+    local prevFont = love.graphics.getFont()
+    love.graphics.setFont(statFont)
+
+    -- if ramAsset then
+    --   local ra = areas.ram
+    --   love.graphics.push()
+    --   love.graphics.translate(ra.x + ra.w / 2, ra.y + ra.h / 2)
+    --   love.graphics.scale(ra.current.scale, ra.current.scale)
+    --   love.graphics.setColor(1, 1, 1, 1)
+    --   love.graphics.draw(ramAsset, -ra.w / 2, -ra.h / 2)
+    --   love.graphics.setColor(0, 0, 0, 1)
+    --   love.graphics.printf(
+    --     tostring(ra.value),
+    --     -ra.w / 2,
+    --     -ra.h / 2 + (ra.h - statFont:getHeight()) / 2,
+    --     ra.w,
+    --     "center"
+    --   )
+    --   love.graphics.pop()
+    -- end
+
+    if progressAsset then
+      local pr = areas.progress
+      love.graphics.push()
+      love.graphics.translate(pr.x + pr.w / 2, pr.y + pr.h / 2)
+      love.graphics.scale(pr.current.scale, pr.current.scale)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.draw(progressAsset, -pr.w / 2, -pr.h / 2)
+      love.graphics.printf(
+        tostring(pr.value),
+        -pr.w / 2,
+        -pr.h / 2 + (pr.h - statFont:getHeight()) / 2,
+        pr.w,
+        "center"
+      )
+      love.graphics.pop()
+    end
+
+    if threatAsset then
+      local th = areas.threat
+      love.graphics.push()
+      love.graphics.translate(th.x + th.w / 2, th.y + th.h / 2)
+      love.graphics.scale(th.current.scale, th.current.scale)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.draw(threatAsset, -th.w / 2, -th.h / 2)
+      love.graphics.printf(
+        tostring(th.value),
+        -th.w / 2,
+        -th.h / 2 + (th.h - statFont:getHeight()) / 2,
+        th.w,
+        "center"
+      )
+      love.graphics.pop()
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(prevFont)
+  end
 end
 
 -- Call before drawing cards. Draws area outlines, slot bottoms, and (when dragging)
@@ -361,66 +421,6 @@ function areas.drawAfter(isDragging)
 end
 
 function areas.drawStatic()
-if statFont then
-  local prevFont = love.graphics.getFont()
-  love.graphics.setFont(statFont)
-
-  -- if ramAsset then
-  --   local ra = areas.ram
-  --   love.graphics.push()
-  --   love.graphics.translate(ra.x + ra.w / 2, ra.y + ra.h / 2)
-  --   love.graphics.scale(ra.current.scale, ra.current.scale)
-  --   love.graphics.setColor(1, 1, 1, 1)
-  --   love.graphics.draw(ramAsset, -ra.w / 2, -ra.h / 2)
-  --   love.graphics.setColor(0, 0, 0, 1)
-  --   love.graphics.printf(
-  --     tostring(ra.value),
-  --     -ra.w / 2,
-  --     -ra.h / 2 + (ra.h - statFont:getHeight()) / 2,
-  --     ra.w,
-  --     "center"
-  --   )
-  --   love.graphics.pop()
-  -- end
-
-  if progressAsset then
-    local pr = areas.progress
-    love.graphics.push()
-    love.graphics.translate(pr.x + pr.w / 2, pr.y + pr.h / 2)
-    love.graphics.scale(pr.current.scale, pr.current.scale)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(progressAsset, -pr.w / 2, -pr.h / 2)
-    love.graphics.printf(
-      tostring(pr.value),
-      -pr.w / 2,
-      -pr.h / 2 + (pr.h - statFont:getHeight()) / 2,
-      pr.w,
-      "center"
-    )
-    love.graphics.pop()
-  end
-
-  if threatAsset then
-    local th = areas.threat
-    love.graphics.push()
-    love.graphics.translate(th.x + th.w / 2, th.y + th.h / 2)
-    love.graphics.scale(th.current.scale, th.current.scale)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(threatAsset, -th.w / 2, -th.h / 2)
-    love.graphics.printf(
-      tostring(th.value),
-      -th.w / 2,
-      -th.h / 2 + (th.h - statFont:getHeight()) / 2,
-      th.w,
-      "center"
-    )
-    love.graphics.pop()
-  end
-
-  love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.setFont(prevFont)
-  end
-
   if messageFont and areas.message.text ~= "" then
     local msg = areas.message
     local s   = msg.current.scale
