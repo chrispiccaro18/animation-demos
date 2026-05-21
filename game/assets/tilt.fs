@@ -22,7 +22,13 @@ vec4 position( mat4 transform_projection, vec4 vertex_position )
 
     vec2 mouse_offset = (vertex_position.xy - mouse_screen_pos.xy)/screen_scale;
     float scale = 0.2 * -0.03* hovering*(length(mouse_offset)*length(mouse_offset))/(2. - mouse_card_dist);
-    float angle_scale = hovering * card_angle * (vertex_position.x - card_center_x) / screen_scale * 0.05;
+
+    vec2 vertex_offset = (vertex_position.xy - vec2(card_center_x, card_center_y)) / screen_scale;
+    vec2 card_local_x  = vec2(cos(card_angle), sin(card_angle));
+    float local_x      = dot(vertex_offset, card_local_x);
+    float angle_scale  = hovering * max(0.0, card_angle * local_x) * 0.1;
+
+    // float angle_scale = hovering * card_angle * (vertex_position.x - card_center_x) / screen_scale * 0.05;
 
     return transform_projection * vertex_position + vec4(0,0,0,scale + angle_scale);
 }
