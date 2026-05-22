@@ -220,7 +220,8 @@ function Card:_applyTiltUniforms(includeMouse)
     self.tiltShader:send("mouse_screen_pos", { self.current.x + self.w / 2, self.current.y + self.h / 2 })
   end
   self.tiltShader:send("hovering",         1.0)
-  self.tiltShader:send("screen_scale",     self.w * 0.75)
+  self.tiltShader:send("screen_scale",     self.w * self.current.scale)
+  -- self.tiltShader:send("screen_scale",     self.w * 0.75)
   self.tiltShader:send("card_angle",       self.current.r)
   self.tiltShader:send("card_center_x",    self.current.x + self.w / 2)
   self.tiltShader:send("card_center_y", self.current.y + self.h / 2)
@@ -250,7 +251,9 @@ function Card:draw()
     local winCY  = love.graphics.getHeight() / 2
     local cardCX = self.current.x + self.w / 2
     local cardCY = self.current.y + self.h / 2
-    local boost  = (self.hover.is or self.drag.is) and 2.0 or 1.0
+    local boost  = 1.0
+    if self.hover.is then boost = 1.5 end
+    if self.drag.is then boost = 2.0 end
     local shadowDX = (cardCX - winCX) * 0.02 * boost
     -- local shadowDY = -10 * boost
     local shadowDY = ((cardCY - winCY) * 0.02 + 10) * boost

@@ -2,11 +2,11 @@ local areas     = require("core.areas")
 local sequences = require("core.sequences")
 local events    = require("lib.events")
 
-local Hand = {}
-Hand.__index = Hand
+local Hand      = {}
+Hand.__index    = Hand
 
 function Hand.new()
-  return setmetatable({ cards = {}, lastDiscarded = nil }, Hand)
+  return setmetatable({ cards = {}, discardQueue = {} }, Hand)
 end
 
 function Hand:layout()
@@ -60,18 +60,20 @@ end
 
 function Hand:unlockHand()
   for _, card in ipairs(self.cards) do
-    card.hover.can = true
-    card.hover.is  = false
+    card.hover.can    = true
+    card.hover.is     = false
     card.target.scale = 0.95
-    card.drag.can  = true
-    card.drag.is   = false
+    card.drag.can     = true
+    card.drag.is      = false
   end
 end
 
 function Hand:update(mouseX, mouseY)
   local draggingCard = nil
   for _, card in ipairs(self.cards) do
-    if card.drag.is then draggingCard = card; break end
+    if card.drag.is then
+      draggingCard = card; break
+    end
   end
 
   -- Suppress hover on siblings while a card is being dragged
@@ -87,34 +89,34 @@ function Hand:update(mouseX, mouseY)
 
   -- Update area highlight colors
   if areas.mouseInPlay(mouseX, mouseY) and draggingCard then
-    areas.play.color = {0.5, 0.5, 1, 1}
+    areas.play.color = { 0.5, 0.5, 1, 1 }
   elseif draggingCard and areas.cardInPlay(draggingCard) then
-    areas.play.color = {0.5, 0.5, 0.5, 1}
+    areas.play.color = { 0.5, 0.5, 0.5, 1 }
     -- areas.play.color = {1, 1, 1, 1}
   elseif areas.mouseInPlay(mouseX, mouseY) then
-    areas.play.color = {0.5, 0.5, 0.5, 1}
+    areas.play.color = { 0.5, 0.5, 0.5, 1 }
     -- areas.play.color = {0.5, 1, 0.5, 1}
   else
-    areas.play.color = {0.5, 0.5, 0.5, 1}
+    areas.play.color = { 0.5, 0.5, 0.5, 1 }
   end
 
   if areas.mouseInDiscard(mouseX, mouseY) and draggingCard then
-    areas.discard.color = {0.5, 0.5, 1, 1}
+    areas.discard.color = { 0.5, 0.5, 1, 1 }
   elseif draggingCard and areas.cardInDiscard(draggingCard) then
-    areas.discard.color = {0.5, 0.5, 0.5, 1}
+    areas.discard.color = { 0.5, 0.5, 0.5, 1 }
     -- areas.discard.color = {1, 1, 1, 1}
   elseif areas.mouseInDiscard(mouseX, mouseY) then
-    areas.discard.color = {0.5, 0.5, 0.5, 1}
+    areas.discard.color = { 0.5, 0.5, 0.5, 1 }
     -- areas.discard.color = {0.5, 1, 0.5, 1}
   else
-    areas.discard.color = {0.5, 0.5, 0.5, 1}
+    areas.discard.color = { 0.5, 0.5, 0.5, 1 }
   end
 
   for _, card in ipairs(self.cards) do
     -- Release drag
     if card.drag.is and not love.mouse.isDown(1) then
-      card.drag.is  = false
-      card.drag.can = true
+      card.drag.is   = false
+      card.drag.can  = true
       card._excluded = true
       self:layout()
       if areas.mouseInPlay(mouseX, mouseY) then
@@ -140,7 +142,7 @@ function Hand:update(mouseX, mouseY)
           )
         end
       elseif areas.mouseInDiscard(mouseX, mouseY) then
-        self.lastDiscarded = card
+        table.insert(self.discardQueue, card)
         -- c._excluded = true
         -- self:layout()
         sequences.discard(card, areas,
@@ -159,7 +161,6 @@ function Hand:update(mouseX, mouseY)
         self:layout()
       end
       self:unlockHand()
-
     end
 
     -- Follow mouse while dragging
@@ -174,8 +175,8 @@ function Hand:update(mouseX, mouseY)
     if card.hover.can and not card.drag.is and card:containsPoint(mouseX, mouseY) then
       card.hover.is     = true
       card.target.scale = 1.05
-      card.mouseX = mouseX
-      card.mouseY = mouseY
+      card.mouseX       = mouseX
+      card.mouseY       = mouseY
     elseif card:containsPoint(mouseX, mouseY) and card.drag.is then
       card.target.scale = 1.125
     elseif not card:containsPoint(mouseX, mouseY) and not card.drag.is and card.hover.can then
@@ -203,7 +204,7 @@ function Hand:mousepressed(x, y, button)
     --   local c = card
     --   sequences.endTurn(c, areas, function() self:remove(c) end)
     -- end
-    local ld = self.lastDiscarded
+    local ld = table.remove(self.discardQueue, 1)
     if ld then
       self:add(ld, false, false)
       sequences.endTurn(ld, areas, function()
@@ -212,8 +213,6 @@ function Hand:mousepressed(x, y, button)
         ld.hover.can = true
         ld.drag.can  = true
         self:unlockHand()
-        self.lastDiscarded = nil
-
       end)
     end
 
@@ -221,8 +220,11 @@ function Hand:mousepressed(x, y, button)
       fn = function()
         areas.endTurn.state = "idle"
       end,
-      blocking = true, blockable = true, persistent = false,
-      delay = 0.5, type = "before",
+      blocking = true,
+      blockable = true,
+      persistent = false,
+      delay = 0.5,
+      type = "before",
     })
     return
   end

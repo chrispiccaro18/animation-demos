@@ -118,7 +118,8 @@ function love.keypressed(key)
   if key == "escape" and love.system.getOS() ~= "Web" then
     love.event.quit()
   elseif key == "space" then
-    if hand.cards[1] then print(hand.cards[1].current.r) end
+    -- if hand.cards[1] then print(hand.cards[1].current.r) end
+    areas.takeFromDestructorQueue()
   elseif key == "s" then
     screenshake.trigger()
   elseif key == "tab" then
@@ -131,8 +132,11 @@ function love.keypressed(key)
     local card = hand.cards[1]
     if card then sequences.insertMiddle(card) end
   elseif key == "d" then
-    local card = hand.cards[1]
-    card:shake()
+    areas.reorderDestructorQueue()
+
+    -- local card = hand.cards[1]
+    -- card:shake()
+
     -- if card then card:startReverseDissolve() end
     -- if card then card:startDissolve() end
 
