@@ -112,6 +112,33 @@ function Hand:update(mouseX, mouseY)
     areas.discard.color = { 0.5, 0.5, 0.5, 1 }
   end
 
+  -- Reorder cards when dragged card center crosses a neighbor's layout center
+  if draggingCard then
+    local dragIdx
+    for i, c in ipairs(self.cards) do
+      if c == draggingCard then dragIdx = i; break end
+    end
+    if dragIdx then
+      local dragCX = draggingCard.current.x + draggingCard.w / 2
+      local swapped = false
+      if dragIdx > 1 then
+        local left = self.cards[dragIdx - 1]
+        if not left._excluded and dragCX < left._startX + left.w / 2 then
+          self.cards[dragIdx], self.cards[dragIdx - 1] = self.cards[dragIdx - 1], self.cards[dragIdx]
+          self:layout()
+          swapped = true
+        end
+      end
+      if not swapped and dragIdx < #self.cards then
+        local right = self.cards[dragIdx + 1]
+        if not right._excluded and dragCX > right._startX + right.w / 2 then
+          self.cards[dragIdx], self.cards[dragIdx + 1] = self.cards[dragIdx + 1], self.cards[dragIdx]
+          self:layout()
+        end
+      end
+    end
+  end
+
   for _, card in ipairs(self.cards) do
     -- Release drag
     if card.drag.is and not love.mouse.isDown(1) then
@@ -172,16 +199,21 @@ function Hand:update(mouseX, mouseY)
     end
 
     -- Hover scale
-    if card.hover.can and not card.drag.is and card:containsPoint(mouseX, mouseY) then
+    if card.hover.can and not card.hover.is and not card.drag.is and card:containsPoint(mouseX, mouseY) then
       card.hover.is     = true
       card.target.scale = 1.05
       card.mouseX       = mouseX
       card.mouseY       = mouseY
+      card.current.r =  math.rad(3)
+      -- card:shake(8, 0.25)
     elseif card:containsPoint(mouseX, mouseY) and card.drag.is then
       card.target.scale = 1.125
     elseif not card:containsPoint(mouseX, mouseY) and not card.drag.is and card.hover.can then
       card.hover.is     = false
       card.target.scale = 0.95
+    elseif card.hover.is then
+      card.mouseX       = mouseX
+      card.mouseY       = mouseY
     end
 
     card:update()
@@ -189,8 +221,12 @@ function Hand:update(mouseX, mouseY)
 end
 
 function Hand:draw()
+  -- draw stationary cards first, then non dragging cards, then dragging cards on top
   for _, card in ipairs(self.cards) do
-    if not card.drag.is then card:draw() end
+    if not card.drag.is and card.stationary then card:draw() end
+  end
+  for _, card in ipairs(self.cards) do
+    if not card.drag.is and not card.stationary then card:draw() end
   end
   for _, card in ipairs(self.cards) do
     if card.drag.is then card:draw() end

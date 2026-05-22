@@ -188,12 +188,12 @@ function sequences.play(card, areas, onStart, onDone)
   })
   events.push({
     fn = function()
-      card:shake(8, 0.05)
+      -- card:shake(8, 0.05)
       card.target.y = card.current.y
       card.current.y = card.current.y - 10
       card.target.x = card.current.x
       card.current.x = card.current.x + 10
-      card.current.r = animation.degreesToRadians(-5)
+      card.current.r = animation.degreesToRadians(-2)
     end,
     blocking = false, blockable = true, persistent = false,
     delay = 0, type = "immediate",
@@ -215,7 +215,7 @@ function sequences.play(card, areas, onStart, onDone)
       card.current.y = card.current.y - 10
       card.target.x = card.current.x
       card.current.x = card.current.x + 10
-      card.current.r = animation.degreesToRadians(-5)
+      card.current.r = animation.degreesToRadians(-2)
     end,
     blocking = false, blockable = true, persistent = false,
     delay = 0, type = "immediate",

@@ -132,10 +132,10 @@ function love.keypressed(key)
     local card = hand.cards[1]
     if card then sequences.insertMiddle(card) end
   elseif key == "d" then
-    areas.reorderDestructorQueue()
+    -- areas.reorderDestructorQueue()
 
-    -- local card = hand.cards[1]
-    -- card:shake()
+    local card = hand.cards[1]
+    card:shake()
 
     -- if card then card:startReverseDissolve() end
     -- if card then card:startDissolve() end
