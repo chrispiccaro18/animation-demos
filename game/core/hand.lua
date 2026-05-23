@@ -6,7 +6,7 @@ local Hand      = {}
 Hand.__index    = Hand
 
 function Hand.new()
-  return setmetatable({ cards = {}, discardQueue = {} }, Hand)
+  return setmetatable({ cards = {}, discardQueue = {}, deck = nil }, Hand)
 end
 
 function Hand:layout()
@@ -154,17 +154,14 @@ function Hand:update(mouseX, mouseY)
           card.target.x = card._startX
           card.target.y = card._startY
         else
-          sequences.play(card, areas,
+          sequences.play(card, areas, self.deck,
             function()
               self:unlockHand()
             end,
             function()
-              card._excluded = false
-              self:layout()
-              card.hover.can = true
-              card.drag.can  = true
-              -- self:remove(card)
-              -- self:unlockHand()
+              self:remove(card)
+              if self.deck then self.deck:add(card) end
+              self:unlockHand()
             end
           )
         end
@@ -178,7 +175,6 @@ function Hand:update(mouseX, mouseY)
           end,
           function()
             self:remove(card)
-            -- self:unlockHand()
           end
         )
       else
@@ -243,11 +239,9 @@ function Hand:mousepressed(x, y, button)
     local ld = table.remove(self.discardQueue, 1)
     if ld then
       self:add(ld, false, false)
-      sequences.endTurn(ld, areas, function()
-        print("End turn sequence done, resetting hand")
-        self:layout()
-        ld.hover.can = true
-        ld.drag.can  = true
+      sequences.endTurn(ld, areas, self.deck, function()
+        self:remove(ld)
+        if self.deck then self.deck:add(ld) end
         self:unlockHand()
       end)
     end

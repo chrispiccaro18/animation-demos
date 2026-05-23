@@ -117,7 +117,7 @@ function sequences.loss(card, areas)
   areas.message.target.scale  = 1.0
 end
 
-function sequences.play(card, areas, onStart, onDone)
+function sequences.play(card, areas, deck, onStart, onDone)
   local p = areas.play
   local pKlakBG = areas.playKlakBG
   local pKlak = areas.playKlak
@@ -332,7 +332,25 @@ function sequences.play(card, areas, onStart, onDone)
       else
         pKlak.text.value = "PLAY"
         card.drawShadow = true
-        if onDone then onDone() end
+        if deck then
+          card.target.x = deck.x
+          card.target.y = deck.y
+          events.push({
+            fn = function()
+              return math.abs(card.current.x - deck.x) < 5
+                 and math.abs(card.current.y - deck.y) < 5
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "poll",
+          })
+          events.push({
+            fn = function() if onDone then onDone() end end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "immediate",
+          })
+        else
+          if onDone then onDone() end
+        end
       end
     end,
     blocking = true, blockable = true, persistent = false,
@@ -640,7 +658,7 @@ function sequences.discard(card, areas, onStart, onDone)
   -- })
 end
 
-function sequences.endTurn(card, areas, onDone)
+function sequences.endTurn(card, areas, deck, onDone)
   local p = areas.play
   local d = areas.discard
   local klak = areas.klak
@@ -848,7 +866,25 @@ function sequences.endTurn(card, areas, onDone)
       areas.reorderDestructorQueue()
       card.drawShadow = true
       areas.endTurn.state = "idle"
-      if onDone then onDone() end
+      if deck then
+        card.target.x = deck.x
+        card.target.y = deck.y
+        events.push({
+          fn = function()
+            return math.abs(card.current.x - deck.x) < 5
+               and math.abs(card.current.y - deck.y) < 5
+          end,
+          blocking = true, blockable = true, persistent = false,
+          delay = 0, type = "poll",
+        })
+        events.push({
+          fn = function() if onDone then onDone() end end,
+          blocking = true, blockable = true, persistent = false,
+          delay = 0, type = "immediate",
+        })
+      else
+        if onDone then onDone() end
+      end
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "before",

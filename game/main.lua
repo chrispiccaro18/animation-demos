@@ -9,6 +9,7 @@ local config       = require("lib.config")
 local Projectile   = require("core.projectile")
 local projectiles  = require("core.projectiles")
 local sequences    = require("core.sequences")
+local Deck         = require("core.deck")
 
 local shipAsset = nil
 local dissolveShader = nil
@@ -17,6 +18,7 @@ screenshake = require("lib.screenshake")
 -- local ramChipAsset = nil
 -- local erdnaseAsset = nil
 local hand = Hand.new()
+local deck = nil
 
 function love.load()
   https = runtimeLoader.loadHTTPS()
@@ -25,11 +27,14 @@ function love.load()
   local cardAsset        = love.graphics.newImage("assets/kilo-card-base.png")
   -- local cardAsset        = love.graphics.newImage("assets/card-template-front-flipped.png")
   local chompedCardAsset = love.graphics.newImage("assets/chomped-card.png")
+  local cardBackAsset    = love.graphics.newImage("assets/kilo-card-back.png")
   -- ramChipAsset = love.graphics.newImage("assets/ram-chip-tiny.png")
   -- erdnaseAsset = love.graphics.newImage("assets/erdnase.png")
   dissolveShader = love.graphics.newShader("assets/dissolve.fs")
   tiltShader = love.graphics.newShader("assets/tilt.fs")
   areas.load()
+  deck = Deck.new(40, love.graphics.getHeight() - 310, cardBackAsset)
+  hand.deck = deck
   local projFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
   projectiles.ram = Projectile.new({ asset = love.graphics.newImage("assets/large-ram.png"), font = projFont })
   projectiles.ramChip = Projectile.new({ asset = love.graphics.newImage("assets/ram-chip.png"), font = projFont, animationExp = 18 })
@@ -46,7 +51,7 @@ function love.load()
     threat    = love.graphics.newImage("assets/new-threat.png"),
     progress  = love.graphics.newImage("assets/new-progress.png"),
   }
-  for _ = 1, 3 do
+  for _ = 1, 5 do
     local card = Card.new(0, 0, cardAsset, chompedCardAsset)
     card.partAssets = partAssets
     card:setParts({
@@ -59,7 +64,7 @@ function love.load()
     })
     card.shader = dissolveShader
     card.tiltShader = tiltShader
-    hand:add(card, true)
+    deck:add(card)
   end
   events.load()
   overlayStats.load()
@@ -88,7 +93,9 @@ function love.draw()
   areas.drawBefore(hand:isDragging())
   -- if ramChipAsset then love.graphics.draw(ramChipAsset, 610, 410) end
   -- if ramChipAsset then love.graphics.draw(ramChipAsset, 635, 410) end
+  if deck and hand:isDragging() then deck:draw() end
   hand:draw()
+  if deck and not hand:isDragging() then deck:draw() end
   -- if erdnaseAsset then love.graphics.draw(erdnaseAsset, 640, 520) end
   for _, proj in pairs(projectiles) do proj:draw() end
   areas.drawAfter(hand:isDragging())
@@ -128,6 +135,11 @@ function love.keypressed(key)
   elseif key == "1" then
     local card = hand.cards[1]
     if card then sequences.popTopOff(card, areas) end
+  elseif key == "n" then
+    if deck then
+      local card = deck:deal()
+      if card then hand:add(card, false) end
+    end
   elseif key == "2" then
     local card = hand.cards[1]
     if card then sequences.insertMiddle(card) end
