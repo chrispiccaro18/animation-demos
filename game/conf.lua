@@ -37,6 +37,8 @@ function love.conf(t)
 
   t.window.title          = product_config["PRODUCT_NAME"]
   t.window.icon           = nil
+  -- t.window.width          = 2560
+  -- t.window.height         = 1440
   t.window.width          = 1920
   t.window.height         = 1080
   -- t.window.width          = 1280
@@ -48,7 +50,7 @@ function love.conf(t)
   t.window.fullscreen     = false
   t.window.fullscreentype = "desktop"
   t.window.vsync          = 1
-  t.window.msaa           = 0
+  t.window.msaa           = 4
   t.window.depth          = nil
   t.window.stencil        = nil
   t.window.display        = 1

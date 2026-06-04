@@ -18,10 +18,14 @@ vec4 position( mat4 transform_projection, vec4 vertex_position )
         return transform_projection * vertex_position;
     }
     vec2 mouse_to_card = (mouse_screen_pos - vec2(card_center_x, card_center_y)) / screen_scale;
-    float mouse_card_dist = clamp(length(vec2(mouse_to_card.x, mouse_to_card.y * 0.75)), 0.3, 1.25);
+    float mouse_card_dist = clamp(length(vec2(mouse_to_card.x, mouse_to_card.y * 0.5)), 0.2, 1.0);
+    // float mouse_card_dist = clamp(length(vec2(mouse_to_card.x, mouse_to_card.y * 0.75)), 0.2, 1.15);
+    // float mouse_card_dist = clamp(length(vec2(mouse_to_card.x, mouse_to_card.y * 0.75)), 0.3, 1.25);
 
     vec2 mouse_offset = (vertex_position.xy - mouse_screen_pos.xy)/screen_scale;
-    float scale = 0.3 * -0.03* hovering*(length(mouse_offset)*length(mouse_offset))/(2. - mouse_card_dist);
+    float scale = 0.25 * -0.03* hovering*(length(mouse_offset)*length(mouse_offset))/(2. - mouse_card_dist);
+    // float scale = 0.15 * -0.03* hovering*(length(mouse_offset)*length(mouse_offset))/(2. - mouse_card_dist);
+    // float scale = 0.3 * -0.03* hovering*(length(mouse_offset)*length(mouse_offset))/(2. - mouse_card_dist);
 
     // vec2 vertex_offset = (vertex_position.xy - vec2(card_center_x, card_center_y)) / screen_scale;
     // vec2 card_local_x  = vec2(cos(card_angle), sin(card_angle));

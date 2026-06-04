@@ -556,6 +556,16 @@ function areas.drawAfter(isDragging)
 end
 
 function areas.drawStatic()
+  local p = areas.play
+  local d = areas.discard
+
+  love.graphics.setColor(p.color)
+  love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setColor(d.color)
+  love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
+  love.graphics.setColor(1, 1, 1, 1)
+
   if messageFont and areas.message.text ~= "" then
     local msg      = areas.message
     local s        = msg.current.scale

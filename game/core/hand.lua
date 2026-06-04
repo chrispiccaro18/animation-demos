@@ -2,6 +2,9 @@ local areas     = require("core.areas")
 local sequences = require("core.sequences")
 local events    = require("lib.events")
 
+-- drag shift area should feel more like a horizontal range than just 50%
+-- should be a y threshold. once above drag shifts do not happen
+
 local Hand      = {}
 Hand.__index    = Hand
 
