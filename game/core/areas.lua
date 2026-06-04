@@ -5,24 +5,33 @@ local H                 = love.graphics.getHeight()
 
 local areas             = {}
 
+local playDiscardGap = 250 * love.graphics.getWidth() / 3840
+
 areas.play              = {
   x = 1,
   y = 1,
-  w = W / 2 - 82,
+  w = W / 2 - playDiscardGap,
   h = H / 2,
   color = { 0.5, 0.5, 0.5, 1 },
   slotText = "",
 }
 
 areas.discard           = {
-  x        = W / 2 + 81,
+  x        = W / 2 + playDiscardGap,
   startY   = 1,
-  w        = W / 2 - 82,
+  w        = W / 2 - playDiscardGap,
   h        = H / 2,
   color    = { 0.5, 0.5, 0.5, 1 },
   slotText = "",
   current  = { y = 1 },
   target   = { y = 1 },
+}
+
+areas.desk = {
+  x = 241 * love.graphics.getWidth() / 3840,
+  y = 305 * love.graphics.getHeight() / 2160,
+  w = 3268 * love.graphics.getWidth() / 3840,
+  h = 1684 * love.graphics.getHeight() / 2160,
 }
 
 areas.endTurn           = {
@@ -45,7 +54,13 @@ areas.destructor        = {
   color = { 1, 0, 0, 1 },
 }
 areas.ram               = { value = 1, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
-areas.pool              = { x = 0, y = 0, w = 150, h = 140, chips = {} }
+areas.pool              = {
+  x = 0,
+  y = 0,
+  w = playDiscardGap * 2,
+  h = 800 * love.graphics.getHeight() / 2160,
+  chips = {}
+}
 areas.progress          = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
 areas.threat            = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
 areas.message           = { text = "", textColor = { 1, 1, 1, 1 }, current = { scale = 1 }, target = { scale = 1 } }
@@ -182,8 +197,8 @@ function areas.load()
     }
   }
 
-  areas.discard.h          = areas.klakBG.y + areas.klakBG.h
-  areas.play.h             = areas.playKlakBG.y + areas.playKlakBG.h
+  -- areas.discard.h          = areas.klakBG.y + areas.klakBG.h
+  -- areas.play.h             = areas.playKlakBG.y + areas.playKlakBG.h
 
 
   areas.ram.w        = ramAsset:getWidth()
@@ -192,7 +207,7 @@ function areas.load()
   areas.ram.y        = 2
 
   areas.pool.x       = (W - areas.pool.w) / 2
-  areas.pool.y       = 1
+  areas.pool.y       = 500 * love.graphics.getHeight() / 2160
   -- areas.pool.y = H * 0.55
 
   areas.progress.w   = progressAsset:getWidth()
@@ -215,8 +230,8 @@ function areas.load()
 
   local pos1x, pos1y = areas.randomPoolPosition()
   local pos2x, pos2y = areas.randomPoolPosition()
-  areas.addPoolChip(pos1x, pos1y)
-  areas.addPoolChip(pos2x, pos2y)
+  -- areas.addPoolChip(pos1x, pos1y)
+  -- areas.addPoolChip(pos2x, pos2y)
 
   -- areas.addToDestructorQueue()
   -- areas.addToDestructorQueue()
@@ -565,6 +580,19 @@ function areas.drawStatic()
   love.graphics.setColor(d.color)
   love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
   love.graphics.setColor(1, 1, 1, 1)
+
+  local po = areas.pool
+  love.graphics.setColor(0.5, 0.5, 0.5, 1)
+  love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
+  love.graphics.setColor(1, 1, 1, 1)
+  if ramTinyAsset then
+    for _, chip in ipairs(po.chips) do
+      love.graphics.draw(ramTinyAsset, chip.x, chip.y)
+    end
+  end
+  love.graphics.setColor(1, 1, 1, 1)
+
+  love.graphics.rectangle("line", areas.desk.x, areas.desk.y, areas.desk.w, areas.desk.h)
 
   if messageFont and areas.message.text ~= "" then
     local msg      = areas.message

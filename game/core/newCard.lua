@@ -1,5 +1,4 @@
 local animation = require("lib.animation")
-local areas     = require("core.areas")
 
 local stiffness = 80
 local damping = 10
@@ -50,6 +49,11 @@ function NewCard.new(x, y, baseAsset)
   self.dissolveTime = 0
   self.dissolving = false
   self.reverseDissolving = false
+  self.scales = {
+    idle = 0.5,
+    hover = 0.65,
+    drag = 0.7
+  }
   return self
 end
 
@@ -207,9 +211,7 @@ function NewCard:moveToPlay()
   end
 end
 
-function NewCard:update(realDt, mouseX, mouseY)
-  self.mouseX = mouseX
-  self.mouseY = mouseY
+function NewCard:update()
 
   if math.abs(self.current.x - self.target.x) < 0.1 and math.abs(self.current.y - self.target.y) < 0.1 then
     self.current.x = self.target.x
@@ -247,56 +249,57 @@ function NewCard:update(realDt, mouseX, mouseY)
 
   -- drag and hover logic
   -- can only be hovered if not dragging, and can only be dragged if hovering or already dragging
-  if self.drag.is and love.mouse.isDown(1) then
-    self.target.x = mouseX + self.drag.offsetX
-    self.target.y = mouseY + self.drag.offsetY
-  elseif self.drag.is and not love.mouse.isDown(1) then
-    self.drag.is = false
-    self.drag.can = true
-    self.hover.can = true
-  elseif self.hover.is and love.mouse.isDown(1) then
-    self.drag.is = true
-    self.drag.can = false
-    self.hover.is = false
-    self.hover.can = false
-    self.target.scale = 1.0
-    -- calculate the offsetX and offsetY based on where the mouse is relative to the card's center
-    self.drag.offsetX = self.current.x - mouseX
-    self.drag.offsetY = self.current.y - mouseY
-  elseif self.hover.can and self:containsPoint(mouseX, mouseY) then
-    self.hover.is = true
-    self.target.scale = 0.85
-  else
-    self.hover.is = false
-    self.target.scale = 0.5
-  end
+  -- if self.drag.is and love.mouse.isDown(1) then
+  --   self.target.x = mouseX + self.drag.offsetX
+  --   self.target.y = mouseY + self.drag.offsetY
+  -- elseif self.drag.is and not love.mouse.isDown(1) then
+  --   self.drag.is = false
+  --   self.drag.can = true
+  --   self.hover.can = true
+  -- elseif self.hover.is and love.mouse.isDown(1) then
+  --   self.drag.is = true
+  --   self.drag.can = false
+  --   self.hover.is = false
+  --   self.hover.can = false
+  --   self.target.scale = 1.0
+  --   -- calculate the offsetX and offsetY based on where the mouse is relative to the card's center
+  --   self.drag.offsetX = self.current.x - mouseX
+  --   self.drag.offsetY = self.current.y - mouseY
+  -- elseif self.hover.can and self:containsPoint(mouseX, mouseY) then
+  --   self.hover.is = true
+  --   self.target.scale = 0.85
+  -- else
+  --   self.hover.is = false
+  --   self.target.scale = 0.5
+  -- end
+
   self.current.scale = animation.expDecay(self.current.scale, self.target.scale, 18, realDt)
 
-  if areas.mouseInPlay(mouseX, mouseY) and self.drag.is then
-    areas.play.color = { 0.5, 0.5, 1, 1 }
-    -- self:moveToPlay()
-  elseif self.drag.is and areas.cardInPlay(self) then
-    -- areas.play.color = { 0.5, 0.5, 0.5, 1 }
-    areas.play.color = {1, 1, 1, 1}
-  elseif areas.mouseInPlay(mouseX, mouseY) then
-    -- areas.play.color = { 0.5, 0.5, 0.5, 1 }
-    areas.play.color = {0, 1, 0, 1}
-  else
-    areas.play.color = { 0.5, 0.5, 0.5, 1 }
-  end
+  -- if areas.mouseInPlay(mouseX, mouseY) and self.drag.is then
+  --   areas.play.color = { 0.5, 0.5, 1, 1 }
+  --   -- self:moveToPlay()
+  -- elseif self.drag.is and areas.cardInPlay(self) then
+  --   -- areas.play.color = { 0.5, 0.5, 0.5, 1 }
+  --   areas.play.color = {1, 1, 1, 1}
+  -- elseif areas.mouseInPlay(mouseX, mouseY) then
+  --   -- areas.play.color = { 0.5, 0.5, 0.5, 1 }
+  --   areas.play.color = {0, 1, 0, 1}
+  -- else
+  --   areas.play.color = { 0.5, 0.5, 0.5, 1 }
+  -- end
 
-  if areas.mouseInDiscard(mouseX, mouseY) and self.drag.is then
-    areas.discard.color = { 0.5, 0.5, 1, 1 }
-    -- self:moveToDiscard()
-  elseif self.drag.is and areas.cardInDiscard(self) then
-    -- areas.discard.color = { 0.5, 0.5, 0.5, 1 }
-    areas.discard.color = {1, 1, 1, 1}
-  elseif areas.mouseInDiscard(mouseX, mouseY) then
-    areas.discard.color = { 1, 0, 0.5, 1 }
-    -- areas.discard.color = {0.5, 1, 0.5, 1}
-  else
-    areas.discard.color = { 0.5, 0.5, 0.5, 1 }
-  end
+  -- if areas.mouseInDiscard(mouseX, mouseY) and self.drag.is then
+  --   areas.discard.color = { 0.5, 0.5, 1, 1 }
+  --   -- self:moveToDiscard()
+  -- elseif self.drag.is and areas.cardInDiscard(self) then
+  --   -- areas.discard.color = { 0.5, 0.5, 0.5, 1 }
+  --   areas.discard.color = {1, 1, 1, 1}
+  -- elseif areas.mouseInDiscard(mouseX, mouseY) then
+  --   areas.discard.color = { 1, 0, 0.5, 1 }
+  --   -- areas.discard.color = {0.5, 1, 0.5, 1}
+  -- else
+  --   areas.discard.color = { 0.5, 0.5, 0.5, 1 }
+  -- end
 
   local sk = self._shake
   if sk.trauma > 0 then
@@ -392,6 +395,11 @@ function NewCard:draw()
     love.graphics.setShader(self.tiltShader)
   end
 
+  if useShader then
+    self:_applyDissolveUniforms(self.asset)
+    love.graphics.setShader(self.shader)
+  end
+
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.draw(
     self.asset,
@@ -404,6 +412,10 @@ function NewCard:draw()
     self.offsetY
   )
 
+  if useShader then
+    love.graphics.setShader(self.tiltShader)
+  end
+
   if self.parts then
     love.graphics.push()
     love.graphics.translate(self.current.x, self.current.y)
@@ -415,6 +427,10 @@ function NewCard:draw()
         love.graphics.setColor(1, 1, 1, 0)
       else
         love.graphics.setColor(1, 1, 1, 1)
+        if useShader then
+          self:_applyDissolveUniforms(part.asset)
+          love.graphics.setShader(self.shader)
+        end
       end
       local pw = part.asset:getWidth()
       local ph = part.asset:getHeight()
@@ -427,11 +443,15 @@ function NewCard:draw()
         pw / 2,
         ph / 2
       )
+      if useShader and not part.hidden then
+        love.graphics.setShader(self.tiltShader)
+        -- love.graphics.setShader(useTilt and self.tiltShader or nil)
+      end
     end
     love.graphics.pop()
   end
 
-  if useTilt then
+  if useTilt or useShader then
     love.graphics.setShader()
   end
 end

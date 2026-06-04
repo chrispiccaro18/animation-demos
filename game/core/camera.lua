@@ -31,12 +31,28 @@ function Camera.load()
       -- color = Color("#9C2B2B"),
       -- color = Color("#6ED59E"),
       -- color = Color("#D56E6E"),
-      -- color = Color("#FF0000"),
     }
   }
   self.offsetX = baseAsset:getWidth() / 2
   self.offsetY = baseAsset:getHeight() / 2
   return self
+end
+
+function Camera:setColor(color)
+  self.parts.ring.color = color
+end
+
+function Camera:getLensPosition()
+  local windowScaleX = love.graphics.getWidth() / (3840 * 2)
+  local windowScaleY = love.graphics.getHeight() / (2160 * 2)
+  return self.x +
+      self.parts.lens.offsetX * self.scale * windowScaleX +
+      self.parts.lens.originalPosition.x * self.scale * windowScaleX
+      - self.offsetX * windowScaleX / 2,
+    self.y * windowScaleY
+      + self.parts.lens.offsetY * self.scale * windowScaleY
+      + self.parts.lens.originalPosition.y * self.scale * windowScaleY
+      - self.offsetY * windowScaleY / 2
 end
 
 function Camera:update(dt, mouseX, mouseY)

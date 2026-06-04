@@ -5,13 +5,15 @@ local events = require("lib.events")
 local areas  = require("core.areas")
 local Card   = require("core.card")
 local NewCard = require("core.newCard")
-local Hand   = require("core.hand")
+-- local Hand   = require("core.hand")
+local NewHand   = require("core.newHand")
 local config       = require("lib.config")
 local Projectile   = require("core.projectile")
 local projectiles  = require("core.projectiles")
 local sequences    = require("core.sequences")
 local Deck         = require("core.deck")
 local Camera       = require("core.camera")
+local Token        = require("core.token")
 
 local Color = require("lib.color")
 
@@ -21,13 +23,16 @@ local tiltShader = nil
 screenshake = require("lib.screenshake")
 -- local ramChipAsset = nil
 -- local erdnaseAsset = nil
-local hand = Hand.new()
+local hand = NewHand.new()
 local deck = nil
 
-local singleNewCard = nil
+local tokens = {}
 
 local boardAsset = nil
 local camera = nil
+
+SCALE_X = love.graphics.getWidth() / 3840
+SCALE_Y = love.graphics.getHeight() / 2160
 
 function love.load()
   https = runtimeLoader.loadHTTPS()
@@ -41,6 +46,7 @@ function love.load()
   -- ramChipAsset = love.graphics.newImage("assets/ram-chip-tiny.png")
   -- erdnaseAsset = love.graphics.newImage("assets/erdnase.png")
 
+  Token.load()
   camera = Camera.load()
 
   boardAsset = love.graphics.newImage(
@@ -89,7 +95,6 @@ function love.load()
   local scaleX = love.graphics.getWidth() / 3840
   local scaleY = love.graphics.getHeight() / 2160
   print("ScaleX: " .. scaleX .. ", ScaleY: " .. scaleY)
-  singleNewCard = NewCard.new(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2, newCardAsset)
   local newCardLineAsset = love.graphics.newImage("assets/proto/card-line2.png", { mipmaps = true })
   local newCardPlayLineAsset = love.graphics.newImage("assets/proto/card-play-line2.png", { mipmaps = true })
   local newCardDiscardLineAsset = love.graphics.newImage("assets/proto/card-discard-line.png", { mipmaps = true })
@@ -99,35 +104,30 @@ function love.load()
   local newCardDiscardEffectAsset = love.graphics.newImage("assets/proto/card-discard-effect.png", { mipmaps = true })
   local newCardDtorEffectAsset = love.graphics.newImage("assets/proto/card-dtor-effect.png", { mipmaps = true })
 
-  singleNewCard:setParts({
-    -- { id = "line", asset = newCardLineAsset, dx = 107, dy = 456 },
-    { id = "line", asset = newCardLineAsset, origin = { x = 107, y = 456 } },
-    { id = "playLine", asset = newCardPlayLineAsset, origin = { x = 107, y = 422 } },
-    { id = "discardLine", asset = newCardDiscardLineAsset, origin = { x = 452, y = 469 } },
-    { id = "topEnergyHoles", asset = newCardTopEnergyHolesAsset, origin = { x = 220, y = 45 } },
-    { id = "bottomEnergy", asset = newCardBottomEnergyAsset, origin = { x = 228, y = 858 }, hidden = true },
-    { id = "playEffect", asset = newCardPlayEffectAsset, origin = { x = 106, y = 201 } },
-    { id = "discardEffect", asset = newCardDiscardEffectAsset, origin = { x = 106, y = 552 } },
-    { id = "dtorEffect", asset = newCardDtorEffectAsset, origin = { x = 103, y = 746 } },
-  })
-  singleNewCard.shader = dissolveShader
-  singleNewCard.tiltShader = tiltShader
+  for _ = 1, 5 do
+    local newCard = NewCard.new(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2, newCardAsset)
+    newCard:setParts({
+      -- { id = "line", asset = newCardLineAsset, dx = 107, dy = 456 },
+      { id = "line", asset = newCardLineAsset, origin = { x = 107, y = 456 } },
+      { id = "playLine", asset = newCardPlayLineAsset, origin = { x = 107, y = 422 } },
+      { id = "discardLine", asset = newCardDiscardLineAsset, origin = { x = 452, y = 469 } },
+      { id = "topEnergyHoles", asset = newCardTopEnergyHolesAsset, origin = { x = 220, y = 45 } },
+      { id = "bottomEnergy", asset = newCardBottomEnergyAsset, origin = { x = 228, y = 858 }, hidden = true },
+      { id = "playEffect", asset = newCardPlayEffectAsset, origin = { x = 106, y = 201 } },
+      { id = "discardEffect", asset = newCardDiscardEffectAsset, origin = { x = 106, y = 552 } },
+      { id = "dtorEffect", asset = newCardDtorEffectAsset, origin = { x = 103, y = 746 } },
+    })
+    newCard.shader = dissolveShader
+    newCard.tiltShader = tiltShader
+    hand:add(newCard, true, true)
+  end
   events.load()
   overlayStats.load()
 end
 
-local function hexToRGBA(hex)
-  hex = hex:gsub("#", "")
-  local r = tonumber(hex:sub(1, 2), 16) / 255
-  local g = tonumber(hex:sub(3, 4), 16) / 255
-  local b = tonumber(hex:sub(5, 6), 16) / 255
-  -- local a = tonumber(hex:sub(7, 8), 16) / 255 or 1
-  return {r, g, b, 1}
-end
-
 function love.draw()
   -- #12131A
-  love.graphics.setColor(hexToRGBA("#12131A"))
+  love.graphics.setColor(Color("#12131A"))
   -- love.graphics.setColor(hexToRGBA("#20222E"))
   love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(1, 1, 1, 1)
@@ -139,25 +139,23 @@ function love.draw()
   --   love.graphics.draw(shipAsset, 0, 0)
   -- end
   if boardAsset then
-    -- boardAsset is 3840 x 2160, scale to fit current window
-    local scaleX = love.graphics.getWidth() / 3840
-    local scaleY = love.graphics.getHeight() / 2160
-    love.graphics.draw(boardAsset, 0, 0, 0, scaleX, scaleY)
+    love.graphics.draw(boardAsset, 0, 0, 0, SCALE_X, SCALE_Y)
   end
   -- areas.drawBefore(hand:isDragging())
 
   -- if deck and hand:isDragging() then deck:draw() end
-  -- hand:draw()
   -- if deck and not hand:isDragging() then deck:draw() end
   -- for _, proj in pairs(projectiles) do proj:draw() end
   -- areas.drawAfter(hand:isDragging())
   areas.drawStatic()
   if camera then camera:draw() end
+  hand:draw()
+  Token.drawAll()
   love.graphics.pop()
 
-  if singleNewCard then
-    singleNewCard:draw()
-  end
+  -- if singleNewCard then
+  --   singleNewCard:draw()
+  -- end
 
   overlayStats.draw()
 end
@@ -167,33 +165,34 @@ function love.update(dt)
   gameDt = dt * config.speed
   screenshake.update(realDt)
   local mouseX, mouseY = love.mouse.getPosition()
-  if singleNewCard then
-  --   if singleNewCard:containsPoint(mouseX, mouseY) and singleNewCard.hover.can then
-  --    singleNewCard.hover.is = true
-  --    singleNewCard.hover.can = false
-  --    singleNewCard.target.scale = 0.75
-  --  else
-  --    singleNewCard.hover.is = false
-  --    singleNewCard.hover.can = true
-  --    singleNewCard.target.scale = 0.5
-  --  end
-    singleNewCard:update(realDt, mouseX, mouseY)
+  -- if singleNewCard then
+  -- --   if singleNewCard:containsPoint(mouseX, mouseY) and singleNewCard.hover.can then
+  -- --    singleNewCard.hover.is = true
+  -- --    singleNewCard.hover.can = false
+  -- --    singleNewCard.target.scale = 0.75
+  -- --  else
+  -- --    singleNewCard.hover.is = false
+  -- --    singleNewCard.hover.can = true
+  -- --    singleNewCard.target.scale = 0.5
+  -- --  end
+  --   -- singleNewCard:update(realDt, mouseX, mouseY)
 
-    if singleNewCard.drag.is and camera then
-      if areas.mouseInPlay(mouseX, mouseY) then
-        camera.parts.ring.color = Color("#6ED59E")
-        singleNewCard:moveToPlay()
-      elseif areas.mouseInDiscard(mouseX, mouseY) then
-        camera.parts.ring.color = Color("#D56E6E")
-        singleNewCard:moveToDiscard()
-      else
-        camera.parts.ring.color = Color("#FFFFFF")
-        singleNewCard:returnToIdle()
-      end
-    end
-  end
+  --   if singleNewCard.drag.is and camera then
+  --     if areas.mouseInPlay(mouseX, mouseY) then
+  --       camera:setColor(Color("#6ED59E"))
+  --       singleNewCard:moveToPlay()
+  --     elseif areas.mouseInDiscard(mouseX, mouseY) then
+  --       camera:setColor(Color("#D56E6E"))
+  --       singleNewCard:moveToDiscard()
+  --     else
+  --       camera:setColor(Color("#FFFFFF"))
+  --       singleNewCard:returnToIdle()
+  --     end
+  --   end
+  -- end
   if camera then camera:update(realDt, mouseX, mouseY) end
-  -- hand:update(mouseX, mouseY)
+  hand:update(mouseX, mouseY, camera)
+  Token.updateAll(realDt)
   -- areas.update(mouseX, mouseY)
   -- for _, proj in pairs(projectiles) do proj:update() end
   events.update()
@@ -224,24 +223,27 @@ function love.keypressed(key)
     config.cycleSpeed()
     print("Speed: " .. config.speed .. "x")
   elseif key == "1" then
-    local card = hand.cards[1]
-    if card then sequences.popTopOff(card, areas) end
+    -- local card = hand.cards[1]
+    -- if card then sequences.popTopOff(card, areas) end
   elseif key == "n" then
     if deck then
-      local card = deck:deal()
-      if card then hand:add(card, false) end
+      -- local card = deck:deal()
+      -- if card then hand:add(card, false) end
     end
   elseif key == "2" then
-    local card = hand.cards[1]
-    if card then sequences.insertMiddle(card) end
+    -- local card = hand.cards[1]
+    -- if card then sequences.insertMiddle(card) end
   elseif key == "d" then
     -- areas.reorderDestructorQueue()
-
+    print("here")
     local card = hand.cards[1]
-    card:shake()
+    -- card:shake()
 
     -- if card then card:startReverseDissolve() end
-    -- if card then card:startDissolve() end
+    if card then
+      print("Starting dissolve on card")
+      card:startDissolve()
+    end
 
     -- events.push({
     --   fn = function()
@@ -304,30 +306,93 @@ function love.keypressed(key)
     --   delay = 0.7, type = "after",
     -- })
   elseif key == "0" then
-    local card = hand.cards[1]
-    if card then
+    table.insert(tokens, Token.new_fling(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      {
+        x = areas.desk.x + areas.desk.w / 2,
+        y = areas.desk.y,
+        w = areas.desk.w / 2,
+        h = areas.desk.h / 2,
+      },
+      {
+        bounces = math.random(2, 3),
+        type = "progress",
+      }
+    ))
+    -- table.insert(tokens, Token.new_fling(
+    --   love.graphics.getWidth() / 2,
+    --   love.graphics.getHeight() / 2,
+    --   {
+    --     x = areas.desk.x + areas.desk.w / 2,
+    --     y = areas.desk.y,
+    --     w = areas.desk.w / 2,
+    --     h = areas.desk.h / 2,
+    --   },
+    --   {
+    --     bounces = math.random(2, 3),
+    --     type = "threat",
+    --   }
+    -- ))
+    -- table.insert(tokens, Token.new_fling(
+    --   love.graphics.getWidth() / 2,
+    --   love.graphics.getHeight() / 2,
+    --   {
+    --     x = areas.desk.x + areas.desk.w / 2,
+    --     y = areas.desk.y,
+    --     w = areas.desk.w / 2,
+    --     h = areas.desk.h / 2,
+    --   },
+    --   {
+    --     bounces = math.random(2, 3),
+    --     type = "ram",
+    --   }
+    -- ))
+    -- table.insert(tokens, Token.new_fling(
+    --   love.graphics.getWidth() / 2,
+    --   love.graphics.getHeight() / 2,
+    --   {
+    --     x = areas.desk.x + areas.desk.w / 2,
+    --     y = areas.desk.y,
+    --     w = areas.desk.w / 2,
+    --     h = areas.desk.h / 2,
+    --   },
+    --   {
+    --     bounces = math.random(2, 3),
+    --     type = "nullify",
+    --   }
+    -- ))
+
+    -- table.insert(tokens, Token.new_attract(
+    --   love.graphics.getWidth() / 2,
+    --   love.graphics.getHeight() / 2,
+    --   areas.desk.x,
+    --   areas.desk.y
+    -- ))
+    -- local card = hand.cards[1]
+    -- if card then
       -- card:clearParts()
-      card:resetDissolve()
-    end
-  elseif key == "k" then
-    -- local klak = areas.klak
-    -- if klak.target.y == klak.upY then
-    --   klak.target.y = klak.downY
-    -- else
-    --   klak.target.y = klak.upY
+      -- card:resetDissolve()
     -- end
-    if singleNewCard then
-      singleNewCard:moveToDiscard()
-    end
-  elseif key == "l" then
-    if singleNewCard then
-      singleNewCard:moveToPlay()
-    end
-  elseif key == "j" then
-    if singleNewCard then
-      singleNewCard:returnPartsToOrigin()
-      singleNewCard:revealAllParts()
-    end
+  -- elseif key == "k" then
+  --   -- local klak = areas.klak
+  --   -- if klak.target.y == klak.upY then
+  --   --   klak.target.y = klak.downY
+  --   -- else
+  --   --   klak.target.y = klak.upY
+  --   -- end
+  --   if singleNewCard then
+  --     singleNewCard:moveToDiscard()
+  --   end
+  -- elseif key == "l" then
+  --   if singleNewCard then
+  --     singleNewCard:moveToPlay()
+  --   end
+  -- elseif key == "j" then
+  --   if singleNewCard then
+  --     singleNewCard:returnPartsToOrigin()
+  --     singleNewCard:revealAllParts()
+  --   end
   else
     overlayStats.handleKeyboard(key)
   end
