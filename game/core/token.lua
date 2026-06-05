@@ -9,8 +9,8 @@ local instances = {}
 local DRAG        = 0.85   -- per-frame velocity multiplier (tune for feel)
 local RESTITUTION = 0.85    -- energy kept on wall bounce
 local MIN_SPEED   = 2       -- px/s below which we snap to rest
-local ARC_SCALE   = 0.95    -- max scale delta at arc peak
-local SPIN_SCALE  = 0.004   -- rotation rate relative to horizontal speed (rad/px)
+local ARC_SCALE   = 1.5    -- max scale delta at arc peak
+local SPIN_SCALE  = 0.012   -- rotation rate relative to horizontal speed (rad/px)
 
 local ramAsset = nil
 local progressAsset = nil
@@ -143,6 +143,7 @@ function Token.new_fling(start_x, start_y, rect, options)
     self.base_scale = options.base_scale or 1
     self.scale      = self.base_scale
     self.done       = false
+    self.token_type = options.type
     if options.type == "ram" then
       self.asset = ramAsset
     elseif options.type == "progress" then
@@ -214,14 +215,22 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     self.y           = start_y
     self.target_x    = target_x
     self.target_y    = target_y
-    self.speed       = options.initial_speed or 60
-    self.max_speed   = options.max_speed      or 700
-    self.accel       = options.acceleration   or 900
+    self.speed       = options.initial_speed  or (60   * SCALE_X)
+    self.max_speed   = options.max_speed      or (10000 * SCALE_X)
+    self.accel       = options.acceleration   or (5000 * SCALE_X)
     self.threshold   = options.threshold      or 4
-    self.base_scale  = options.base_scale     or 1
-    self.scale       = self.base_scale
-    self.rotation    = 0
-    self.done        = false
+    self.base_scale      = options.base_scale     or 1
+    self.scale           = self.base_scale
+    self.rotation        = 0
+    self.done            = false
+    self.token_type      = options.type
+    self.start_rotation  = 0
+    self.target_rotation = options.target_rotation or 0
+    self.start_scale     = self.base_scale
+    self.target_scale    = options.target_scale    or self.base_scale
+    local adx = target_x - start_x
+    local ady = target_y - start_y
+    self.attract_dist    = math.max(math.sqrt(adx*adx + ady*ady), 1)
 
     table.insert(instances, self)
     return self
@@ -295,9 +304,10 @@ function Token:_update_attract(dt)
     local dist = math.sqrt(dx*dx + dy*dy)
 
     if dist < self.threshold then
-        self.x, self.y = self.target_x, self.target_y
-        self.scale = self.base_scale
-        self.done  = true
+        self.x, self.y   = self.target_x, self.target_y
+        self.rotation    = self.target_rotation
+        self.scale       = self.target_scale
+        self.done        = true
         return
     end
 
@@ -311,34 +321,36 @@ function Token:_update_attract(dt)
     self.x = self.x + nx * step
     self.y = self.y + ny * step
 
-    -- no arc for attract — scale stays flat (it's "on the desk" the whole time)
-    self.scale = self.base_scale
+    -- tween rotation and scale based on travel progress
+    local t = 1 - math.min(dist / self.attract_dist, 1)
+    self.rotation = self.start_rotation + (self.target_rotation - self.start_rotation) * t
+    self.scale    = self.start_scale    + (self.target_scale    - self.start_scale)    * t
 end
 
 function Token:draw()
-    love.graphics.push()
-    love.graphics.translate(self.x, self.y)
-    love.graphics.rotate(self.rotation)
-    love.graphics.scale(
-      (self.scale * SCALE_X) * 0.3,
-      (self.scale * SCALE_Y) * 0.3
+  love.graphics.push()
+  love.graphics.translate(self.x, self.y)
+  love.graphics.rotate(self.rotation)
+  love.graphics.scale(
+    (self.scale * SCALE_X) * 0.3,
+    (self.scale * SCALE_Y) * 0.3
+  )
+  if self.asset then
+    love.graphics.draw(
+      self.asset,
+      0,
+      0,
+      0,
+      1, 1,
+      self.asset:getWidth() / 2,
+      self.asset:getHeight() / 2
     )
-    if self.asset then
-      love.graphics.draw(
-        self.asset,
-        0,
-        0,
-        0,
-        1, 1,
-        self.asset:getWidth() / 2,
-        self.asset:getHeight() / 2
-      )
-    else
-      -- placeholder if asset fails to load:
-      love.graphics.setColor(1, 0.5, 0.5, 1)
-      love.graphics.circle("fill", 0, 0, 100 * SCALE_X)
-    end
-    love.graphics.pop()
+  else
+    -- placeholder if asset fails to load:
+    love.graphics.setColor(1, 0.5, 0.5, 1)
+    love.graphics.circle("fill", 0, 0, 100 * SCALE_X)
+  end
+  love.graphics.pop()
 end
 
 ------------------------------------------------------------------------
@@ -361,6 +373,69 @@ function Token.isActive()
         if not token.done then return true end
     end
     return false
+end
+
+------------------------------------------------------------------------
+-- Attract all done tokens of a given type toward a destination.
+-- destination = {x, y} point, or {x, y, w, h} rect (uses center).
+-- Mutates matching instances back into attract mode in-place.
+------------------------------------------------------------------------
+function Token.attractDone(token_type, destination, options)
+    options = options or {}
+
+    for _, token in ipairs(instances) do
+        if token.done and token.token_type == token_type then
+            local target_x, target_y
+            if type(destination) == "function" then
+                local dest = destination(token)
+                if dest then
+                    target_x, target_y = dest.x, dest.y
+                end
+            elseif destination.w then
+                target_x = destination.x + math.random() * destination.w
+                target_y = destination.y + math.random() * destination.h
+            else
+                target_x = destination.x
+                target_y = destination.y
+            end
+            if target_x and target_y then
+                local adx = target_x - token.x
+                local ady = target_y - token.y
+                token.mode             = "attract"
+                token.target_x         = target_x
+                token.target_y         = target_y
+                token.speed            = options.initial_speed  or (60   * SCALE_X)
+                token.max_speed        = options.max_speed      or (10000 * SCALE_X)
+                token.accel            = options.acceleration   or (5000 * SCALE_X)
+                token.threshold        = options.threshold      or 4
+                token.start_rotation   = token.rotation
+                token.target_rotation  = options.target_rotation or 0
+                token.start_scale      = token.scale
+                token.target_scale     = options.target_scale   or token.base_scale
+                token.attract_dist     = math.max(math.sqrt(adx*adx + ady*ady), 1)
+                token.done             = false
+            end
+        end
+    end
+end
+
+------------------------------------------------------------------------
+-- Remove done tokens from instances.
+-- token_type: optional; if nil, removes all done tokens.
+-- Returns the table of removed tokens.
+------------------------------------------------------------------------
+function Token.removeDone(token_type)
+    local removed   = {}
+    local remaining = {}
+    for _, token in ipairs(instances) do
+        if token.done and (token_type == nil or token.token_type == token_type) then
+            removed[#removed + 1] = token
+        else
+            remaining[#remaining + 1] = token
+        end
+    end
+    instances = remaining
+    return removed
 end
 
 return Token

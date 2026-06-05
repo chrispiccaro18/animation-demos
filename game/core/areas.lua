@@ -34,6 +34,23 @@ areas.desk = {
   h = 1684 * love.graphics.getHeight() / 2160,
 }
 
+areas.dtorQueue = {
+  x = 3194 * love.graphics.getWidth() / 3840,
+  y = 639 * love.graphics.getHeight() / 2160,
+  w = 494 * love.graphics.getWidth() / 3840,
+  h = 1088 * love.graphics.getHeight() / 2160,
+  color = { 1, 0.2, 0.2, 1 },
+  maxSlots = 6,
+  slots = {},
+}
+
+do
+  local dq = areas.dtorQueue
+  for i = 1, dq.maxSlots do
+    dq.slots[i] = { occupied = false }
+  end
+end
+
 areas.endTurn           = {
   x = W - 305 - 30,
   y = H - 118 - 30,
@@ -53,6 +70,7 @@ areas.destructor        = {
   h = 0,
   color = { 1, 0, 0, 1 },
 }
+
 areas.ram               = { value = 1, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
 areas.pool              = {
   x = 0,
@@ -581,6 +599,11 @@ function areas.drawStatic()
   love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
   love.graphics.setColor(1, 1, 1, 1)
 
+  local dtor = areas.dtorQueue
+  love.graphics.setColor(dtor.color)
+  love.graphics.rectangle("line", dtor.x, dtor.y, dtor.w, dtor.h)
+  love.graphics.setColor(1, 1, 1, 1)
+
   local po = areas.pool
   love.graphics.setColor(0.5, 0.5, 0.5, 1)
   love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
@@ -609,6 +632,32 @@ function areas.drawStatic()
     love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setFont(prevFont)
+  end
+end
+
+-- Returns the {x, y, index} of the next free dtor slot and marks it occupied.
+-- Returns nil if all slots are full.
+function areas.claimDtorSlot()
+  local dq = areas.dtorQueue
+  for i = 1, dq.maxSlots do
+    if not dq.slots[i].occupied then
+      dq.slots[i].occupied = true
+      local slotH = dq.h / dq.maxSlots
+      return {
+        x = dq.x + dq.w / 2,
+        y = dq.y + (i - 0.5) * slotH,
+        index = i,
+      }
+    end
+  end
+  return nil
+end
+
+-- Frees the slot at index so it can be claimed again.
+function areas.releaseDtorSlot(index)
+  local dq = areas.dtorQueue
+  if dq.slots[index] then
+    dq.slots[index].occupied = false
   end
 end
 
