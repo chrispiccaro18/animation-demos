@@ -129,7 +129,7 @@ function Hand:update(mouseX, mouseY, camera)
   if draggingCard and
     not areas.mouseInPlay(mouseX, mouseY) and
     not areas.mouseInDiscard(mouseX, mouseY) then
-      camera:setColor(Color("#FFFFFF"))
+      camera:setColor(Color("#88EDFF"))
       draggingCard:returnToIdle()
   end
 
@@ -169,7 +169,7 @@ function Hand:update(mouseX, mouseY, camera)
       self:layout()
       if areas.mouseInPlay(mouseX, mouseY) then
         card:returnToIdle()
-        camera:setColor(Color("#FFFFFF"))
+        camera:setColor(Color("#88EDFF"))
         screenshake.triggerH()
         card._excluded = false
         self:layout()

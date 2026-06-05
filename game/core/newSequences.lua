@@ -14,6 +14,13 @@ local discardDeskArea = {
   h = areas.desk.h * 0.5,
 }
 
+local discardDeskFullRect = {
+  x = areas.desk.x + areas.desk.w / 2,
+  y = areas.desk.y,
+  w = areas.desk.w / 2,
+  h = areas.desk.h,
+}
+
 function sequences.discard(card, camera, laser)
   events.push({
     fn = function()
@@ -68,64 +75,71 @@ function sequences.discard(card, camera, laser)
       Token.new_fling(
         card.current.x,
         card.current.y,
-        discardDeskArea,
+        discardDeskFullRect,
         {
           bounces = math.random(2, 3),
           type = "ram",
+          target_rect = discardDeskArea,
         }
       )
       Token.new_fling(
         card.current.x,
         card.current.y,
-        discardDeskArea,
+        discardDeskFullRect,
         {
           bounces = math.random(2, 3),
           type = "ram",
+          target_rect = discardDeskArea,
         }
       )
       Token.new_fling(
         card.current.x,
         card.current.y,
-        discardDeskArea,
+        discardDeskFullRect,
         {
           bounces = math.random(2, 3),
           type = "ram",
+          target_rect = discardDeskArea,
         }
       )
       Token.new_fling(
         card.current.x,
         card.current.y,
-        discardDeskArea,
+        discardDeskFullRect,
         {
           bounces = math.random(2, 3),
           type = "progress",
+          target_rect = discardDeskArea,
         }
       )
       Token.new_fling(
         card.current.x,
         card.current.y,
-        discardDeskArea,
+        discardDeskFullRect,
         {
           bounces = math.random(2, 3),
           type = "threat",
+          target_rect = discardDeskArea,
         }
       )
       Token.new_fling(
         card.current.x,
         card.current.y,
-        discardDeskArea,
+        discardDeskFullRect,
         {
           bounces = math.random(2, 3),
           type = "nullify",
+          target_rect = discardDeskArea,
         }
       )
       Token.new_fling(
         card.current.x,
         card.current.y,
-        discardDeskArea,
+        discardDeskFullRect,
         {
           bounces = math.random(2, 3),
           type = "dtor",
+          target_rect = discardDeskArea,
         }
       )
     end,
@@ -146,7 +160,7 @@ function sequences.discard(card, camera, laser)
       Token.attractDone(
         "dtor",
         function(_token)
-          return areas.claimDtorSlot()
+          return areas.reserveDtorSlot()
         end,
         {
           target_rotation = 0,
@@ -154,6 +168,62 @@ function sequences.discard(card, camera, laser)
           initial_speed = 700,
         }
       )
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate"
+  })
+  events.push({
+    fn = function()
+      return Token.allDone()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll"
+  })
+  events.push({
+    fn = function()
+      local ramTokens = Token.removeDone("ram")
+      for _, t in ipairs(ramTokens) do
+        areas.addPoolChip(t.x, t.y)
+      end
+      local dtorTokens = Token.removeDone("dtor")
+      for _, t in ipairs(dtorTokens) do
+        if t.dest_meta and t.dest_meta.index then
+          areas.claimDtorSlot(t.dest_meta.index, t.scale)
+        end
+      end
+      areas.scanner.right.active = true
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 1.5, type = "after"
+  })
+  events.push({
+    fn = function()
+      Token.attractDone("progress", areas.progressDestination, { target_scale = 1.5 })
+      Token.attractDone("threat", areas.threatDestination , { target_scale = 1.5 })
+      Token.attractDone("nullify", areas.nextUnnullifiedDtorSlot(), { target_scale = 1.5 })
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after"
+  })
+  events.push({
+    fn = function()
+      return Token.allDone()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll"
+  })
+  events.push({
+    fn = function()
+      local removedTokens = Token.removeDone()
+      for _, t in ipairs(removedTokens) do
+        if t.token_type == "progress" then
+          areas.progressBar.count = math.min(areas.progressBar.count + 1, 5)
+        elseif t.token_type == "threat" then
+          areas.threatBar.count = math.min(areas.threatBar.count + 1, 5)
+        elseif t.token_type == "nullify" then
+          areas.nullifyNextDtorSlot()
+        end
+      end
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"

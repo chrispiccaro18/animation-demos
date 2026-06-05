@@ -151,6 +151,7 @@ function love.draw()
   if camera then camera:draw() end
   hand:draw()
   Token.drawAll()
+  areas.drawScanners()
   love.graphics.pop()
 
   -- if singleNewCard then
@@ -193,6 +194,9 @@ function love.update(dt)
   if camera then camera:update(realDt, mouseX, mouseY) end
   hand:update(mouseX, mouseY, camera)
   Token.updateAll(realDt)
+  areas.updateScanners(realDt)
+  if areas.scanner.left.active  then Token.triggerQuiverNear(areas.scanner.left.y)  end
+  if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y) end
   -- areas.update(mouseX, mouseY)
   -- for _, proj in pairs(projectiles) do proj:update() end
   events.update()
@@ -219,6 +223,10 @@ function love.keypressed(key)
     areas.takeFromDestructorQueue()
   elseif key == "s" then
     screenshake.trigger()
+  elseif key == "q" then
+    areas.scanner.left.active = not areas.scanner.left.active
+  elseif key == "w" then
+    areas.scanner.right.active = not areas.scanner.right.active
   elseif key == "tab" then
     config.cycleSpeed()
     print("Speed: " .. config.speed .. "x")

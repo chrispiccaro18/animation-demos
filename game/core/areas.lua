@@ -27,6 +27,16 @@ areas.discard           = {
   target   = { y = 1 },
 }
 
+areas.progressDestination = {
+  x = 436 * love.graphics.getWidth() / 3840,
+  y = 142 * love.graphics.getHeight() / 2160,
+}
+
+areas.threatDestination = {
+  x = 3264 * love.graphics.getWidth() / 3840,
+  y = 142 * love.graphics.getHeight() / 2160,
+}
+
 areas.desk = {
   x = 241 * love.graphics.getWidth() / 3840,
   y = 305 * love.graphics.getHeight() / 2160,
@@ -44,10 +54,30 @@ areas.dtorQueue = {
   slots = {},
 }
 
+areas.progressBar = {
+  x = 873 * love.graphics.getWidth() / 3840,
+  y = 73 * love.graphics.getHeight() / 2160,
+  w = 38 * love.graphics.getWidth() / 3840,
+  h = 138 * love.graphics.getHeight() / 2160,
+  gapX = 64 * love.graphics.getWidth() / 3840,
+  asset = nil,
+  count = 0,
+}
+
+areas.threatBar = {
+  x = 2320 * love.graphics.getWidth() / 3840,
+  y = 73 * love.graphics.getHeight() / 2160,
+  w = 38 * love.graphics.getWidth() / 3840,
+  h = 138 * love.graphics.getHeight() / 2160,
+  gapX = 64 * love.graphics.getWidth() / 3840,
+  asset = nil,
+  count = 0,
+}
+
 do
   local dq = areas.dtorQueue
   for i = 1, dq.maxSlots do
-    dq.slots[i] = { occupied = false }
+    dq.slots[i] = { occupied = false, reserved = false }
   end
 end
 
@@ -91,8 +121,6 @@ local textObjectScale   = 1
 local endTurnAsset      = nil
 local endTurnHoverAsset = nil
 local endTurnClickAsset = nil
-local ramAsset          = nil
-local ramTinyAsset      = nil
 local progressAsset     = nil
 local threatAsset       = nil
 local spiderThreatAsset = nil
@@ -102,7 +130,10 @@ local messageFont       = nil
 local klakAsset         = nil
 local klakBGAsset       = nil
 
+local ramTokenAsset        = nil
 local destructorQueueAsset = nil
+local dtorTokenAsset       = nil
+local dtorTokenNullAsset       = nil
 
 function areas.load()
   slotBottomAsset          = love.graphics.newImage("assets/slot-bottom.png")
@@ -111,12 +142,12 @@ function areas.load()
   endTurnHoverAsset        = love.graphics.newImage("assets/kilo-end-turn-hover.png")
   endTurnClickAsset        = love.graphics.newImage("assets/kilo-end-turn-click.png")
 
+  areas.progressBar.asset = love.graphics.newImage("assets/proto/progress-tick.png", { mipmaps = true })
+  areas.threatBar.asset = love.graphics.newImage("assets/proto/threat-tick.png", { mipmaps = true })
   areas.endTurn.baseAsset  = endTurnAsset
   areas.endTurn.hoverAsset = endTurnHoverAsset
   areas.endTurn.clickAsset = endTurnClickAsset
 
-  ramAsset                 = love.graphics.newImage("assets/large-ram.png")
-  ramTinyAsset             = love.graphics.newImage("assets/ram-chip.png")
   progressAsset            = love.graphics.newImage("assets/new-progress.png")
   -- progressAsset     = love.graphics.newImage("assets/progress.png")
   threatAsset              = love.graphics.newImage("assets/new-threat.png")
@@ -129,6 +160,9 @@ function areas.load()
   klakBGAsset              = love.graphics.newImage("assets/klak-bg.png")
 
   destructorQueueAsset = love.graphics.newImage("assets/destructor-queue.png")
+  dtorTokenAsset       = love.graphics.newImage("assets/proto/dtor-token.png", { mipmaps = true })
+  dtorTokenNullAsset       = love.graphics.newImage("assets/proto/dtor-token-nullified.png", { mipmaps = true })
+  ramTokenAsset              = love.graphics.newImage("assets/proto/ram-chip.png", { mipmaps = true })
 
   local klakBGW            = klakBGAsset:getWidth()
   local klakBGH            = klakBGAsset:getHeight()
@@ -219,8 +253,30 @@ function areas.load()
   -- areas.play.h             = areas.playKlakBG.y + areas.playKlakBG.h
 
 
-  areas.ram.w        = ramAsset:getWidth()
-  areas.ram.h        = ramAsset:getHeight()
+  local dk = areas.desk
+  areas.scanner = {
+    left = {
+      x1 = dk.x, x2 = dk.x + dk.w / 2,
+      y = dk.y, direction = 1,
+      speed = 3000 * SCALE_Y,
+      active = false,
+      color = { 0, 1, 0.4 },
+      trailLength = 1000 * SCALE_Y,
+      segments = 48,
+    },
+    right = {
+      x1 = dk.x + dk.w / 2, x2 = dk.x + dk.w,
+      y = dk.y, direction = 1,
+      speed = 3000 * SCALE_Y,
+      active = false,
+      color = { 1, 0.2, 0.2 },
+      trailLength = 1000 * SCALE_Y,
+      segments = 48,
+    },
+  }
+
+  areas.ram.w        = ramTokenAsset:getWidth()
+  areas.ram.h        = ramTokenAsset:getHeight()
   areas.ram.x        = (W - areas.ram.w) / 2
   areas.ram.y        = 2
 
@@ -303,6 +359,54 @@ function areas.takeFromDestructorQueue()
   local item = table.remove(areas.destructor.queue, 1)
   -- areas.reorderDestructorQueue()
   return item
+end
+
+function areas.updateScanners(dt)
+  local top = areas.desk.y
+  local bot = areas.desk.y + areas.desk.h
+  for _, s in pairs(areas.scanner) do
+    if s.active then
+      s.y = s.y + s.speed * s.direction * dt
+      if s.y >= bot then
+        s.y = bot
+        s.direction = -1
+      elseif s.y <= top and s.direction == -1 then
+        s.y = top
+        s.direction = 1
+        s.active = false
+      end
+    end
+  end
+end
+
+function areas.drawScanners()
+  local top = areas.desk.y
+  local bot = areas.desk.y + areas.desk.h
+  for _, s in pairs(areas.scanner) do
+    if s.active then
+      local step = s.trailLength / s.segments
+      for i = 1, s.segments do
+        local ty = s.y - s.direction * i * step
+        if ty >= top and ty <= bot then
+          local alpha = (1 - i / s.segments) * 0.5
+          love.graphics.setColor(s.color[1], s.color[2], s.color[3], alpha)
+          love.graphics.setLineWidth(2 * SCALE_Y)
+          love.graphics.line(s.x1, ty, s.x2, ty)
+        end
+      end
+      love.graphics.setColor(s.color[1], s.color[2], s.color[3], 0.2)
+      love.graphics.setLineWidth(8 * SCALE_Y)
+      love.graphics.line(s.x1, s.y, s.x2, s.y)
+      love.graphics.setColor(s.color[1], s.color[2], s.color[3], 0.55)
+      love.graphics.setLineWidth(4 * SCALE_Y)
+      love.graphics.line(s.x1, s.y, s.x2, s.y)
+      love.graphics.setColor(s.color[1], s.color[2], s.color[3], 1)
+      love.graphics.setLineWidth(1.5 * SCALE_Y)
+      love.graphics.line(s.x1, s.y, s.x2, s.y)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.setLineWidth(1)
+    end
+  end
 end
 
 function areas.randomPoolPosition()
@@ -532,15 +636,22 @@ function areas.drawBefore(isDragging)
     -- )
   end
 
-  local po = areas.pool
-  love.graphics.setColor(0.5, 0.5, 0.5, 1)
-  love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
-  love.graphics.setColor(1, 1, 1, 1)
-  if ramTinyAsset then
-    for _, chip in ipairs(po.chips) do
-      love.graphics.draw(ramTinyAsset, chip.x, chip.y)
-    end
-  end
+  -- local po = areas.pool
+  -- love.graphics.setColor(0.5, 0.5, 0.5, 1)
+  -- love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
+  -- love.graphics.setColor(1, 1, 1, 1)
+  -- if ramTokenAsset then
+  --   for _, chip in ipairs(po.chips) do
+  --     love.graphics.draw(
+  --       ramTokenAsset,
+  --       chip.x,
+  --       chip.y,
+  --       0,
+  --       SCALE_X * 0.3,
+  --       SCALE_Y * 0.3
+  --     )
+  --   end
+  -- end
 
   if destructorQueueAsset then
     love.graphics.draw(destructorQueueAsset, dtor.x, dtor.y)
@@ -592,30 +703,83 @@ function areas.drawStatic()
   local p = areas.play
   local d = areas.discard
 
-  love.graphics.setColor(p.color)
-  love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
-  love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.setColor(d.color)
-  love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
-  love.graphics.setColor(1, 1, 1, 1)
+  if areas.progressBar.asset then
+    for i = 0, areas.progressBar.count - 1 do
+      love.graphics.draw(
+        areas.progressBar.asset,
+        areas.progressBar.x + i * areas.progressBar.gapX,
+        areas.progressBar.y,
+        0, SCALE_X, SCALE_Y
+      )
+    end
+  end
+
+  if areas.threatBar.asset then
+    for i = 0, areas.threatBar.count - 1 do
+      love.graphics.draw(
+        areas.threatBar.asset,
+        areas.threatBar.x + i * areas.threatBar.gapX,
+        areas.threatBar.y,
+        0, SCALE_X, SCALE_Y
+      )
+    end
+  end
+
+  -- love.graphics.setColor(p.color)
+  -- love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
+  -- love.graphics.setColor(1, 1, 1, 1)
+  -- love.graphics.setColor(d.color)
+  -- love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
+  -- love.graphics.setColor(1, 1, 1, 1)
 
   local dtor = areas.dtorQueue
-  love.graphics.setColor(dtor.color)
-  love.graphics.rectangle("line", dtor.x, dtor.y, dtor.w, dtor.h)
+  -- love.graphics.setColor(dtor.color)
+  -- love.graphics.rectangle("line", dtor.x, dtor.y, dtor.w, dtor.h)
   love.graphics.setColor(1, 1, 1, 1)
+  if dtorTokenAsset and dtorTokenNullAsset then
+    local slotH = dtor.h / dtor.maxSlots
+    for i, slot in ipairs(dtor.slots) do
+      if slot.occupied then
+        local sx = dtor.x + dtor.w / 2
+        local sy = dtor.y + (i - 0.5) * slotH
+        local sc = (slot.scale or 1) * SCALE_X * 0.3
+        local asset = slot.nullified and dtorTokenNullAsset or dtorTokenAsset
+        love.graphics.push()
+        love.graphics.translate(sx, sy)
+        love.graphics.scale(sc, sc)
+        love.graphics.draw(
+          asset,
+          0, 0, 0, 1, 1,
+          dtorTokenAsset:getWidth() / 2,
+          dtorTokenAsset:getHeight() / 2
+        )
+        love.graphics.pop()
+      end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+  end
 
   local po = areas.pool
-  love.graphics.setColor(0.5, 0.5, 0.5, 1)
-  love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
+  -- love.graphics.setColor(0.5, 0.5, 0.5, 1)
+  -- love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
   love.graphics.setColor(1, 1, 1, 1)
-  if ramTinyAsset then
+  if ramTokenAsset then
     for _, chip in ipairs(po.chips) do
-      love.graphics.draw(ramTinyAsset, chip.x, chip.y)
+      love.graphics.draw(
+        ramTokenAsset,
+        chip.x,
+        chip.y,
+        0,
+        SCALE_X * 0.3,
+        SCALE_Y * 0.3,
+        ramTokenAsset:getWidth() / 2,
+        ramTokenAsset:getHeight() / 2
+      )
     end
   end
   love.graphics.setColor(1, 1, 1, 1)
 
-  love.graphics.rectangle("line", areas.desk.x, areas.desk.y, areas.desk.w, areas.desk.h)
+  -- love.graphics.rectangle("line", areas.desk.x, areas.desk.y, areas.desk.w, areas.desk.h)
 
   if messageFont and areas.message.text ~= "" then
     local msg      = areas.message
@@ -635,14 +799,15 @@ function areas.drawStatic()
   end
 end
 
--- Returns the {x, y, index} of the next free dtor slot and marks it occupied.
--- Returns nil if all slots are full.
-function areas.claimDtorSlot()
+-- Reserves the next free dtor slot for an in-flight token.
+-- Marks the slot reserved (prevents double-booking) but NOT occupied.
+-- Returns {x, y, index}, or nil if all slots are full or reserved.
+function areas.reserveDtorSlot()
   local dq = areas.dtorQueue
+  local slotH = dq.h / dq.maxSlots
   for i = 1, dq.maxSlots do
-    if not dq.slots[i].occupied then
-      dq.slots[i].occupied = true
-      local slotH = dq.h / dq.maxSlots
+    if not dq.slots[i].occupied and not dq.slots[i].reserved then
+      dq.slots[i].reserved = true
       return {
         x = dq.x + dq.w / 2,
         y = dq.y + (i - 0.5) * slotH,
@@ -653,11 +818,44 @@ function areas.claimDtorSlot()
   return nil
 end
 
--- Frees the slot at index so it can be claimed again.
+-- Finalizes a reserved slot: marks it occupied so areas draws the token there.
+-- Call this only after the token has physically arrived (ownership transfer).
+function areas.claimDtorSlot(index, scale)
+  local dq = areas.dtorQueue
+  if dq.slots[index] then
+    dq.slots[index].reserved = false
+    dq.slots[index].occupied = true
+    dq.slots[index].scale    = scale or 1
+  end
+end
+
+-- Frees a slot entirely (reserved or occupied).
 function areas.releaseDtorSlot(index)
   local dq = areas.dtorQueue
   if dq.slots[index] then
     dq.slots[index].occupied = false
+    dq.slots[index].reserved = false
+    dq.slots[index].scale    = nil
+  end
+end
+
+function areas.nextUnnullifiedDtorSlot()
+  local dq = areas.dtorQueue
+  for i = 1, dq.maxSlots do
+    if dq.slots[i].occupied and not dq.slots[i].nullified then
+      return { x = dq.x + dq.w / 2, y = dq.y + (i - 0.5) * (dq.h / dq.maxSlots), index = i }
+    end
+  end
+  return nil
+end
+
+function areas.nullifyNextDtorSlot()
+  local dq = areas.dtorQueue
+  for i = 1, dq.maxSlots do
+    if dq.slots[i].occupied and not dq.slots[i].nullified then
+      dq.slots[i].nullified = true
+      break
+    end
   end
 end
 

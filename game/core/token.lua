@@ -165,6 +165,9 @@ function Token.new_fling(start_x, start_y, rect, options)
     local dest_x, dest_y
     if options.target then
         dest_x, dest_y = options.target.x, options.target.y
+    elseif options.target_rect then
+        dest_x = options.target_rect.x + math.random() * options.target_rect.w
+        dest_y = options.target_rect.y + math.random() * options.target_rect.h
     else
         dest_x = rect.x + math.random() * rect.w
         dest_y = rect.y + math.random() * rect.h
@@ -240,12 +243,21 @@ end
 -- Shared update
 ------------------------------------------------------------------------
 function Token:update(dt)
-    if self.done then return end
-
     if self.mode == "fling" then
-        self:_update_fling(dt)
+        if not self.done then self:_update_fling(dt) end
     else
-        self:_update_attract(dt)
+        if not self.done then self:_update_attract(dt) end
+    end
+
+    if self.done and self.quiver and self.quiver.active then
+        self.quiver.time = self.quiver.time + dt
+        self.rotation = self.quiver.baseRot + math.sin(self.quiver.time * 18) * 0.35
+        self.scale    = self.base_scale + math.abs(math.sin(self.quiver.time * 12)) * 0.5
+        if self.quiver.time >= self.quiver.duration then
+            self.quiver.active = false
+            self.rotation = self.quiver.baseRot
+            self.scale    = self.base_scale
+        end
     end
 end
 
@@ -375,6 +387,15 @@ function Token.isActive()
     return false
 end
 
+function Token.allDone(token_type)
+    for _, token in ipairs(instances) do
+        if (token_type == nil or token.token_type == token_type) and not token.done then
+            return false
+        end
+    end
+    return true
+end
+
 ------------------------------------------------------------------------
 -- Attract all done tokens of a given type toward a destination.
 -- destination = {x, y} point, or {x, y, w, h} rect (uses center).
@@ -390,6 +411,7 @@ function Token.attractDone(token_type, destination, options)
                 local dest = destination(token)
                 if dest then
                     target_x, target_y = dest.x, dest.y
+                    token.dest_meta = dest
                 end
             elseif destination.w then
                 target_x = destination.x + math.random() * destination.w
@@ -414,6 +436,25 @@ function Token.attractDone(token_type, destination, options)
                 token.target_scale     = options.target_scale   or token.base_scale
                 token.attract_dist     = math.max(math.sqrt(adx*adx + ady*ady), 1)
                 token.done             = false
+            end
+        end
+    end
+end
+
+------------------------------------------------------------------------
+-- Trigger quiver on all done tokens within threshold pixels of scannerY.
+function Token.triggerQuiverNear(scannerY, threshold, duration)
+    threshold = threshold or (40 * SCALE_Y)
+    duration  = duration  or 0.25
+    for _, token in ipairs(instances) do
+        if token.done and math.abs(token.y - scannerY) < threshold then
+            if not (token.quiver and token.quiver.active) then
+                token.quiver = {
+                    active   = true,
+                    time     = 0,
+                    duration = duration,
+                    baseRot  = token.rotation,
+                }
             end
         end
     end
