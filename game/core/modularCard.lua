@@ -57,18 +57,20 @@ local function buildParts(data, assets)
       local slotCenters = {}
       for i = 1, n do
         local offsetX = (i - 1) * (holePW + gap)
-        slotCenters[i] = { dx = offsetX + holePW / 2, dy = holePH / 2 }
-        table.insert(items, { asset = holeAsset, offsetX = offsetX, offsetY = 0 })
+        local cx = offsetX + holePW / 2
+        local cy = holePH / 2
+        slotCenters[i] = { dx = cx, dy = cy }
+        table.insert(items, { asset = holeAsset, offsetX = cx, offsetY = cy })
 
         if zone.hasTypedTokens and effects then
           local tokenAsset = assets.tokens and assets.tokens[effects[i].type]
           if tokenAsset then
-            table.insert(items, { asset = tokenAsset, offsetX = offsetX, offsetY = 0, scale = fitScale(tokenAsset, holePW, holePH) })
+            table.insert(items, { asset = tokenAsset, offsetX = cx, offsetY = cy, scale = fitScale(tokenAsset, holePW, holePH) })
           end
         elseif zone.tokenKey then
           local tokenAsset = assets[zone.tokenKey]
           if tokenAsset then
-            table.insert(items, { asset = tokenAsset, offsetX = offsetX, offsetY = 0, scale = fitScale(tokenAsset, holePW, holePH) })
+            table.insert(items, { asset = tokenAsset, offsetX = cx, offsetY = cy, scale = fitScale(tokenAsset, holePW, holePH) })
           end
         end
       end
@@ -119,6 +121,25 @@ function ModularCard.new(x, y, baseAsset, data, assets)
     for i = 1, n do result[i] = self:getSlotPosition(zone, i) end
     return result
   end
+
+  -- local _baseDraw = card.draw
+  -- function card:draw()
+  --   _baseDraw(self)
+  --   local windowScaleX = love.graphics.getWidth() / 3840
+  --   local windowScaleY = love.graphics.getHeight() / 2160
+  --   love.graphics.setShader()
+  --   for _, zone in ipairs(EFFECT_ZONES) do
+  --     local n = self._slotCounts[zone.id] or 0
+  --     for i = 1, n do
+  --       local pos = self:getSlotPosition(zone.id, i)
+  --       if pos.x then
+  --         love.graphics.setColor(1, 0, 0, 1)
+  --         love.graphics.circle("fill", pos.x, pos.y, 6)
+  --       end
+  --     end
+  --   end
+  --   love.graphics.setColor(1, 1, 1, 1)
+  -- end
 
   return card
 end

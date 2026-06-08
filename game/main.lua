@@ -4,8 +4,6 @@ local runtimeLoader = require("runtime.loader")
 local events = require("lib.events")
 local areas  = require("core.areas")
 local Card   = require("core.card")
-local NewCard = require("core.newCard")
-local ModularCard = require("core.modularCard")
 -- local Hand   = require("core.hand")
 local NewHand   = require("core.newHand")
 local config       = require("lib.config")
@@ -39,11 +37,6 @@ SCALE_Y = love.graphics.getHeight() / 2160
 function love.load()
   https = runtimeLoader.loadHTTPS()
   shipAsset = love.graphics.newImage("assets/main-ship.png")
-  -- local cardAsset        = love.graphics.newImage("assets/card-back-no-color.png")
-  local newCardAsset = love.graphics.newImage("assets/proto/card-base.png", { mipmaps = true })
-  local cardAsset        = love.graphics.newImage("assets/kilo-card-base.png")
-  -- local cardAsset        = love.graphics.newImage("assets/card-template-front-flipped.png")
-  local chompedCardAsset = love.graphics.newImage("assets/chomped-card.png")
   local cardBackAsset    = love.graphics.newImage("assets/kilo-card-back.png")
   -- ramChipAsset = love.graphics.newImage("assets/ram-chip-tiny.png")
   -- erdnaseAsset = love.graphics.newImage("assets/erdnase.png")
@@ -61,6 +54,7 @@ function love.load()
 
   dissolveShader = love.graphics.newShader("assets/dissolve.fs")
   tiltShader = love.graphics.newShader("assets/tilt.fs")
+  Card.load(dissolveShader, tiltShader)
   areas.load()
   deck = Deck.new(40, love.graphics.getHeight() - 310, cardBackAsset)
   hand.deck = deck
@@ -73,50 +67,9 @@ function love.load()
   projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/new-threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
   projectiles.spiderThreat = Projectile.new({ asset = love.graphics.newImage("assets/spider-guy-w-threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
   -- projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
-  local partAssets = {
-    base      = cardAsset,
-    ramChip   = love.graphics.newImage("assets/ram-chip.png"),
-    spiderGuy = love.graphics.newImage("assets/spider-guy.png"),
-    threat    = love.graphics.newImage("assets/new-threat.png"),
-    progress  = love.graphics.newImage("assets/new-progress.png"),
-  }
-  for _ = 1, 5 do
-    local card = Card.new(0, 0, cardAsset, chompedCardAsset)
-    card.partAssets = partAssets
-    card:setParts({
-      { id = "base",      asset = partAssets.base,      yOffset = 0 },
-      { id = "ramChip",   asset = partAssets.ramChip,   xOffset = card.w - 67, yOffset = card.h - 40 },
-      { id = "ramChip2",  asset = partAssets.ramChip,   xOffset = card.w - 40, yOffset = card.h - 40 },
-      { id = "spiderGuy", asset = partAssets.spiderGuy, xOffset = 21,          yOffset = 156 },
-      { id = "threat",    asset = partAssets.threat,    xOffset = 67,          yOffset = 164 },
-      { id = "progress",  asset = partAssets.progress,  xOffset = 67,          yOffset = 54  },
-    })
-    card.shader = dissolveShader
-    card.tiltShader = tiltShader
-    deck:add(card)
-  end
   local scaleX = love.graphics.getWidth() / 3840
   local scaleY = love.graphics.getHeight() / 2160
   print("ScaleX: " .. scaleX .. ", ScaleY: " .. scaleY)
-  local newCardLineAsset        = love.graphics.newImage("assets/proto/card-line2.png",        { mipmaps = true })
-  local newCardPlayLineAsset    = love.graphics.newImage("assets/proto/card-play-line2.png",    { mipmaps = true })
-  local newCardDiscardLineAsset = love.graphics.newImage("assets/proto/card-discard-line.png",  { mipmaps = true })
-  local ramHoleAsset            = love.graphics.newImage("assets/proto/ram-hole.png",           { mipmaps = true })
-  local tokenHoleAsset          = love.graphics.newImage("assets/proto/token-hole.png",         { mipmaps = true })
-
-  local modularAssets = {
-    ramHole     = ramHoleAsset,
-    tokenHole   = tokenHoleAsset,
-    ramChip     = love.graphics.newImage("assets/proto/ram-chip.png", { mipmaps = true }),
-    line        = newCardLineAsset,
-    playLine    = newCardPlayLineAsset,
-    discardLine = newCardDiscardLineAsset,
-    tokens = {
-      progress = love.graphics.newImage("assets/proto/progress-token.png", { mipmaps = true }),
-      threat   = love.graphics.newImage("assets/proto/threat-token.png",   { mipmaps = true }),
-      nullify  = love.graphics.newImage("assets/proto/nullify-token.png",  { mipmaps = true }),
-    },
-  }
 
   local exampleData = {
     topEnergy    = 3,
@@ -127,15 +80,11 @@ function love.load()
   }
 
   for _ = 1, 5 do
-    local card = ModularCard.new(
+    local card = Card.new(
       love.graphics.getWidth() / 2,
       love.graphics.getHeight() / 2,
-      newCardAsset,
-      exampleData,
-      modularAssets
+      exampleData
     )
-    card.shader     = dissolveShader
-    card.tiltShader = tiltShader
     hand:add(card, true, true)
   end
   events.load()

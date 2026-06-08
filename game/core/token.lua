@@ -12,6 +12,10 @@ local MIN_SPEED   = 2       -- px/s below which we snap to rest
 local ARC_SCALE   = 1.5    -- max scale delta at arc peak
 local SPIN_SCALE  = 0.012   -- rotation rate relative to horizontal speed (rad/px)
 
+local SPEED = 2000
+local TOP_SPEED = 100000
+local ACCEL = 5000
+
 local ramAsset = nil
 local progressAsset = nil
 local threatAsset = nil
@@ -225,9 +229,9 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     self.y           = start_y
     self.target_x    = target_x
     self.target_y    = target_y
-    self.speed       = options.initial_speed  or (5000  * SCALE_X)
-    self.max_speed   = options.max_speed      or (100000 * SCALE_X)
-    self.accel       = options.acceleration   or (5000 * SCALE_X)
+    self.speed       = options.initial_speed  or (SPEED  * SCALE_X)
+    self.max_speed   = options.max_speed      or (TOP_SPEED * SCALE_X)
+    self.accel       = options.acceleration   or (ACCEL * SCALE_X)
     self.threshold   = options.threshold      or 4
     self.base_scale      = options.base_scale     or 1
     self.scale           = self.base_scale
@@ -454,9 +458,9 @@ function Token.attractDone(token_type, destination, options)
                 token.mode             = "attract"
                 token.target_x         = target_x
                 token.target_y         = target_y
-                token.speed            = options.initial_speed  or (5000  * SCALE_X)
-                token.max_speed        = options.max_speed      or (100000 * SCALE_X)
-                token.accel            = options.acceleration   or (5000 * SCALE_X)
+                token.speed            = options.initial_speed  or (SPEED  * SCALE_X)
+                token.max_speed        = options.max_speed      or (TOP_SPEED * SCALE_X)
+                token.accel            = options.acceleration   or (ACCEL * SCALE_X)
                 token.threshold        = options.threshold      or 4
                 token.start_rotation   = token.rotation
                 token.target_rotation  = options.target_rotation or 0

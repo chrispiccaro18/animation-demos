@@ -95,7 +95,7 @@ function Hand:update(mouseX, mouseY)
   if areas.mouseInPlay(mouseX, mouseY) and draggingCard then
     areas.play.color = { 0.5, 0.5, 1, 1 }
     Camera:setColor(Color("#6ED59E"))
-    draggingCard:moveToPlay()
+    draggingCard:setZoneState("play")
   elseif draggingCard and areas.cardInPlay(draggingCard) then
     areas.play.color = { 0.5, 0.5, 0.5, 1 }
     -- areas.play.color = {1, 1, 1, 1}
@@ -109,7 +109,7 @@ function Hand:update(mouseX, mouseY)
   if areas.mouseInDiscard(mouseX, mouseY) and draggingCard then
     areas.discard.color = { 0.5, 0.5, 1, 1 }
     Camera:setColor(Color("#D56E6E"))
-    draggingCard:moveToDiscard()
+    draggingCard:setZoneState("discard")
   elseif draggingCard and areas.cardInDiscard(draggingCard) then
     areas.discard.color = { 0.5, 0.5, 0.5, 1 }
     -- areas.discard.color = {1, 1, 1, 1}
@@ -124,7 +124,7 @@ function Hand:update(mouseX, mouseY)
     not areas.mouseInPlay(mouseX, mouseY) and
     not areas.mouseInDiscard(mouseX, mouseY) then
       Camera:setColor(Color("#88EDFF"))
-      draggingCard:returnToIdle()
+      draggingCard:setZoneState("idle")
   end
 
   -- Reorder cards when dragged card center crosses a neighbor's layout center
@@ -163,7 +163,7 @@ function Hand:update(mouseX, mouseY)
       self:layout()
       if areas.mouseInPlay(mouseX, mouseY) then
         if #areas.pool.chips < 3 then
-          card:returnToIdle()
+          card:setZoneState("idle")
           Camera:setColor(Color("#88EDFF"))
           Camera:setIdle()
           screenshake.triggerH()

@@ -26,12 +26,8 @@ local discardDeskFullRect = {
 function sequences.discard(card, camera, hand)
   events.push({
     fn = function()
-      card.hover.can = false
-      card.hover.is  = false
-      card.drag.can  = false
-      card.drag.is   = false
+      card:lock()
       card.target.scale = card.scales.hover
-      card.drawShadow = false
       Camera:lookAt(card)
     end,
     blocking = true, blockable = true, persistent = false,
@@ -47,8 +43,7 @@ function sequences.discard(card, camera, hand)
   })
   events.push({
     fn = function()
-      return math.abs(card.current.y - card.target.y) < 1 and
-              math.abs(card.current.x - card.target.x) < 1
+      return card:isAtTarget(1)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "poll"
@@ -245,12 +240,8 @@ end
 function sequences.play(card, camera, hand)
   events.push({
     fn = function()
-      card.hover.can = false
-      card.hover.is  = false
-      card.drag.can  = false
-      card.drag.is   = false
+      card:lock()
       card.target.scale = card.scales.hover
-      card.drawShadow = false
       Camera:lookAt(card)
     end,
     blocking = true, blockable = true, persistent = false,
@@ -266,8 +257,7 @@ function sequences.play(card, camera, hand)
   })
   events.push({
     fn = function()
-      return math.abs(card.current.y - card.target.y) < 1 and
-              math.abs(card.current.x - card.target.x) < 1
+      return card:isAtTarget(1)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "poll"
@@ -284,25 +274,34 @@ function sequences.play(card, camera, hand)
         for _, chip in ipairs(ramChips) do
           areas.addPoolChip(chip.x, chip.y)
         end
-        card:returnToIdle()
+        card:setZoneState("idle")
         Camera:setIdle()
       else
         print("enough ram to play card", #ramChips)
-        local ramPartPosition = card:getPartPositionById("topEnergyHoles")
         for i, chip in ipairs(ramChips) do
+          local slotPos = card:getTargetSlotPosition("topEnergyHoles", i)
           Token.new_attract(
-            chip.x,
-            chip.y,
-            ramPartPosition.x,
-            -- card.current.x + (270 * SCALE_X) + ((i - 1) * (109 * SCALE_X)),
-            ramPartPosition.y,
-            {
-              type = "ram",
-              target_scale = 1,
-            }
+            chip.x, chip.y,
+            slotPos.x, slotPos.y,
+            { type = "ram", target_scale = 1 }
           )
         end
       end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate"
+  })
+  events.push({
+    fn = function()
+      return Token.allDone("ram")
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll"
+  })
+  events.push({
+    fn = function()
+      Token.removeDone("ram")
+      card:fillZoneWithToken("topEnergyHoles", "ramChip")
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"

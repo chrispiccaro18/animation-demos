@@ -454,8 +454,10 @@ function NewCard:draw()
   local windowScaleX = love.graphics.getWidth() / 3840
   local windowScaleY = love.graphics.getHeight() / 2160
 
-  local useShader = self.shader ~= nil and self.dissolveAmount > 0.001
-  local useTilt = self.tiltShader ~= nil
+  local useShader = false
+  -- local useShader = self.shader ~= nil and self.dissolveAmount > 0.001
+  local useTilt = false
+  -- local useTilt = self.tiltShader ~= nil
 
   if self.drawShadow then
     local boost = 1.0
@@ -532,8 +534,8 @@ function NewCard:draw()
           local s = (item.scale or 1) * part.current.scale
           love.graphics.draw(
             item.asset,
-            part.origin.x - self.offsetX + item.offsetX + iw / 2 + part.current.dx,
-            part.origin.y - self.offsetY + item.offsetY + ih / 2 + part.current.dy,
+            part.origin.x - self.offsetX + item.offsetX + part.current.dx,
+            part.origin.y - self.offsetY + item.offsetY + part.current.dy,
             part.current.dr,
             s, s,
             iw / 2,
