@@ -168,4 +168,9 @@ function events.clear()
   end
 end
 
+---Returns true if a blocking event is active or the queue has pending events.
+function events.isRunning()
+  return _active ~= nil or #_queue > 0
+end
+
 return events

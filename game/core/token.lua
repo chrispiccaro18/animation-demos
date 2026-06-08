@@ -143,6 +143,13 @@ function Token.new_fling(start_x, start_y, rect, options)
     self.base_scale = options.base_scale or 1
     self.scale      = self.base_scale
     self.done       = false
+    if options.delay == false then
+        self.delay = 0
+    elseif options.delay then
+        self.delay = options.delay
+    else
+        self.delay = 0.1 + math.random() * 0.3
+    end
     self.token_type = options.type
     if options.type == "ram" then
       self.asset = ramAsset
@@ -218,14 +225,21 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     self.y           = start_y
     self.target_x    = target_x
     self.target_y    = target_y
-    self.speed       = options.initial_speed  or (60   * SCALE_X)
-    self.max_speed   = options.max_speed      or (10000 * SCALE_X)
+    self.speed       = options.initial_speed  or (5000  * SCALE_X)
+    self.max_speed   = options.max_speed      or (100000 * SCALE_X)
     self.accel       = options.acceleration   or (5000 * SCALE_X)
     self.threshold   = options.threshold      or 4
     self.base_scale      = options.base_scale     or 1
     self.scale           = self.base_scale
     self.rotation        = 0
     self.done            = false
+    if options.delay == false then
+        self.delay = 0
+    elseif options.delay then
+        self.delay = options.delay
+    else
+        self.delay = 0.1 + math.random() * 0.3
+    end
     self.token_type      = options.type
     self.start_rotation  = 0
     self.target_rotation = options.target_rotation or 0
@@ -235,6 +249,16 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     local ady = target_y - start_y
     self.attract_dist    = math.max(math.sqrt(adx*adx + ady*ady), 1)
 
+    if options.type == "ram" then
+      self.asset = ramAsset
+    elseif options.type == "dtor" then
+      self.asset = dtorAsset
+    elseif options.type == "nullify" then
+      self.asset = nullifyAsset
+    else
+      self.asset = nil
+    end
+
     table.insert(instances, self)
     return self
 end
@@ -243,6 +267,10 @@ end
 -- Shared update
 ------------------------------------------------------------------------
 function Token:update(dt)
+    if self.delay and self.delay > 0 then
+        self.delay = self.delay - dt
+        return
+    end
     if self.mode == "fling" then
         if not self.done then self:_update_fling(dt) end
     else
@@ -426,8 +454,8 @@ function Token.attractDone(token_type, destination, options)
                 token.mode             = "attract"
                 token.target_x         = target_x
                 token.target_y         = target_y
-                token.speed            = options.initial_speed  or (60   * SCALE_X)
-                token.max_speed        = options.max_speed      or (10000 * SCALE_X)
+                token.speed            = options.initial_speed  or (5000  * SCALE_X)
+                token.max_speed        = options.max_speed      or (100000 * SCALE_X)
                 token.accel            = options.acceleration   or (5000 * SCALE_X)
                 token.threshold        = options.threshold      or 4
                 token.start_rotation   = token.rotation
@@ -435,6 +463,13 @@ function Token.attractDone(token_type, destination, options)
                 token.start_scale      = token.scale
                 token.target_scale     = options.target_scale   or token.base_scale
                 token.attract_dist     = math.max(math.sqrt(adx*adx + ady*ady), 1)
+                if options.delay == false then
+                    token.delay = 0
+                elseif options.delay then
+                    token.delay = options.delay
+                else
+                    token.delay = 0.1 + math.random() * 0.3
+                end
                 token.done             = false
             end
         end

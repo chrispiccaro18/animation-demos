@@ -304,8 +304,10 @@ function areas.load()
 
   local pos1x, pos1y = areas.randomPoolPosition()
   local pos2x, pos2y = areas.randomPoolPosition()
-  -- areas.addPoolChip(pos1x, pos1y)
-  -- areas.addPoolChip(pos2x, pos2y)
+  local pos3x, pos3y = areas.randomPoolPosition()
+  areas.addPoolChip(pos1x, pos1y)
+  areas.addPoolChip(pos2x, pos2y)
+  areas.addPoolChip(pos3x, pos3y)
 
   -- areas.addToDestructorQueue()
   -- areas.addToDestructorQueue()

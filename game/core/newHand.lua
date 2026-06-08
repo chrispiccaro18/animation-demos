@@ -1,21 +1,15 @@
 local sequences = require("core.newSequences")
 local areas     = require("core.areas")
-local Color = require("lib.color")
+local Color  = require("lib.color")
+local Camera = require("core.camera")
+local events = require("lib.events")
+local laser  = require("core.laser")
 
 local Hand      = {}
 Hand.__index    = Hand
 
-local idleLaser = {
-  origin = { x = 0, y = 0 },
-  target = { x = 0, y = 0 },
-  beamColor = Color("#fcfaf4"),
-  glow1Color = Color("#f4a888"),
-  glow2Color = Color("#b74831"),
-  hidden = true,
-}
-
 function Hand.new()
-  return setmetatable({ cards = {}, discardQueue = {}, deck = nil, laser = idleLaser }, Hand)
+  return setmetatable({ cards = {}, discardQueue = {}, deck = nil }, Hand)
 end
 
 function Hand:layout()
@@ -77,9 +71,9 @@ function Hand:unlockHand()
   end
 end
 
-function Hand:update(mouseX, mouseY, camera)
-  assert(type(camera) == "table", "Hand:update now requires camera as a parameter")
+function Hand:update(mouseX, mouseY)
   local draggingCard = nil
+  local hoveredCard = nil
   for _, card in ipairs(self.cards) do
     if card.drag.is then
       draggingCard = card; break
@@ -100,7 +94,7 @@ function Hand:update(mouseX, mouseY, camera)
   -- Update area highlight colors
   if areas.mouseInPlay(mouseX, mouseY) and draggingCard then
     areas.play.color = { 0.5, 0.5, 1, 1 }
-    camera:setColor(Color("#6ED59E"))
+    Camera:setColor(Color("#6ED59E"))
     draggingCard:moveToPlay()
   elseif draggingCard and areas.cardInPlay(draggingCard) then
     areas.play.color = { 0.5, 0.5, 0.5, 1 }
@@ -114,7 +108,7 @@ function Hand:update(mouseX, mouseY, camera)
 
   if areas.mouseInDiscard(mouseX, mouseY) and draggingCard then
     areas.discard.color = { 0.5, 0.5, 1, 1 }
-    camera:setColor(Color("#D56E6E"))
+    Camera:setColor(Color("#D56E6E"))
     draggingCard:moveToDiscard()
   elseif draggingCard and areas.cardInDiscard(draggingCard) then
     areas.discard.color = { 0.5, 0.5, 0.5, 1 }
@@ -129,7 +123,7 @@ function Hand:update(mouseX, mouseY, camera)
   if draggingCard and
     not areas.mouseInPlay(mouseX, mouseY) and
     not areas.mouseInDiscard(mouseX, mouseY) then
-      camera:setColor(Color("#88EDFF"))
+      Camera:setColor(Color("#88EDFF"))
       draggingCard:returnToIdle()
   end
 
@@ -168,13 +162,23 @@ function Hand:update(mouseX, mouseY, camera)
       card._excluded = true
       self:layout()
       if areas.mouseInPlay(mouseX, mouseY) then
-        card:returnToIdle()
-        camera:setColor(Color("#88EDFF"))
-        screenshake.triggerH()
-        card._excluded = false
-        self:layout()
-        card.target.x = card._startX
-        card.target.y = card._startY
+        if #areas.pool.chips < 3 then
+          card:returnToIdle()
+          Camera:setColor(Color("#88EDFF"))
+          Camera:setIdle()
+          screenshake.triggerH()
+          card._excluded = false
+          self:layout()
+          card.target.x = card._startX
+          card.target.y = card._startY
+        else
+          print("enough ram", #areas.pool.chips)
+          card._excluded = true
+          card.hover.can = false
+          card.hover.is  = false
+          card.drag.can  = false
+          sequences.play(card, Camera, self)
+        end
       --   if #areas.pool.chips < 2 then
       --     screenshake.triggerH()
       --     card._excluded = false
@@ -196,7 +200,11 @@ function Hand:update(mouseX, mouseY, camera)
       elseif areas.mouseInDiscard(mouseX, mouseY) then
         print("discarding card")
         table.insert(self.discardQueue, card)
-        sequences.discard(card, camera, self.laser)
+        card._excluded = true
+        card.hover.can = false
+        card.hover.is  = false
+        card.drag.can  = false
+        sequences.discard(card, Camera, self)
         -- table.insert(self.discardQueue, card)
         -- -- c._excluded = true
         -- -- self:layout()
@@ -243,7 +251,24 @@ function Hand:update(mouseX, mouseY, camera)
       card.mouseY       = mouseY
     end
 
+    if card.hover.is then hoveredCard = card end
+
     card:update()
+  end
+
+  -- Camera state: one decision after all cards are processed
+  -- Skip while a sequence is running — it manages camera itself
+  if not events.isRunning() then
+    if draggingCard then
+      if Camera.state ~= "followMouse" then Camera:followMouse() end
+    elseif hoveredCard then
+      if Camera.state ~= "lookAt" or Camera.stateData.targetCard ~= hoveredCard then
+        Camera:lookAt(hoveredCard)
+        print("looking at card", hoveredCard:isDissolved())
+      end
+    else
+      if Camera.state ~= "idle" then Camera:setIdle() end
+    end
   end
 end
 
@@ -262,34 +287,7 @@ function Hand:draw()
     if card.drag.is then card:draw() end
   end
 
-  if not self.laser.hidden then
-    love.graphics.setColor(self.laser.glow2Color)
-    love.graphics.setLineWidth(20 * SCALE_X)
-    love.graphics.line(
-      self.laser.origin.x,
-      self.laser.origin.y,
-      self.laser.target.x,
-      self.laser.target.y
-     )
-    love.graphics.setColor(self.laser.glow1Color)
-    love.graphics.setLineWidth(10 * SCALE_X)
-    love.graphics.line(
-      self.laser.origin.x,
-      self.laser.origin.y,
-      self.laser.target.x,
-      self.laser.target.y
-    )
-    love.graphics.setColor(self.laser.beamColor)
-    love.graphics.setLineWidth(4 * SCALE_X)
-    love.graphics.line(
-      self.laser.origin.x,
-      self.laser.origin.y,
-      self.laser.target.x,
-      self.laser.target.y
-    )
-  end
-  love.graphics.setLineWidth(1)
-  love.graphics.setColor(1, 1, 1, 1)
+  laser.draw()
 end
 
 function Hand:mousepressed(x, y, button)
@@ -300,6 +298,7 @@ function Hand:mousepressed(x, y, button)
       card.drag.can     = false
       card.drag.offsetX = x - card.current.x
       card.drag.offsetY = y - card.current.y
+      Camera:followMouse()
       return
     end
   end

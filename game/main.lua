@@ -5,6 +5,7 @@ local events = require("lib.events")
 local areas  = require("core.areas")
 local Card   = require("core.card")
 local NewCard = require("core.newCard")
+local ModularCard = require("core.modularCard")
 -- local Hand   = require("core.hand")
 local NewHand   = require("core.newHand")
 local config       = require("lib.config")
@@ -14,6 +15,7 @@ local sequences    = require("core.sequences")
 local Deck         = require("core.deck")
 local Camera       = require("core.camera")
 local Token        = require("core.token")
+local laser        = require("core.laser")
 
 local Color = require("lib.color")
 
@@ -48,6 +50,7 @@ function love.load()
 
   Token.load()
   camera = Camera.load()
+  camera:setIdle()
 
   boardAsset = love.graphics.newImage(
     "assets/proto/board.png",
@@ -95,31 +98,45 @@ function love.load()
   local scaleX = love.graphics.getWidth() / 3840
   local scaleY = love.graphics.getHeight() / 2160
   print("ScaleX: " .. scaleX .. ", ScaleY: " .. scaleY)
-  local newCardLineAsset = love.graphics.newImage("assets/proto/card-line2.png", { mipmaps = true })
-  local newCardPlayLineAsset = love.graphics.newImage("assets/proto/card-play-line2.png", { mipmaps = true })
-  local newCardDiscardLineAsset = love.graphics.newImage("assets/proto/card-discard-line.png", { mipmaps = true })
-  local newCardTopEnergyHolesAsset = love.graphics.newImage("assets/proto/card-top-energy-holes.png", { mipmaps = true })
-  local newCardBottomEnergyAsset = love.graphics.newImage("assets/proto/card-bottom-energy.png", { mipmaps = true })
-  local newCardPlayEffectAsset = love.graphics.newImage("assets/proto/card-play-effect.png", { mipmaps = true })
-  local newCardDiscardEffectAsset = love.graphics.newImage("assets/proto/card-discard-effect.png", { mipmaps = true })
-  local newCardDtorEffectAsset = love.graphics.newImage("assets/proto/card-dtor-effect.png", { mipmaps = true })
+  local newCardLineAsset        = love.graphics.newImage("assets/proto/card-line2.png",        { mipmaps = true })
+  local newCardPlayLineAsset    = love.graphics.newImage("assets/proto/card-play-line2.png",    { mipmaps = true })
+  local newCardDiscardLineAsset = love.graphics.newImage("assets/proto/card-discard-line.png",  { mipmaps = true })
+  local ramHoleAsset            = love.graphics.newImage("assets/proto/ram-hole.png",           { mipmaps = true })
+  local tokenHoleAsset          = love.graphics.newImage("assets/proto/token-hole.png",         { mipmaps = true })
+
+  local modularAssets = {
+    ramHole     = ramHoleAsset,
+    tokenHole   = tokenHoleAsset,
+    ramChip     = love.graphics.newImage("assets/proto/ram-chip.png", { mipmaps = true }),
+    line        = newCardLineAsset,
+    playLine    = newCardPlayLineAsset,
+    discardLine = newCardDiscardLineAsset,
+    tokens = {
+      progress = love.graphics.newImage("assets/proto/progress-token.png", { mipmaps = true }),
+      threat   = love.graphics.newImage("assets/proto/threat-token.png",   { mipmaps = true }),
+      nullify  = love.graphics.newImage("assets/proto/nullify-token.png",  { mipmaps = true }),
+    },
+  }
+
+  local exampleData = {
+    topEnergy    = 3,
+    bottomEnergy = 3,
+    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 }, { type = "nullify",  value = 1 } },
+    discard = { { type = "progress", value = 1 }, { type = "threat",   value = 1 }, { type = "nullify",  value = 1 } },
+    dtor    = { { type = "threat",   value = 1 }, { type = "threat",   value = 1 }, { type = "threat",   value = 1 } },
+  }
 
   for _ = 1, 5 do
-    local newCard = NewCard.new(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2, newCardAsset)
-    newCard:setParts({
-      -- { id = "line", asset = newCardLineAsset, dx = 107, dy = 456 },
-      { id = "line", asset = newCardLineAsset, origin = { x = 107, y = 456 } },
-      { id = "playLine", asset = newCardPlayLineAsset, origin = { x = 107, y = 422 } },
-      { id = "discardLine", asset = newCardDiscardLineAsset, origin = { x = 452, y = 469 } },
-      { id = "topEnergyHoles", asset = newCardTopEnergyHolesAsset, origin = { x = 220, y = 45 } },
-      { id = "bottomEnergy", asset = newCardBottomEnergyAsset, origin = { x = 228, y = 858 }, hidden = true },
-      { id = "playEffect", asset = newCardPlayEffectAsset, origin = { x = 106, y = 201 } },
-      { id = "discardEffect", asset = newCardDiscardEffectAsset, origin = { x = 106, y = 552 } },
-      { id = "dtorEffect", asset = newCardDtorEffectAsset, origin = { x = 103, y = 746 } },
-    })
-    newCard.shader = dissolveShader
-    newCard.tiltShader = tiltShader
-    hand:add(newCard, true, true)
+    local card = ModularCard.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      newCardAsset,
+      exampleData,
+      modularAssets
+    )
+    card.shader     = dissolveShader
+    card.tiltShader = tiltShader
+    hand:add(card, true, true)
   end
   events.load()
   overlayStats.load()
@@ -149,6 +166,7 @@ function love.draw()
   -- areas.drawAfter(hand:isDragging())
   areas.drawStatic()
   if camera then camera:draw() end
+  if camera then camera:drawScannerLines(areas.scanner) end
   hand:draw()
   Token.drawAll()
   areas.drawScanners()
@@ -191,8 +209,9 @@ function love.update(dt)
   --     end
   --   end
   -- end
-  if camera then camera:update(realDt, mouseX, mouseY) end
-  hand:update(mouseX, mouseY, camera)
+  if camera then camera:update(realDt, mouseX, mouseY, areas.scanner) end
+  laser.update(realDt)
+  hand:update(mouseX, mouseY)
   Token.updateAll(realDt)
   areas.updateScanners(realDt)
   if areas.scanner.left.active  then Token.triggerQuiverNear(areas.scanner.left.y)  end

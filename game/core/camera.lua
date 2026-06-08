@@ -1,18 +1,16 @@
 local Color = require("lib.color")
 
 local Camera = {}
-Camera.__index = Camera
 
 function Camera.load()
-  local self = setmetatable({}, Camera)
   local baseAsset = love.graphics.newImage("assets/proto/camera-base.png", { mipmaps = true })
   local lensAsset = love.graphics.newImage("assets/proto/camera-lens.png", { mipmaps = true })
   local ringAsset = love.graphics.newImage("assets/proto/camera-ring.png", { mipmaps = true })
-  self.x = love.graphics.getWidth() / 2
-  self.y = baseAsset:getHeight() / 2 - 300
-  -- self.y = 75
-  self.scale = 1
-  self.parts = {
+  Camera.x = love.graphics.getWidth() / 2
+  Camera.y = baseAsset:getHeight() / 2 - 300
+  -- Camera.y = 75
+  Camera.scale = 1
+  Camera.parts = {
     base = {
       asset = baseAsset
     },
@@ -34,13 +32,34 @@ function Camera.load()
       -- color = Color("#D56E6E"),
     }
   }
-  self.offsetX = baseAsset:getWidth() / 2
-  self.offsetY = baseAsset:getHeight() / 2
-  return self
+  Camera.offsetX = baseAsset:getWidth() / 2
+  Camera.offsetY = baseAsset:getHeight() / 2
+  Camera.state = "followMouse"
+  Camera.stateData = { time = 0, targetCard = nil }
+  return Camera
 end
 
 function Camera:setColor(color)
   self.parts.ring.color = color
+end
+
+function Camera:followMouse(color)
+  self.state = "followMouse"
+  if color then self:setColor(color) end
+end
+
+function Camera:setIdle(color)
+  self.state = "idle"
+  -- Seed time so the oscillation starts near the current lens position
+  local clampedX = math.max(-1, math.min(1, self.parts.lens.offsetX / 60))
+  self.stateData.time = math.asin(clampedX) / 0.4
+  if color then self:setColor(color) end
+end
+
+function Camera:lookAt(card, color)
+  self.state = "lookAt"
+  self.stateData.targetCard = card
+  if color then self:setColor(color) end
 end
 
 function Camera:getLensPosition()
@@ -56,15 +75,7 @@ function Camera:getLensPosition()
       - self.offsetY * windowScaleY / 2
 end
 
-function Camera:update(dt, mouseX, mouseY)
-  local distanceFromScreenCenterX = mouseX - love.graphics.getWidth() / 2
-  local distanceFromScreenCenterY = mouseY - love.graphics.getHeight() / 2
-  -- normalize for any screen size
-  local offsetX = distanceFromScreenCenterX / love.graphics.getWidth()
-  local offsetY = distanceFromScreenCenterY / love.graphics.getHeight()
-  local targetOffsetX = offsetX * 200
-  local targetOffsetY = offsetY * 50
-
+function Camera:_applyOffsets(dt, targetOffsetX, targetOffsetY)
   self.parts.lens.offsetX = self.parts.lens.offsetX +
     (targetOffsetX - self.parts.lens.offsetX) * 0.2
   self.parts.lens.offsetY = self.parts.lens.offsetY +
@@ -73,6 +84,67 @@ function Camera:update(dt, mouseX, mouseY)
     (targetOffsetX - self.parts.ring.offsetX) * 0.2
   self.parts.ring.offsetY = self.parts.ring.offsetY +
     (targetOffsetY - self.parts.ring.offsetY) * 0.15
+end
+
+function Camera:update(dt, mouseX, mouseY, scanners)
+  local targetOffsetX, targetOffsetY
+
+  if self.state == "followMouse" then
+    local distanceFromScreenCenterX = mouseX - love.graphics.getWidth() / 2
+    local distanceFromScreenCenterY = mouseY - love.graphics.getHeight() / 2
+    -- normalize for any screen size
+    local offsetX = distanceFromScreenCenterX / love.graphics.getWidth()
+    local offsetY = distanceFromScreenCenterY / love.graphics.getHeight()
+    targetOffsetX = offsetX * 200
+    targetOffsetY = offsetY * 50
+
+  elseif self.state == "idle" then
+    -- Wrap at 20π (the joint period of both sine frequencies 0.4 and 0.7)
+    self.stateData.time = math.fmod(self.stateData.time + dt * 2, math.pi * 20)
+    local t = self.stateData.time
+    targetOffsetX = math.sin(t * 0.5) * 80
+    targetOffsetY = math.abs(math.cos(t * 0.5)) * 20
+
+  elseif self.state == "lookAt" then
+    local card = self.stateData.targetCard
+    local distanceFromScreenCenterX = card.current.x - love.graphics.getWidth() / 2
+    local distanceFromScreenCenterY = card.current.y - love.graphics.getHeight() / 2
+    local offsetX = distanceFromScreenCenterX / love.graphics.getWidth()
+    local offsetY = distanceFromScreenCenterY / love.graphics.getHeight()
+    targetOffsetX = offsetX * 200
+    targetOffsetY = offsetY * 50
+  end
+
+  if scanners then
+    for _, s in pairs(scanners) do
+      if s.active then
+        local scanOffsetY = (s.y - love.graphics.getHeight() / 2) / love.graphics.getHeight()
+        targetOffsetY = scanOffsetY * 50
+        break
+      end
+    end
+  end
+
+  self:_applyOffsets(dt, targetOffsetX, targetOffsetY)
+end
+
+function Camera:drawScannerLines(scanners)
+  local lensX, lensY = self:getLensPosition()
+  for _, s in pairs(scanners) do
+    if s.active then
+      love.graphics.setColor(s.color[1], s.color[2], s.color[3], 0.4)
+      love.graphics.setLineWidth(1.5)
+      love.graphics.line(lensX, lensY, s.x1, s.y)
+      love.graphics.line(lensX, lensY, s.x2, s.y)
+      for _ = 1, 4 do
+        local rx = s.x1 + math.random() * (s.x2 - s.x1)
+        love.graphics.setColor(s.color[1], s.color[2], s.color[3], math.random() * 0.25)
+        love.graphics.line(lensX, lensY, rx, s.y)
+      end
+    end
+  end
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setLineWidth(1)
 end
 
 function Camera:draw()
