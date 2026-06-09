@@ -1,4 +1,5 @@
 local animation = require("lib.animation")
+local Token     = require("core.token")
 
 local stiffness = 80
 local damping   = 10
@@ -17,11 +18,11 @@ local ZONES = {
 }
 
 local EFFECT_ZONES = {
-  { dataKey = "topEnergy",    id = "topEnergyHoles", holeKey = "ramHole"                                       },
-  { dataKey = "play",         id = "playEffect",     holeKey = "tokenHole", hasTypedTokens = true              },
-  { dataKey = "discard",      id = "discardEffect",  holeKey = "tokenHole", hasTypedTokens = true              },
-  { dataKey = "dtor",         id = "dtorEffect",     holeKey = "tokenHole", hasTypedTokens = true              },
-  { dataKey = "bottomEnergy", id = "bottomEnergy",   holeKey = "ramHole",   tokenKey = "ramChip", hidden = true },
+  { dataKey = "topEnergy",    id = "topEnergyHoles", holeKey = "ramHole"                                                              },
+  { dataKey = "play",         id = "playEffect",     holeKey = "tokenHole", hasTypedTokens = true                                     },
+  { dataKey = "discard",      id = "discardEffect",  holeKey = "tokenHole", hasTypedTokens = true                                     },
+  { dataKey = "dtor",         id = "dtorEffect",     holeKey = "dtorSlot",  hasTypedTokens = true, singleBackground = true, flingAsUnit = "dtor" },
+  { dataKey = "bottomEnergy", id = "bottomEnergy",   holeKey = "ramHole",   tokenKey = "ramChip", hidden = true                       },
 }
 
 local ENERGY_GAP = 7
@@ -79,46 +80,38 @@ local function buildParts(data)
 
     local effects = data[zone.dataKey]
     local n
-    if type(effects) == "number" then
+    if zone.singleSlot then
+      n = 1
+    elseif type(effects) == "number" then
       n, effects = effects, nil
     else
       n = effects and #effects or 0
     end
 
     if n > 0 then
-      local totalW       = n * holePW + (n - 1) * gap
-      local groupOriginX = ZONES[zone.id].cx - totalW / 2
-      local groupOriginY = ZONES[zone.id].cy - holePH / 2
+      local items        = {}
+      local slotCenters  = {}
+      local groupOriginX, groupOriginY
+      local tokenSlotW, tokenSlotH
 
-      local items       = {}
-      local slotCenters = {}
-      for i = 1, n do
-        local offsetX = (i - 1) * (holePW + gap)
-        slotCenters[i] = { dx = offsetX + holePW / 2, dy = holePH / 2 }
-        table.insert(items, { asset = holeAsset, offsetX = offsetX, offsetY = 0 })
-
-        if zone.hasTypedTokens and effects then
-          local tokenAsset = _assets.tokens and _assets.tokens[effects[i].type]
-          if tokenAsset then
-            local tw, th = tokenAsset:getDimensions()
-            table.insert(items, {
-              asset   = tokenAsset,
-              offsetX = offsetX + (holePW - tw) / 2,
-              offsetY = (holePH - th) / 2,
-              scale   = fitScale(tokenAsset, holePW, holePH),
-            })
-          end
-        elseif zone.tokenKey then
-          local tokenAsset = _assets[zone.tokenKey]
-          if tokenAsset then
-            local tw, th = tokenAsset:getDimensions()
-            table.insert(items, {
-              asset   = tokenAsset,
-              offsetX = offsetX + (holePW - tw) / 2,
-              offsetY = (holePH - th) / 2,
-              scale   = fitScale(tokenAsset, holePW, holePH),
-            })
-          end
+      if zone.singleBackground then
+        groupOriginX = ZONES[zone.id].cx - holePW / 2
+        groupOriginY = ZONES[zone.id].cy - holePH / 2
+        table.insert(items, { asset = holeAsset, offsetX = 0, offsetY = 0 })
+        local slotW = holePW / n
+        tokenSlotW  = slotW
+        tokenSlotH  = holePH
+        for i = 1, n do
+          slotCenters[i] = { dx = (i - 0.5) * slotW, dy = holePH / 2 }
+        end
+      else
+        local totalW = n * holePW + (n - 1) * gap
+        groupOriginX = ZONES[zone.id].cx - totalW / 2
+        groupOriginY = ZONES[zone.id].cy - holePH / 2
+        for i = 1, n do
+          local offsetX = (i - 1) * (holePW + gap)
+          slotCenters[i] = { dx = offsetX + holePW / 2, dy = holePH / 2 }
+          table.insert(items, { asset = holeAsset, offsetX = offsetX, offsetY = 0 })
         end
       end
 
@@ -127,6 +120,8 @@ local function buildParts(data)
         origin      = { x = groupOriginX, y = groupOriginY },
         items       = items,
         slotCenters = slotCenters,
+        tokenSlotW  = tokenSlotW,
+        tokenSlotH  = tokenSlotH,
         hidden      = zone.hidden or false,
       })
     end
@@ -145,6 +140,7 @@ function Card.load(dissolveShader, tiltShader)
   _assets.ramHole     = love.graphics.newImage("assets/proto/ram-hole.png",          { mipmaps = true })
   _assets.tokenHole   = love.graphics.newImage("assets/proto/token-hole.png",        { mipmaps = true })
   _assets.ramChip     = love.graphics.newImage("assets/proto/ram-chip.png",          { mipmaps = true })
+  _assets.dtorSlot    = love.graphics.newImage("assets/proto/dtor-slot.png",         { mipmaps = true })
   _assets.line        = love.graphics.newImage("assets/proto/card-line2.png",        { mipmaps = true })
   _assets.playLine    = love.graphics.newImage("assets/proto/card-play-line2.png",   { mipmaps = true })
   _assets.discardLine = love.graphics.newImage("assets/proto/card-discard-line.png", { mipmaps = true })
@@ -181,20 +177,54 @@ function Card.new(x, y, data)
   self.mouseX     = 0
   self.mouseY     = 0
   self._shake     = { trauma = 0, elapsed = 0, intensity = 0, duration = 0 }
+  self.slotEdgeY  = nil
   self.dissolveAmount    = 0
   self.dissolveTime      = 0
   self.dissolving        = false
   self.reverseDissolving = false
   self.scales     = { idle = 0.5, hover = 0.65, drag = 0.7 }
   self.data       = data
+  self.energy     = data.topEnergy or 0
 
   self:_setParts(buildParts(data))
 
-  self._slotCounts = {}
+  -- Build slot state table and pre-fill from card data
+  self._slots = {}
   for _, zone in ipairs(EFFECT_ZONES) do
     local effects = data[zone.dataKey]
-    self._slotCounts[zone.id] = type(effects) == "number" and effects
-                               or (effects and #effects or 0)
+    local n
+    if zone.singleSlot then
+      n = 1
+    else
+      n = type(effects) == "number" and effects or (effects and #effects or 0)
+    end
+    if n > 0 then
+      self._slots[zone.id] = {}
+      for i = 1, n do
+        self._slots[zone.id][i] = { token = nil, alpha = 0, targetAlpha = 0 }
+      end
+      if zone.hasTypedTokens and type(effects) == "table" then
+        for i, effect in ipairs(effects) do
+          self:fillSlot(zone.id, i, effect.type, true)
+        end
+      elseif zone.tokenKey then
+        local tokenType = (zone.tokenKey == "ramChip") and "ram" or zone.tokenKey
+        for i = 1, n do
+          self:fillSlot(zone.id, i, tokenType, true)
+        end
+      end
+    end
+  end
+
+  self._slotCounts = {}
+  for _, zone in ipairs(EFFECT_ZONES) do
+    if zone.singleSlot then
+      self._slotCounts[zone.id] = 1
+    else
+      local effects = data[zone.dataKey]
+      self._slotCounts[zone.id] = type(effects) == "number" and effects
+                                 or (effects and #effects or 0)
+    end
   end
 
   return self
@@ -212,6 +242,8 @@ function Card:_setParts(config)
       asset        = p.asset,
       items        = p.items,
       slotCenters  = p.slotCenters,
+      tokenSlotW   = p.tokenSlotW,
+      tokenSlotH   = p.tokenSlotH,
       origin       = p.origin or { x = 0, y = 0 },
       initialScale = initialScale,
       current      = { dx = dx,               dy = dy,               dr = dr,               scale = initialScale, alpha = initialAlpha },
@@ -295,29 +327,87 @@ function Card:getZoneSlotPositions(zone)
   return result
 end
 
-function Card:fillZoneWithToken(zone, tokenKey)
-  local part = self:getPartById(zone)
-  if not part or not part.items then return end
-  local zoneConfig
-  for _, z in ipairs(EFFECT_ZONES) do
-    if z.id == zone then zoneConfig = z; break end
+function Card:fillSlot(zone, index, tokenType, instant)
+  local zoneSlots = self._slots[zone]
+  if zoneSlots and zoneSlots[index] then
+    local slot = zoneSlots[index]
+    slot.token       = { token_type = tokenType }
+    slot.targetAlpha = 1
+    if instant then slot.alpha = 1 end
   end
-  if not zoneConfig then return end
-  local holeAsset = _assets[zoneConfig.holeKey or "tokenHole"]
-  local holePW, holePH = holeAsset:getDimensions()
-  local gap = (zoneConfig.holeKey == "ramHole") and ENERGY_GAP or EFFECT_GAP
-  local tokenAsset = _assets[tokenKey] or (_assets.tokens and _assets.tokens[tokenKey])
-  if not tokenAsset then return end
-  local tw, th = tokenAsset:getDimensions()
-  local n = self._slotCounts[zone] or 0
-  for i = 1, n do
-    local offsetX = (i - 1) * (holePW + gap)
-    table.insert(part.items, {
-      asset   = tokenAsset,
-      offsetX = offsetX + (holePW - tw) / 2,
-      offsetY = (holePH - th) / 2,
-      scale   = fitScale(tokenAsset, holePW, holePH),
-    })
+end
+
+function Card:clearSlot(zone, index)
+  local zoneSlots = self._slots[zone]
+  if zoneSlots and zoneSlots[index] then
+    local slot = zoneSlots[index]
+    slot.token       = nil
+    slot.targetAlpha = 0
+  end
+end
+
+function Card:clearZone(zone)
+  local zoneSlots = self._slots[zone]
+  if zoneSlots then
+    for i in pairs(zoneSlots) do self:clearSlot(zone, i) end
+  end
+end
+
+function Card:getSlotToken(zone, index)
+  local zoneSlots = self._slots[zone]
+  if zoneSlots and zoneSlots[index] then
+    local slot = zoneSlots[index]
+    return slot.token and slot.token.token_type or nil
+  end
+  return nil
+end
+
+function Card:flingZone(zone, rect, options)
+  local zoneSlots = self._slots[zone]
+  if not zoneSlots then return end
+
+  local zoneCfg
+  for _, z in ipairs(EFFECT_ZONES) do
+    if z.id == zone then zoneCfg = z; break end
+  end
+
+  if zoneCfg and zoneCfg.flingAsUnit then
+    local pos = self:getSlotPosition(zone, 1)
+    if pos.x then
+      local flingOpts = {}
+      for k, v in pairs(options or {}) do flingOpts[k] = v end
+      flingOpts.type = zoneCfg.flingAsUnit
+      local subTokens = {}
+      for i = 1, #zoneSlots do
+        local slot = zoneSlots[i]
+        if slot and slot.token then
+          table.insert(subTokens, slot.token.token_type)
+        end
+      end
+      if #subTokens > 0 then flingOpts.subTokens = subTokens end
+      Token.new_fling(pos.x, pos.y, rect, flingOpts)
+    end
+    for i in pairs(zoneSlots) do
+      zoneSlots[i].token       = nil
+      zoneSlots[i].targetAlpha = 0
+    end
+    return
+  end
+
+  for i, slot in pairs(zoneSlots) do
+    if slot.token then
+      if slot.token.flingFromSlot then
+        slot.token:flingFromSlot(rect, options)
+      else
+        local pos = self:getSlotPosition(zone, i)
+        local flingOpts = {}
+        for k, v in pairs(options or {}) do flingOpts[k] = v end
+        flingOpts.type = slot.token.token_type
+        Token.new_fling(pos.x, pos.y, rect, flingOpts)
+        slot.token       = nil
+        slot.targetAlpha = 0
+      end
+    end
   end
 end
 
@@ -405,6 +495,16 @@ function Card:resetDissolve()
   self.dissolveTime      = 0
 end
 
+function Card:enterSlot(edgeY)
+  local wys = love.graphics.getHeight() / 2160
+  -- default: use the card's current top edge so the full card is visible at entry
+  self.slotEdgeY = edgeY or (self.current.y - self.offsetY * self.current.scale * wys)
+end
+
+function Card:exitSlot()
+  self.slotEdgeY = nil
+end
+
 function Card:isDissolving()
   return self.dissolving or self.reverseDissolving
 end
@@ -440,6 +540,12 @@ function Card:update()
     part.current.dr    = animation.expDecay(part.current.dr,    part.target.dr,    12, realDt)
     part.current.scale = animation.expDecay(part.current.scale, part.target.scale, 12, realDt)
     part.current.alpha = animation.expDecay(part.current.alpha, part.target.alpha, 12, realDt)
+  end
+
+  for _, zoneSlots in pairs(self._slots) do
+    for _, slot in pairs(zoneSlots) do
+      slot.alpha = animation.expDecay(slot.alpha, slot.targetAlpha, 12, realDt)
+    end
   end
 
   if not self.stationary then
@@ -512,6 +618,24 @@ end
 function Card:draw()
   local windowScaleX = love.graphics.getWidth()  / 3840
   local windowScaleY = love.graphics.getHeight() / 2160
+  local W = love.graphics.getWidth()
+  local H = love.graphics.getHeight()
+
+  -- Slot entry: clip below slot edge (hide the portion inside the slot)
+  if self.slotEdgeY then
+    love.graphics.setScissor(0, self.slotEdgeY, W, H - self.slotEdgeY)
+  end
+
+  -- Slot entry foreshortening: perspective trapezoid via tilt shader
+  local slotDepth = 0.0
+  if self.slotEdgeY then
+    local halfH   = self.offsetY * self.current.scale * windowScaleY
+    local cardTop = self.current.y - halfH
+    if cardTop < self.slotEdgeY then
+      -- depth: 0 = top just touching edge, 1 = bottom at edge (fully in)
+      slotDepth = math.min((self.slotEdgeY - cardTop) / (2 * halfH), 1)
+    end
+  end
 
   local useShader = self.shader ~= nil and self.dissolveAmount > 0.001
   local useTilt   = self.tiltShader ~= nil
@@ -537,6 +661,7 @@ function Card:draw()
 
   if useTilt then
     self:_applyTiltUniforms(self.hover.is or self.drag.is)
+    self.tiltShader:send("slot_depth", slotDepth)
     love.graphics.setShader(self.tiltShader)
   end
 
@@ -607,6 +732,45 @@ function Card:draw()
       end
     end
 
+    -- Draw slot token occupants
+    for _, zone in ipairs(EFFECT_ZONES) do
+      local zoneSlots = self._slots[zone.id]
+      if zoneSlots then
+        local part = self:getPartById(zone.id)
+        if part then
+          local holeAsset      = _assets[zone.holeKey or "tokenHole"]
+          local holePW, holePH = holeAsset:getDimensions()
+          local fitW = part.tokenSlotW or holePW
+          local fitH = part.tokenSlotH or holePH
+          local partAlpha = part.hidden and 0 or part.current.alpha
+          for i, slot in pairs(zoneSlots) do
+            if slot.token and slot.alpha > 0.001 then
+              local tokenType  = slot.token.token_type
+              local tokenAsset = _assets[tokenType] or (_assets.tokens and _assets.tokens[tokenType])
+              if tokenAsset then
+                local sc = part.slotCenters and part.slotCenters[i]
+                if sc then
+                  local cx = part.origin.x - self.offsetX + sc.dx + part.current.dx
+                  local cy = part.origin.y - self.offsetY + sc.dy + part.current.dy
+                  local iw, ih = tokenAsset:getDimensions()
+                  local s = fitScale(tokenAsset, fitW, fitH) * part.current.scale
+                  if partAlpha > 0.001 and useShader then
+                    self:_applyDissolveUniforms(tokenAsset)
+                    love.graphics.setShader(self.shader)
+                  end
+                  love.graphics.setColor(1, 1, 1, slot.alpha * partAlpha)
+                  love.graphics.draw(tokenAsset, cx, cy, 0, s, s, iw / 2, ih / 2)
+                  if useShader and partAlpha > 0.001 then
+                    love.graphics.setShader(self.tiltShader)
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
     love.graphics.pop()
   end
 
@@ -614,19 +778,10 @@ function Card:draw()
     love.graphics.setShader()
   end
 
-  -- DEBUG: red dots at slot centers
   love.graphics.setShader()
-  -- for _, zone in ipairs(EFFECT_ZONES) do
-  --   local n = self._slotCounts[zone.id] or 0
-  --   for i = 1, n do
-  --     local pos = self:getSlotPosition(zone.id, i)
-  --     if pos.x then
-  --       love.graphics.setColor(1, 0, 0, 1)
-  --       love.graphics.circle("fill", pos.x, pos.y, 6)
-  --     end
-  --   end
-  -- end
   love.graphics.setColor(1, 1, 1, 1)
+
+  if self.slotEdgeY then love.graphics.setScissor() end
 end
 
 return Card

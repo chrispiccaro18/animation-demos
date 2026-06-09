@@ -1,8 +1,8 @@
 local Color = require("lib.color")
 
-local TRAVEL_SPEED = 6
-local MAX_FRACTION = 0.5
-local BASE_WIDTH = 5
+local TRAVEL_SPEED = 4
+local MAX_FRACTION = 0.85
+local BASE_WIDTH = 6
 local GLOW2_WIDTH = BASE_WIDTH * 4
 local GLOW1_WIDTH = BASE_WIDTH * 2
 local BEAM_WIDTH  = BASE_WIDTH

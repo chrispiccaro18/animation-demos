@@ -1,5 +1,6 @@
 local animation         = require("lib.animation")
 
+
 local W                 = love.graphics.getWidth()
 local H                 = love.graphics.getHeight()
 
@@ -82,15 +83,24 @@ do
 end
 
 areas.endTurn           = {
-  x = W - 305 - 30,
-  y = H - 118 - 30,
-  w = 305,
-  h = 118,
+  x = 3136 * love.graphics.getWidth() / 3840,
+  y = 1732 * love.graphics.getHeight() / 2160,
+  w = 614 * love.graphics.getWidth() / 3840,
+  h = 229 * love.graphics.getHeight() / 2160,
   color = { 1, 0, 0, 1 },
   baseAsset = nil,
   hoverAsset = nil,
   clickAsset = nil,
-  state = "idle" -- "idle", "hover", "click"
+  state = "idle", -- "idle", "hover", "click"
+  hover = {
+    can = true,
+    is = false,
+  },
+  click = {
+    can = false,
+    is = false,
+  },
+  frozen = false,
 }
 
 areas.destructor        = {
@@ -138,9 +148,9 @@ local dtorTokenNullAsset       = nil
 function areas.load()
   slotBottomAsset          = love.graphics.newImage("assets/slot-bottom.png")
   slotTopAsset             = love.graphics.newImage("assets/slot-top.png")
-  endTurnAsset             = love.graphics.newImage("assets/kilo-end-turn.png")
-  endTurnHoverAsset        = love.graphics.newImage("assets/kilo-end-turn-hover.png")
-  endTurnClickAsset        = love.graphics.newImage("assets/kilo-end-turn-click.png")
+  endTurnAsset             = love.graphics.newImage("assets/proto/end-turn-idle.png")
+  endTurnHoverAsset        = love.graphics.newImage("assets/proto/end-turn-hover.png")
+  endTurnClickAsset        = love.graphics.newImage("assets/proto/end-turn-down.png")
 
   areas.progressBar.asset = love.graphics.newImage("assets/proto/progress-tick.png", { mipmaps = true })
   areas.threatBar.asset = love.graphics.newImage("assets/proto/threat-tick.png", { mipmaps = true })
@@ -419,34 +429,56 @@ function areas.randomPoolPosition()
       p.y + pad + math.random() * (p.h - pad * 2)
 end
 
-function areas.update(mouseX, mouseY)
-  if areas.endTurn.state == "click" then
-    -- no-op
-  elseif areas.mouseInEndTurn(mouseX, mouseY) then
-    areas.endTurn.state = "hover"
+function areas.updateEndTurn(dt, mouseX, mouseY)
+  local et = areas.endTurn
+  if areas.mouseInEndTurn(mouseX, mouseY) then
+    if et.click.can and love.mouse.isDown(1) then
+      et.state = "click"
+      et.click.is = true
+      et.click.can = false
+      et.hover.is = false
+      et.hover.can = true
+      et.frozen = true
+      return true
+      -- sequences.endTurn()
+    elseif not love.mouse.isDown(1) and et.hover.can then
+      et.state = "hover"
+      et.hover.is = true
+      et.hover.can = false
+      et.click.can = true
+      return false
+    end
   else
-    areas.endTurn.state = "idle"
+    et.state = "idle"
+    et.hover.is = false
+    et.hover.can = true
+    et.click.is = false
+    et.click.can = false
+    return false
   end
+end
 
-  areas.discard.current.y = animation.expDecay(areas.discard.current.y, areas.discard.target.y, 10, realDt)
-  local ra = areas.ram
-  ra.current.scale = animation.expDecay(ra.current.scale, ra.target.scale, 8, realDt)
-  local pr = areas.progress
-  pr.current.scale = animation.expDecay(pr.current.scale, pr.target.scale, 8, realDt)
-  local th = areas.threat
-  th.current.scale = animation.expDecay(th.current.scale, th.target.scale, 8, realDt)
-  local msg = areas.message
-  msg.current.scale = animation.expDecay(msg.current.scale, msg.target.scale, 8, realDt)
+function areas.update(mouseX, mouseY)
 
-  local klak = areas.klak
-  klak.current.x = animation.expDecay(klak.current.x, klak.target.x, 20, realDt)
-  klak.current.y = animation.expDecay(klak.current.y, klak.target.y, 20, realDt)
-  klak.current.scale = animation.expDecay(klak.current.scale, klak.target.scale, 20, realDt)
+  -- areas.discard.current.y = animation.expDecay(areas.discard.current.y, areas.discard.target.y, 10, realDt)
+  -- local ra = areas.ram
+  -- ra.current.scale = animation.expDecay(ra.current.scale, ra.target.scale, 8, realDt)
+  -- local pr = areas.progress
+  -- pr.current.scale = animation.expDecay(pr.current.scale, pr.target.scale, 8, realDt)
+  -- local th = areas.threat
+  -- th.current.scale = animation.expDecay(th.current.scale, th.target.scale, 8, realDt)
+  -- local msg = areas.message
+  -- msg.current.scale = animation.expDecay(msg.current.scale, msg.target.scale, 8, realDt)
 
-  local playKlak = areas.playKlak
-  playKlak.current.x = animation.expDecay(playKlak.current.x, playKlak.target.x, 20, realDt)
-  playKlak.current.y = animation.expDecay(playKlak.current.y, playKlak.target.y, 20, realDt)
-  playKlak.current.scale = animation.expDecay(playKlak.current.scale, playKlak.target.scale, 20, realDt)
+  -- local klak = areas.klak
+  -- klak.current.x = animation.expDecay(klak.current.x, klak.target.x, 20, realDt)
+  -- klak.current.y = animation.expDecay(klak.current.y, klak.target.y, 20, realDt)
+  -- klak.current.scale = animation.expDecay(klak.current.scale, klak.target.scale, 20, realDt)
+
+  -- local playKlak = areas.playKlak
+  -- playKlak.current.x = animation.expDecay(playKlak.current.x, playKlak.target.x, 20, realDt)
+  -- playKlak.current.y = animation.expDecay(playKlak.current.y, playKlak.target.y, 20, realDt)
+  -- playKlak.current.scale = animation.expDecay(playKlak.current.scale, playKlak.target.scale, 20, realDt)
 end
 
 -- Hit detection
@@ -704,6 +736,20 @@ end
 function areas.drawStatic()
   local p = areas.play
   local d = areas.discard
+  local et = areas.endTurn
+
+  love.graphics.setColor(1, 1, 1, 1)
+  if et.state == "idle" and endTurnAsset then
+    love.graphics.draw(endTurnAsset, et.x, et.y, 0, SCALE_X, SCALE_Y)
+  elseif et.state == "hover" and endTurnHoverAsset then
+    love.graphics.draw(endTurnHoverAsset, et.x, et.y, 0, SCALE_X, SCALE_Y)
+  elseif et.state == "click" and endTurnClickAsset then
+    love.graphics.draw(endTurnClickAsset, et.x, et.y, 0, SCALE_X, SCALE_Y)
+  else
+    love.graphics.setColor(et.color)
+    love.graphics.rectangle("line", et.x, et.y, et.w, et.h)
+  end
+  love.graphics.setColor(1, 1, 1, 1)
 
   if areas.progressBar.asset then
     for i = 0, areas.progressBar.count - 1 do

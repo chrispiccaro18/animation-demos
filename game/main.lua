@@ -9,7 +9,7 @@ local NewHand   = require("core.newHand")
 local config       = require("lib.config")
 local Projectile   = require("core.projectile")
 local projectiles  = require("core.projectiles")
-local sequences    = require("core.sequences")
+local sequences    = require("core.newSequences")
 local Deck         = require("core.deck")
 local Camera       = require("core.camera")
 local Token        = require("core.token")
@@ -71,12 +71,20 @@ function love.load()
   local scaleY = love.graphics.getHeight() / 2160
   print("ScaleX: " .. scaleX .. ", ScaleY: " .. scaleY)
 
-  local exampleData = {
-    topEnergy    = 3,
-    bottomEnergy = 3,
-    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 }, { type = "nullify",  value = 1 } },
-    discard = { { type = "progress", value = 1 }, { type = "threat",   value = 1 }, { type = "nullify",  value = 1 } },
-    dtor    = { { type = "threat",   value = 1 }, { type = "threat",   value = 1 }, { type = "threat",   value = 1 } },
+  -- local exampleData = {
+  --   topEnergy    = 3,
+  --   bottomEnergy = 3,
+  --   play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 }, { type = "nullify",  value = 1 } },
+  --   discard = { { type = "progress", value = 1 }, { type = "threat",   value = 1 }, { type = "nullify",  value = 1 } },
+  --   dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 }, { type = "threat",  value = 1 } },
+  -- }
+
+    local exampleData = {
+    topEnergy    = 1,
+    bottomEnergy = 1,
+    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 } },
+    discard = { { type = "threat", value = 1 }, { type = "threat",   value = 1 } },
+    dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 } },
   }
 
   for _ = 1, 5 do
@@ -163,6 +171,11 @@ function love.update(dt)
   hand:update(mouseX, mouseY)
   Token.updateAll(realDt)
   areas.updateScanners(realDt)
+  if not hand:isDragging() and not areas.endTurn.frozen then
+    if areas.updateEndTurn(realDt, mouseX, mouseY) then
+      sequences.endTurn(hand)
+    end
+  end
   if areas.scanner.left.active  then Token.triggerQuiverNear(areas.scanner.left.y)  end
   if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y) end
   -- areas.update(mouseX, mouseY)

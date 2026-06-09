@@ -61,6 +61,10 @@ function Hand:isDragging()
   return false
 end
 
+function Hand:discardQueueSize()
+  return #self.discardQueue
+end
+
 function Hand:unlockHand()
   for _, card in ipairs(self.cards) do
     card.hover.can    = true
@@ -150,7 +154,8 @@ function Hand:update(mouseX, mouseY)
       card._excluded = true
       self:layout()
       if areas.mouseInPlay(mouseX, mouseY) then
-        if #areas.pool.chips < 2 then
+        print("play card", card.energy)
+        if #areas.pool.chips < card.energy then
           screenshake.triggerH()
           card._excluded = false
           self:layout()

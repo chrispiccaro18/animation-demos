@@ -53,7 +53,11 @@ function Camera:setIdle(color)
   -- Seed time so the oscillation starts near the current lens position
   local clampedX = math.max(-1, math.min(1, self.parts.lens.offsetX / 60))
   self.stateData.time = math.asin(clampedX) / 0.4
-  if color then self:setColor(color) end
+  if color then
+    self:setColor(color)
+  else
+    self:setColor(Color("#88EDFF"))
+  end
 end
 
 function Camera:lookAt(card, color)

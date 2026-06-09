@@ -61,6 +61,10 @@ function Hand:isDragging()
   return false
 end
 
+function Hand:discardQueueSize()
+  return #self.discardQueue
+end
+
 function Hand:unlockHand()
   for _, card in ipairs(self.cards) do
     card.hover.can    = true

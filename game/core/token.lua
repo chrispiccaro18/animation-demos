@@ -16,20 +16,13 @@ local SPEED = 2000
 local TOP_SPEED = 100000
 local ACCEL = 5000
 
+local DEFAULT_DELAY = 0.3
+
 local ramAsset = nil
 local progressAsset = nil
 local threatAsset = nil
 local dtorAsset = nil
 local nullifyAsset = nil
-
-function Token.load()
-  ramAsset = love.graphics.newImage("assets/proto/ram-chip.png", { mipmaps = true })
-  progressAsset = love.graphics.newImage("assets/proto/progress-token.png", { mipmaps = true })
-  threatAsset = love.graphics.newImage("assets/proto/threat-token.png", { mipmaps = true })
-  dtorAsset = love.graphics.newImage("assets/proto/dtor-token.png", { mipmaps = true })
-  nullifyAsset = love.graphics.newImage("assets/proto/nullify-token.png", { mipmaps = true })
-end
-
 
 ------------------------------------------------------------------------
 -- Internal: reflect a point across a rect wall
@@ -126,6 +119,66 @@ local function random_wall_sequence(n)
 end
 
 ------------------------------------------------------------------------
+-- Internal: return an adjusted 'to' angle such that (to - from) is the
+-- shortest angular delta, i.e. always in (-π, π].
+------------------------------------------------------------------------
+local function shortest_rotation_target(from, to)
+    local diff = (to - from) % (2 * math.pi)
+    if diff > math.pi then diff = diff - 2 * math.pi end
+    return from + diff
+end
+
+local function resolveAsset(token_type)
+  if token_type == "ram"      then return ramAsset
+  elseif token_type == "progress" then return progressAsset
+  elseif token_type == "threat"   then return threatAsset
+  elseif token_type == "dtor"     then return dtorAsset
+  elseif token_type == "nullify"  then return nullifyAsset
+  end
+end
+
+local function applyFlingPhysics(self, rect, options)
+  local drag      = options and options.drag or DRAG
+  local n_bounces = options and options.bounces or math.random(0, 3)
+
+  local dest_x, dest_y
+  if options and options.target then
+    dest_x, dest_y = options.target.x, options.target.y
+  elseif options and options.target_rect then
+    dest_x = options.target_rect.x + math.random() * options.target_rect.w
+    dest_y = options.target_rect.y + math.random() * options.target_rect.h
+  else
+    dest_x = rect.x + math.random() * rect.w
+    dest_y = rect.y + math.random() * rect.h
+  end
+
+  local walls = n_bounces > 0 and random_wall_sequence(n_bounces) or {}
+  local angle, total_dist = solve_unfolded(self.x, self.y, dest_x, dest_y, walls, rect)
+  local v0 = total_dist * (1 - drag) * 60
+
+  self.vx          = math.cos(angle) * v0
+  self.vy          = math.sin(angle) * v0
+  self.v0          = v0
+  self.rect        = rect
+  self.mode        = "fling"
+  self.done        = false
+  self.scale       = self.base_scale
+  self.waypoints   = trace_ray(self.x, self.y, angle, total_dist, walls, rect)
+  self.total_dist  = total_dist
+  self.dist_so_far = 0
+  self.wp_index    = 1
+  self.seg_start   = { x = self.x, y = self.y }
+end
+
+function Token.load()
+  ramAsset = love.graphics.newImage("assets/proto/ram-chip.png", { mipmaps = true })
+  progressAsset = love.graphics.newImage("assets/proto/progress-token.png", { mipmaps = true })
+  threatAsset = love.graphics.newImage("assets/proto/threat-token.png", { mipmaps = true })
+  dtorAsset = love.graphics.newImage("assets/proto/dtor-slot.png", { mipmaps = true })
+  nullifyAsset = love.graphics.newImage("assets/proto/nullify-token.png", { mipmaps = true })
+end
+
+------------------------------------------------------------------------
 -- Constructor: fling mode
 -- rect    = {x, y, w, h} bounding area
 -- options = {
@@ -137,81 +190,25 @@ end
 ------------------------------------------------------------------------
 function Token.new_fling(start_x, start_y, rect, options)
     options = options or {}
-    local self  = setmetatable({}, Token)
-    local drag  = options.drag or DRAG
+    local self = setmetatable({}, Token)
 
-    self.mode       = "fling"
     self.x          = start_x
     self.y          = start_y
-    self.rect       = rect
     self.base_scale = options.base_scale or 1
-    self.scale      = self.base_scale
+    self.rotation   = 0
     self.done       = false
     if options.delay == false then
         self.delay = 0
     elseif options.delay then
         self.delay = options.delay
     else
-        self.delay = 0.1 + math.random() * 0.3
+        self.delay = math.random() * DEFAULT_DELAY
     end
     self.token_type = options.type
-    if options.type == "ram" then
-      self.asset = ramAsset
-    elseif options.type == "progress" then
-      self.asset = progressAsset
-    elseif options.type == "threat" then
-      self.asset = threatAsset
-    elseif options.type == "dtor" then
-      self.asset = dtorAsset
-    elseif options.type == "nullify" then
-      self.asset = nullifyAsset
-    else
-      self.asset = nil
-    end
+    self.asset      = resolveAsset(options.type)
+    self.subTokens  = options.subTokens
 
-    -- choose bounce count
-    local n_bounces = options.bounces or math.random(0, 3)
-
-    -- choose or use provided target
-    local dest_x, dest_y
-    if options.target then
-        dest_x, dest_y = options.target.x, options.target.y
-    elseif options.target_rect then
-        dest_x = options.target_rect.x + math.random() * options.target_rect.w
-        dest_y = options.target_rect.y + math.random() * options.target_rect.h
-    else
-        dest_x = rect.x + math.random() * rect.w
-        dest_y = rect.y + math.random() * rect.h
-    end
-
-    print(string.format("Token fling: start=(%.1f,%.1f) dest=(%.1f,%.1f) bounces=%d",
-        start_x, start_y, dest_x, dest_y, n_bounces))
-
-    -- build wall sequence
-    local walls = n_bounces > 0 and random_wall_sequence(n_bounces) or {}
-
-    -- solve initial angle and total path length via unfolding
-    local angle, total_dist = solve_unfolded(
-        start_x, start_y, dest_x, dest_y, walls, rect
-    )
-
-    -- back-solve initial speed from geometric series.
-    -- Position is updated as x += vx*dt, so the true sum is:
-    --   total_dist = v0 * dt / (1 - drag)  =>  v0 = total_dist * (1 - drag) / dt
-    -- Assume 60 fps (dt = 1/60) to get a frame-rate-agnostic constant:
-    local v0 = total_dist * (1 - drag) * 60
-
-    self.vx = math.cos(angle) * v0
-    self.vy = math.sin(angle) * v0
-    self.v0 = v0
-    self.rotation = 0
-
-    -- pre-trace waypoints for arc height tracking
-    self.waypoints   = trace_ray(start_x, start_y, angle, total_dist, walls, rect)
-    self.total_dist  = total_dist
-    self.dist_so_far = 0
-    self.wp_index    = 1   -- which segment we're currently on
-    self.seg_start   = {x = start_x, y = start_y}
+    applyFlingPhysics(self, rect, options)
 
     table.insert(instances, self)
     return self
@@ -242,26 +239,18 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     elseif options.delay then
         self.delay = options.delay
     else
-        self.delay = 0.1 + math.random() * 0.3
+        self.delay = math.random() * DEFAULT_DELAY
     end
     self.token_type      = options.type
     self.start_rotation  = 0
-    self.target_rotation = options.target_rotation or 0
+    self.target_rotation = shortest_rotation_target(0, options.target_rotation or 0)
     self.start_scale     = self.base_scale
     self.target_scale    = options.target_scale    or self.base_scale
     local adx = target_x - start_x
     local ady = target_y - start_y
     self.attract_dist    = math.max(math.sqrt(adx*adx + ady*ady), 1)
-
-    if options.type == "ram" then
-      self.asset = ramAsset
-    elseif options.type == "dtor" then
-      self.asset = dtorAsset
-    elseif options.type == "nullify" then
-      self.asset = nullifyAsset
-    else
-      self.asset = nil
-    end
+    self.asset           = resolveAsset(options.type)
+    self.onArrive        = options.onArrive
 
     table.insert(instances, self)
     return self
@@ -352,6 +341,7 @@ function Token:_update_attract(dt)
         self.rotation    = self.target_rotation
         self.scale       = self.target_scale
         self.done        = true
+        if self.onArrive then self.onArrive(self) end
         return
     end
 
@@ -380,17 +370,23 @@ function Token:draw()
     (self.scale * SCALE_Y) * 0.3
   )
   if self.asset then
-    love.graphics.draw(
-      self.asset,
-      0,
-      0,
-      0,
-      1, 1,
-      self.asset:getWidth() / 2,
-      self.asset:getHeight() / 2
-    )
+    local iw, ih = self.asset:getDimensions()
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(self.asset, 0, 0, 0, 1, 1, iw / 2, ih / 2)
+    if self.subTokens and #self.subTokens > 0 then
+      local n     = #self.subTokens
+      local slotW = iw / n
+      for i, tokenType in ipairs(self.subTokens) do
+        local sub = resolveAsset(tokenType)
+        if sub then
+          local sw, sh = sub:getDimensions()
+          local s  = math.min(slotW / sw, ih / sh) * 0.85
+          local cx = (i - 0.5) * slotW - iw / 2
+          love.graphics.draw(sub, cx, 0, 0, s, s, sw / 2, sh / 2)
+        end
+      end
+    end
   else
-    -- placeholder if asset fails to load:
     love.graphics.setColor(1, 0.5, 0.5, 1)
     love.graphics.circle("fill", 0, 0, 100 * SCALE_X)
   end
@@ -463,7 +459,7 @@ function Token.attractDone(token_type, destination, options)
                 token.accel            = options.acceleration   or (ACCEL * SCALE_X)
                 token.threshold        = options.threshold      or 4
                 token.start_rotation   = token.rotation
-                token.target_rotation  = options.target_rotation or 0
+                token.target_rotation  = shortest_rotation_target(token.rotation, options.target_rotation or 0)
                 token.start_scale      = token.scale
                 token.target_scale     = options.target_scale   or token.base_scale
                 token.attract_dist     = math.max(math.sqrt(adx*adx + ady*ady), 1)
@@ -475,9 +471,79 @@ function Token.attractDone(token_type, destination, options)
                     token.delay = 0.1 + math.random() * 0.3
                 end
                 token.done             = false
+                token.onArrive         = options.onArrive
             end
         end
     end
+end
+
+------------------------------------------------------------------------
+-- Remove a specific token from instances by reference.
+------------------------------------------------------------------------
+function Token.removeSingle(token)
+    for i, t in ipairs(instances) do
+        if t == token then
+            table.remove(instances, i)
+            return
+        end
+    end
+end
+
+------------------------------------------------------------------------
+-- Attach a flying token to a card slot. Removes it from physics.
+------------------------------------------------------------------------
+function Token:attachToSlot(card, zone, index)
+    self.mode        = "slotted"
+    self.parentCard  = card
+    self.parentZone  = zone
+    self.parentIndex = index
+    local zoneSlots  = card._slots and card._slots[zone]
+    if zoneSlots and zoneSlots[index] then
+        zoneSlots[index].token       = self
+        zoneSlots[index].targetAlpha = 1
+    end
+    Token.removeSingle(self)
+end
+
+------------------------------------------------------------------------
+-- Detach a slotted token back into the world at the slot's world pos.
+------------------------------------------------------------------------
+function Token:detachFromSlot()
+    if self.parentCard then
+        local pos = self.parentCard:getSlotPosition(self.parentZone, self.parentIndex)
+        if pos.x then self.x, self.y = pos.x, pos.y end
+        local zoneSlots = self.parentCard._slots and self.parentCard._slots[self.parentZone]
+        if zoneSlots and zoneSlots[self.parentIndex] then
+            zoneSlots[self.parentIndex].token       = nil
+            zoneSlots[self.parentIndex].targetAlpha = 0
+        end
+        self.parentCard  = nil
+        self.parentZone  = nil
+        self.parentIndex = nil
+    end
+    self.mode = "free"
+    self.done = false
+    table.insert(instances, self)
+end
+
+------------------------------------------------------------------------
+-- Detach and immediately launch as a fling from the slot world pos.
+------------------------------------------------------------------------
+function Token:flingFromSlot(rect, options)
+    if self.parentCard then
+        local pos = self.parentCard:getSlotPosition(self.parentZone, self.parentIndex)
+        if pos.x then self.x, self.y = pos.x, pos.y end
+        local zoneSlots = self.parentCard._slots and self.parentCard._slots[self.parentZone]
+        if zoneSlots and zoneSlots[self.parentIndex] then
+            zoneSlots[self.parentIndex].token       = nil
+            zoneSlots[self.parentIndex].targetAlpha = 0
+        end
+        self.parentCard  = nil
+        self.parentZone  = nil
+        self.parentIndex = nil
+    end
+    applyFlingPhysics(self, rect, options)
+    table.insert(instances, self)
 end
 
 ------------------------------------------------------------------------
