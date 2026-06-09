@@ -250,6 +250,7 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     local ady = target_y - start_y
     self.attract_dist    = math.max(math.sqrt(adx*adx + ady*ady), 1)
     self.asset           = resolveAsset(options.type)
+    self.subTokens       = options.subTokens
     self.onArrive        = options.onArrive
 
     table.insert(instances, self)

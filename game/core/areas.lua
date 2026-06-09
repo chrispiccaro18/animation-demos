@@ -55,6 +55,13 @@ areas.dtorQueue = {
   slots = {},
 }
 
+areas.dtorText = {
+  x = 2176 * love.graphics.getWidth() / 3840,
+  y = 448 * love.graphics.getHeight() / 2160,
+  w = 1095 * love.graphics.getWidth() / 3840,
+  h = 80 * love.graphics.getHeight() / 2160,
+}
+
 areas.progressBar = {
   x = 873 * love.graphics.getWidth() / 3840,
   y = 73 * love.graphics.getHeight() / 2160,
@@ -779,33 +786,6 @@ function areas.drawStatic()
   -- love.graphics.setColor(d.color)
   -- love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
   -- love.graphics.setColor(1, 1, 1, 1)
-
-  local dtor = areas.dtorQueue
-  -- love.graphics.setColor(dtor.color)
-  -- love.graphics.rectangle("line", dtor.x, dtor.y, dtor.w, dtor.h)
-  love.graphics.setColor(1, 1, 1, 1)
-  if dtorTokenAsset and dtorTokenNullAsset then
-    local slotH = dtor.h / dtor.maxSlots
-    for i, slot in ipairs(dtor.slots) do
-      if slot.occupied then
-        local sx = dtor.x + dtor.w / 2
-        local sy = dtor.y + (i - 0.5) * slotH
-        local sc = (slot.scale or 1) * SCALE_X * 0.3
-        local asset = slot.nullified and dtorTokenNullAsset or dtorTokenAsset
-        love.graphics.push()
-        love.graphics.translate(sx, sy)
-        love.graphics.scale(sc, sc)
-        love.graphics.draw(
-          asset,
-          0, 0, 0, 1, 1,
-          dtorTokenAsset:getWidth() / 2,
-          dtorTokenAsset:getHeight() / 2
-        )
-        love.graphics.pop()
-      end
-    end
-    love.graphics.setColor(1, 1, 1, 1)
-  end
 
   local po = areas.pool
   -- love.graphics.setColor(0.5, 0.5, 0.5, 1)

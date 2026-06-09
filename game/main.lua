@@ -14,6 +14,7 @@ local Deck         = require("core.deck")
 local Camera       = require("core.camera")
 local Token        = require("core.token")
 local laser        = require("core.laser")
+local Dtor         = require("core.dtor")
 
 local Color = require("lib.color")
 
@@ -31,6 +32,8 @@ local tokens = {}
 local boardAsset = nil
 local camera = nil
 
+local dtorFont = nil
+
 SCALE_X = love.graphics.getWidth() / 3840
 SCALE_Y = love.graphics.getHeight() / 2160
 
@@ -42,6 +45,7 @@ function love.load()
   -- erdnaseAsset = love.graphics.newImage("assets/erdnase.png")
 
   Token.load()
+  Dtor.load()
   camera = Camera.load()
   camera:setIdle()
 
@@ -59,6 +63,7 @@ function love.load()
   deck = Deck.new(40, love.graphics.getHeight() - 310, cardBackAsset)
   hand.deck = deck
   local projFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
+  dtorFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 64 * love.graphics.getHeight() / 2160)
   projectiles.ram = Projectile.new({ asset = love.graphics.newImage("assets/large-ram.png"), font = projFont })
   projectiles.ramChip = Projectile.new({ asset = love.graphics.newImage("assets/ram-chip.png"), font = projFont, animationExp = 18 })
   projectiles.ramChip2 = Projectile.new({ asset = love.graphics.newImage("assets/ram-chip.png"), font = projFont, animationExp = 18 })
@@ -117,11 +122,23 @@ function love.draw()
   end
   -- areas.drawBefore(hand:isDragging())
 
+  if dtorFont then
+    local previousFont = love.graphics.getFont()
+    love.graphics.setFont(dtorFont)
+    love.graphics.setColor(Color("#D56E6E"))
+    local YNudge = -8 * SCALE_Y
+    love.graphics.printf("DESTRUCTOR-QUEUE", areas.dtorText.x, areas.dtorText.y + YNudge, areas.dtorText.w, "center")
+    -- love.graphics.rectangle("line", areas.dtorText.x, areas.dtorText.y, areas.dtorText.w, areas.dtorText.h)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(previousFont)
+  end
+
   -- if deck and hand:isDragging() then deck:draw() end
   -- if deck and not hand:isDragging() then deck:draw() end
   -- for _, proj in pairs(projectiles) do proj:draw() end
   -- areas.drawAfter(hand:isDragging())
   areas.drawStatic()
+  Dtor.drawAll()
   if camera then camera:draw() end
   if camera then camera:drawScannerLines(areas.scanner) end
   hand:draw()
@@ -224,15 +241,15 @@ function love.keypressed(key)
     -- if card then sequences.insertMiddle(card) end
   elseif key == "d" then
     -- areas.reorderDestructorQueue()
-    print("here")
+    -- print("here")
     local card = hand.cards[1]
     -- card:shake()
 
-    -- if card then card:startReverseDissolve() end
-    if card then
-      print("Starting dissolve on card")
-      card:startDissolve()
-    end
+    if card then card:startReverseDissolve() end
+    -- if card then
+    --   print("Starting dissolve on card")
+    --   card:startDissolve()
+    -- end
 
     -- events.push({
     --   fn = function()

@@ -166,7 +166,7 @@ function Hand:update(mouseX, mouseY)
       card._excluded = true
       self:layout()
       if areas.mouseInPlay(mouseX, mouseY) then
-        if #areas.pool.chips < 3 then
+        if #areas.pool.chips < card.energy then
           card:setZoneState("idle")
           Camera:setColor(Color("#88EDFF"))
           Camera:setIdle()

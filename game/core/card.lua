@@ -505,6 +505,30 @@ function Card:exitSlot()
   self.slotEdgeY = nil
 end
 
+function Card:restoreAllSlots()
+  for _, zone in ipairs(EFFECT_ZONES) do
+    local effects = self.data[zone.dataKey]
+    local n
+    if zone.singleSlot then
+      n = 1
+    else
+      n = type(effects) == "number" and effects or (effects and #effects or 0)
+    end
+    if n > 0 and self._slots[zone.id] then
+      if zone.hasTypedTokens and type(effects) == "table" then
+        for i, effect in ipairs(effects) do
+          self:fillSlot(zone.id, i, effect.type)
+        end
+      elseif zone.tokenKey then
+        local tokenType = (zone.tokenKey == "ramChip") and "ram" or zone.tokenKey
+        for i = 1, n do
+          self:fillSlot(zone.id, i, tokenType)
+        end
+      end
+    end
+  end
+end
+
 function Card:isDissolving()
   return self.dissolving or self.reverseDissolving
 end

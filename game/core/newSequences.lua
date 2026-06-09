@@ -6,6 +6,7 @@ local Token       = require("core.token")
 local Color = require("lib.color")
 local Camera = require("core.camera")
 local laser = require("core.laser")
+local Dtor  = require("core.dtor")
 
 local sequences = {}
 
@@ -135,10 +136,15 @@ function sequences.discard(card, camera, hand)
         areas.addPoolChip(t.x, t.y)
       end
       local dtorTokens = Token.removeDone("dtor")
+      local slotIndices = {}
       for _, t in ipairs(dtorTokens) do
         if t.dest_meta and t.dest_meta.index then
           areas.claimDtorSlot(t.dest_meta.index, t.scale)
+          table.insert(slotIndices, t.dest_meta.index)
         end
+      end
+      if #slotIndices > 0 then
+        Dtor.register(card, slotIndices)
       end
       areas.scanner.right.active = true
     end,
@@ -346,8 +352,148 @@ function sequences.play(card, camera, hand)
 end
 
 function sequences.endTurn(hand)
-  print(hand:isDragging())
-  print(hand:discardQueueSize())
+  if not Dtor.hasEntry() then
+    Camera:setIdle()
+    areas.endTurn.frozen = false
+    return
+  end
+
+  local entry = Dtor.popEntry()
+  if not entry then
+    Camera:setIdle()
+    areas.endTurn.frozen = false
+    return
+  end
+
+  local card        = entry.card
+  local slotIndices = entry.slotIndices
+
+
+  -- 1. Position dissolved card at dtorQueue center, add it back to hand so
+  --    card:update() runs every frame (required for reverse dissolve to tick).
+  --    It is fully dissolved (invisible) so being in the hand is fine here.
+  events.push({
+    fn = function()
+      local dq = areas.dtorQueue
+      local cx = love.graphics.getWidth() / 2
+      local cy = love.graphics.getHeight() / 2
+      -- local cx = dq.x + dq.w / 2
+      -- local cy = dq.y + dq.h / 2
+      hand:add(card, false, false)
+      card:setZoneState("idle")
+      card.current.x = cx
+      card.current.y = cy
+      card.target.x = cx
+      card.target.y = cy
+      Camera:lookAt(card)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+
+  -- 2. Fling sub-tokens from the slot; compact remaining entries up to slot 1
+  events.push({
+    fn = function()
+      local dq    = areas.dtorQueue
+      local dtorText = areas.dtorText
+      local slotH = dq.h / dq.maxSlots
+      local idx   = slotIndices[1]
+      local sx    = dtorText.x + dtorText.w / 2
+      local sy    = dtorText.y + dtorText.h / 2
+      -- local sx    = dq.x + dq.w / 2
+      -- local sy    = dq.y + (idx - 0.5) * slotH
+      areas.releaseDtorSlot(idx)
+      for _, effect in ipairs(card.data.dtor or {}) do
+        Token.new_fling(sx, sy, discardDeskFullRect, {
+          type       = effect.type,
+          bounces    = 1,
+          base_scale = 1.25,
+          delay      = false,
+          target_rect = discardDeskFullRect,
+        })
+      end
+      Dtor.compactSlots()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.1, type = "after",
+  })
+
+  -- 3. Poll until flung tokens have landed and compact tokens have slid into place
+  events.push({
+    fn = function()
+      return not Token.isActive()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+
+  events.push({
+    fn = function()
+      areas.scanner.right.active = true
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 1.5, type = "after"
+  })
+  -- 4. Attract tokens back to the card's dtorEffect slot positions
+  events.push({
+    fn = function()
+      Token.attractDone("threat", areas.threatDestination, { target_scale = 1.5 })
+
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+
+  -- 5. Poll until all tokens have arrived
+  events.push({
+    fn = function()
+      return Token.allDone()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+
+  -- 6. Remove tokens and start reverse dissolve
+  events.push({
+    fn = function()
+      local removedTokens = Token.removeDone()
+      for _, t in ipairs(removedTokens) do
+        if t.token_type == "progress" then
+          areas.progressBar.count = math.min(areas.progressBar.count + 1, 5)
+        elseif t.token_type == "threat" then
+          areas.threatBar.count = math.min(areas.threatBar.count + 1, 5)
+        elseif t.token_type == "nullify" then
+          areas.nullifyNextDtorSlot()
+        end
+      end
+      card:restoreAllSlots()
+      card:startReverseDissolve()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+
+  -- 7. Poll until reverse dissolve is done
+  events.push({
+    fn = function()
+      return not card:isDissolving()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+
+  -- 8. Restore state
+  events.push({
+    fn = function()
+      card:resetDissolve()
+      card:unlock()
+      hand:layout()
+      Camera:setIdle()
+      areas.endTurn.frozen = false
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
 end
 
 return sequences
