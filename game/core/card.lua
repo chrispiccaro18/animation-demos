@@ -153,10 +153,8 @@ function Card.load(dissolveShader, tiltShader)
   }
 end
 
-function Card.new(x, y, data)
-  local self      = setmetatable({}, Card)
+function Card:_initState(x, y, data)
   local baseAsset = _assets.base
-  self.asset      = baseAsset
   self.hover      = { is = false, can = true }
   self.drag       = { is = false, can = true, offsetX = 0, offsetY = 0 }
   self.stationary = true
@@ -167,12 +165,8 @@ function Card.new(x, y, data)
   self.target     = { x = x, y = y, r = 0, scale = 0.5 }
   self.w          = baseAsset:getWidth()  * self.current.scale
   self.h          = baseAsset:getHeight() * self.current.scale
-  self.offsetX    = baseAsset:getWidth()  / 2
-  self.offsetY    = baseAsset:getHeight() / 2
   self.parts      = {}
   self._excluded  = false
-  self.shader     = _shaders.dissolve
-  self.tiltShader = _shaders.tilt
   self.drawShadow = true
   self.mouseX     = 0
   self.mouseY     = 0
@@ -182,13 +176,11 @@ function Card.new(x, y, data)
   self.dissolveTime      = 0
   self.dissolving        = false
   self.reverseDissolving = false
-  self.scales     = { idle = 0.5, hover = 0.65, drag = 0.7 }
   self.data       = data
   self.energy     = data.topEnergy or 0
 
   self:_setParts(buildParts(data))
 
-  -- Build slot state table and pre-fill from card data
   self._slots = {}
   for _, zone in ipairs(EFFECT_ZONES) do
     local effects = data[zone.dataKey]
@@ -226,8 +218,23 @@ function Card.new(x, y, data)
                                  or (effects and #effects or 0)
     end
   end
+end
 
+function Card.new(x, y, data)
+  local self      = setmetatable({}, Card)
+  local baseAsset = _assets.base
+  self.asset      = baseAsset
+  self.offsetX    = baseAsset:getWidth()  / 2
+  self.offsetY    = baseAsset:getHeight() / 2
+  self.shader     = _shaders.dissolve
+  self.tiltShader = _shaders.tilt
+  self.scales     = { idle = 0.5, hover = 0.65, drag = 0.7 }
+  self:_initState(x, y, data)
   return self
+end
+
+function Card:resetToInitial(x, y)
+  self:_initState(x or self.current.x, y or self.current.y, self.data)
 end
 
 function Card:_setParts(config)

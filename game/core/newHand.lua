@@ -9,7 +9,7 @@ local Hand      = {}
 Hand.__index    = Hand
 
 function Hand.new()
-  return setmetatable({ cards = {}, discardQueue = {}, deck = nil }, Hand)
+  return setmetatable({ cards = {}, discardQueue = {} }, Hand)
 end
 
 function Hand:layout()
@@ -87,7 +87,7 @@ function Hand:update(mouseX, mouseY)
   -- Suppress hover on siblings while a card is being dragged
   if draggingCard then
     for _, card in ipairs(self.cards) do
-      if card ~= draggingCard then
+      if card ~= draggingCard and not card._excluded then
         card.hover.can    = false
         card.hover.is     = false
         card.target.scale = card.scales.idle

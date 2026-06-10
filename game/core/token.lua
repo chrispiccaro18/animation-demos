@@ -23,6 +23,7 @@ local progressAsset = nil
 local threatAsset = nil
 local dtorAsset = nil
 local nullifyAsset = nil
+local emptyNullifyDtorAsset = nil
 
 ------------------------------------------------------------------------
 -- Internal: reflect a point across a rect wall
@@ -133,7 +134,8 @@ local function resolveAsset(token_type)
   elseif token_type == "progress" then return progressAsset
   elseif token_type == "threat"   then return threatAsset
   elseif token_type == "dtor"     then return dtorAsset
-  elseif token_type == "nullify"  then return nullifyAsset
+  elseif token_type == "nullify"   then return nullifyAsset
+  elseif token_type == "dtor_null" then return emptyNullifyDtorAsset
   end
 end
 
@@ -176,6 +178,7 @@ function Token.load()
   threatAsset = love.graphics.newImage("assets/proto/threat-token.png", { mipmaps = true })
   dtorAsset = love.graphics.newImage("assets/proto/dtor-slot.png", { mipmaps = true })
   nullifyAsset = love.graphics.newImage("assets/proto/nullify-token.png", { mipmaps = true })
+  emptyNullifyDtorAsset = love.graphics.newImage("assets/proto/empty-nullify-dtor.png", { mipmaps = true })
 end
 
 ------------------------------------------------------------------------

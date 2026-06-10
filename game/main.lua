@@ -60,8 +60,7 @@ function love.load()
   tiltShader = love.graphics.newShader("assets/tilt.fs")
   Card.load(dissolveShader, tiltShader)
   areas.load()
-  deck = Deck.new(40, love.graphics.getHeight() - 310, cardBackAsset)
-  hand.deck = deck
+  deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
   local projFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
   dtorFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 64 * love.graphics.getHeight() / 2160)
   projectiles.ram = Projectile.new({ asset = love.graphics.newImage("assets/large-ram.png"), font = projFont })
@@ -99,14 +98,18 @@ function love.load()
     dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 }, { type = "threat",   value = 1 } },
   }
 
-  for _ = 1, 3 do
-    local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
-      exampleData
-    )
-    hand:add(card, true, true)
-  end
+  -- for _ = 1, 2 do
+  --   deck:add(Card.new(0, 0, exampleData))
+  -- end
+
+  -- for _ = 1, 3 do
+  --   local card = Card.new(
+  --     love.graphics.getWidth() / 2,
+  --     love.graphics.getHeight() / 2,
+  --     exampleData
+  --   )
+  --   hand:add(card, true, true)
+  -- end
   for _ = 1, 2 do
     local card = Card.new(
       love.graphics.getWidth() / 2,
@@ -138,14 +141,13 @@ function love.draw()
   -- areas.drawBefore(hand:isDragging())
 
 
-  -- if deck and hand:isDragging() then deck:draw() end
-  -- if deck and not hand:isDragging() then deck:draw() end
   -- for _, proj in pairs(projectiles) do proj:draw() end
   -- areas.drawAfter(hand:isDragging())
   areas.drawStatic()
   Dtor.drawAll()
   if camera then camera:draw() end
   if camera then camera:drawScannerLines(areas.scanner) end
+  if deck then deck:draw() end
   hand:draw()
   Token.drawAll()
   areas.drawScanners()
@@ -245,13 +247,55 @@ function love.keypressed(key)
   elseif key == "2" then
     -- local card = hand.cards[1]
     -- if card then sequences.insertMiddle(card) end
+  elseif key == "f" then
+    if deck then
+      local card = deck:deal()
+      if card then hand:add(card, false, true) end
+    end
   elseif key == "d" then
     -- areas.reorderDestructorQueue()
     -- print("here")
     local card = hand.cards[1]
+    events.push({
+      fn = function()
+        if card and deck then
+          card.target.x = deck:position().x
+          card.target.y = deck:position().y
+          card.target.scale = 0.0
+          card._excluded = true
+          card.drawShadow = false
+          card.hover.can = false
+          card.hover.is  = false
+          card.drag.can  = false
+        end
+      end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "immediate",
+    })
+    events.push({
+      fn = function()
+        return card:isAtTarget()
+      end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "poll",
+    })
+    events.push({
+      fn = function()
+        if card then hand:remove(card) end
+        if deck then
+          deck:add(card)
+        end
+      end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "immediate",
+    })
+    -- local card = deck:deal()
+    -- if card then
+    --   hand:add(card, false, true)
+    -- end
     -- card:shake()
 
-    if card then card:startReverseDissolve() end
+    -- if card then card:startReverseDissolve() end
     -- if card then
     --   print("Starting dissolve on card")
     --   card:startDissolve()

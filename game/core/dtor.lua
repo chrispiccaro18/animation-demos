@@ -17,11 +17,11 @@ Dtor.area = {
   slots    = {},
 }
 
-local _queue         = {}
-local _dtorSlotAsset = nil
-local _emptyNullifySlot  = nil
-local _tokenAssets   = {}
-local _font          = nil
+local _queue            = {}
+local _dtorSlotAsset    = nil
+local _emptyNullifySlot = nil
+local _tokenAssets      = {}
+local _font             = nil
 
 local _text = {
   x           = 2176 * W / 3840,
@@ -71,7 +71,7 @@ end
 
 function Dtor.load()
   for i = 1, Dtor.area.maxSlots do
-    Dtor.area.slots[i] = { occupied = false, reserved = false }
+    Dtor.area.slots[i] = { occupied = false, reserved = false, nullified = false }
   end
   _dtorSlotAsset = love.graphics.newImage("assets/proto/dtor-slot.png", { mipmaps = true })
   _emptyNullifySlot = love.graphics.newImage("assets/proto/empty-nullify-dtor.png",  { mipmaps = true })
@@ -144,9 +144,10 @@ end
 function Dtor.releaseSlot(index)
   local slot = Dtor.area.slots[index]
   if slot then
-    slot.occupied = false
-    slot.reserved = false
-    slot.scale    = nil
+    slot.occupied  = false
+    slot.reserved  = false
+    slot.nullified = false
+    slot.scale     = nil
   end
 end
 
@@ -158,6 +159,11 @@ function Dtor.nextUnnullifiedSlot()
       return { x = dq.x + dq.w / 2, y = dq.y + (i - 0.5) * slotH, index = i }
     end
   end
+  for i = 1, dq.maxSlots do
+    if not dq.slots[i].occupied and not dq.slots[i].reserved and not dq.slots[i].nullified then
+      return { x = dq.x + dq.w / 2, y = dq.y + (i - 0.5) * slotH, index = i }
+    end
+  end
   return nil
 end
 
@@ -165,8 +171,12 @@ function Dtor.nullifyNextSlot()
   local dq = Dtor.area
   for i = 1, dq.maxSlots do
     if dq.slots[i].occupied and not dq.slots[i].nullified then
-      dq.slots[i].nullified = true
-      break
+      dq.slots[i].nullified = true; return
+    end
+  end
+  for i = 1, dq.maxSlots do
+    if not dq.slots[i].occupied and not dq.slots[i].reserved and not dq.slots[i].nullified then
+      dq.slots[i].nullified = true; return
     end
   end
 end
@@ -197,11 +207,12 @@ end
 -- Animate remaining entries sliding up to fill from slot 1.
 ------------------------------------------------------------------------
 function Dtor.compactSlots()
-  if #_queue == 0 then return end
   local dq    = Dtor.area
   local slotH = dq.h / dq.maxSlots
 
   local nextSlot = 1
+
+  -- Pass 1: compact occupied queue-entry slots
   for _, entry in ipairs(_queue) do
     local newIndices = {}
     for _, oldIdx in ipairs(entry.slotIndices) do
@@ -217,14 +228,15 @@ function Dtor.compactSlots()
         for _, effect in ipairs(entry.card.data.dtor or {}) do
           table.insert(subTokens, effect.type)
         end
+        dq.slots[capturedN].reserved = true
         Dtor.releaseSlot(oldIdx)
         Token.new_attract(
           oldSx, oldSy,
           dq.x + dq.w / 2, newSy,
           {
-            type          = "dtor",
+            type          = slotNullif and "dtor_null" or "dtor",
             base_scale    = slotScale or 1,
-            subTokens     = subTokens,
+            subTokens     = slotNullif and nil or subTokens,
             initial_speed = 100 * SCALE_X,
             acceleration  = 200 * SCALE_X,
             onArrive      = function(t)
@@ -242,6 +254,33 @@ function Dtor.compactSlots()
       nextSlot = nextSlot + 1
     end
     entry.slotIndices = newIndices
+  end
+
+  -- Pass 2: compact pre-nullified empty slots
+  for i = 1, dq.maxSlots do
+    if dq.slots[i].nullified and not dq.slots[i].occupied and not dq.slots[i].reserved then
+      if i ~= nextSlot then
+        local capturedN = nextSlot
+        dq.slots[capturedN].reserved = true
+        dq.slots[i].nullified = false
+        Token.new_attract(
+          dq.x + dq.w / 2, dq.y + (i - 0.5) * slotH,
+          dq.x + dq.w / 2, dq.y + (nextSlot - 0.5) * slotH,
+          {
+            type          = "dtor_null",
+            base_scale    = 1.5,
+            initial_speed = 100 * SCALE_X,
+            acceleration  = 200 * SCALE_X,
+            onArrive      = function(t)
+              dq.slots[capturedN].nullified = true
+              dq.slots[capturedN].reserved  = false
+              Token.removeSingle(t)
+            end,
+          }
+        )
+      end
+      nextSlot = nextSlot + 1
+    end
   end
 end
 
@@ -296,6 +335,25 @@ function Dtor.drawAll()
     --   love.graphics.setLineWidth(1.5 * SCALE_Y)
     --   love.graphics.line(dq.x + 4 * SCALE_X, sepY, dq.x + dq.w - 4 * SCALE_X, sepY)
     -- end
+  end
+
+  -- Pre-nullified empty slots: render at their actual fixed index
+  if _emptyNullifySlot then
+    local ew, eh = _emptyNullifySlot:getDimensions()
+    for i = 1, dq.maxSlots do
+      local slot = dq.slots[i]
+      if slot.nullified and not slot.occupied then
+        local sx = dq.x + dq.w / 2
+        local sy = dq.y + (i - 0.5) * slotH
+        local sc = 1.5 * SCALE_X * 0.3
+        love.graphics.push()
+        love.graphics.translate(sx, sy)
+        love.graphics.scale(sc, sc)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(_emptyNullifySlot, 0, 0, 0, 1, 1, ew / 2, eh / 2)
+        love.graphics.pop()
+      end
+    end
   end
 
   -- Text overlay

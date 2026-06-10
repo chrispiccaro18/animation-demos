@@ -19,31 +19,10 @@ end
 --- @param card table  Card object
 function Deck:add(card)
   table.insert(self.cards, card)
-
-  -- Snap to deck position
-  card.current.x    = self.x
-  card.current.y    = self.y
-  card.target.x     = self.x
-  card.target.y     = self.y
-
-  -- Reset physics
-  card.current.r    = 0
-  card.current.rVel = 0
+  card:resetToInitial(self.x, self.y)
   card.current.scale = 0.95
   card.target.scale  = 0.95
-  card.stationary    = true
-
-  -- Reset interaction flags
-  card._excluded   = false
-  card.hover.is    = false
-  card.hover.can   = true
-  card.drag.is     = false
-  card.drag.can    = true
-
-  -- Reset visuals
-  card.drawShadow  = false
-  card:resetDissolve()
-  card:snapParts()
+  card.drawShadow    = false
 end
 
 --- Remove and return the top card of the deck, or nil if empty.
@@ -53,6 +32,11 @@ function Deck:deal()
   local card = table.remove(self.cards, 1)
   card.drawShadow = true
   return card
+end
+
+--- @return table|nil
+function Deck:peek()
+  return self.cards[1]
 end
 
 --- @return number
@@ -65,23 +49,35 @@ function Deck:isEmpty()
   return #self.cards == 0
 end
 
---- Draw the visual card-back pile and a count label below it.
+--- @return table { x = number, y = number }
+function Deck:position()
+  return { x = self.x, y = self.y }
+end
+
+--- Draw the visual card-back pile.
+--- Empty: nothing. Single: one card back. Stack (2+): layered depth effect.
 function Deck:draw()
   if #self.cards == 0 then return end
 
-  local maxLayers = math.min(#self.cards, 5)
+  local iw, ih   = self.backAsset:getDimensions()
+  -- Match visual height of a hand card at idle scale (card-base.png 1014px × 0.5)
+  local sc       = (507 / ih) / 2 * SCALE_Y
+  local cx, cy   = self.x, self.y
+  local layers   = math.min(#self.cards, 3)
+  local layerOff = 3 * SCALE_Y
+
   love.graphics.setColor(1, 1, 1, 1)
 
-  -- Draw deepest layer first so the top card renders on top
-  -- for i = maxLayers, 1, -1 do
-  --   local offset = (i - 1) * 2
-  --   love.graphics.draw(self.backAsset, self.x - offset, self.y - offset)
-  -- end
-  love.graphics.draw(self.backAsset, self.x, self.y)
+  if #self.cards == 1 then
+    love.graphics.draw(self.backAsset, cx, cy, 0, sc, sc, iw / 2, ih / 2)
+  else
+    for i = layers, 1, -1 do
+      local ox = -(i - 1) * layerOff
+      local oy = -(i - 1) * layerOff
+      love.graphics.draw(self.backAsset, cx + ox, cy + oy, 0, sc, sc, iw / 2, ih / 2)
+    end
+  end
 
-  -- Count label centred on the pile
-  love.graphics.setColor(1, 1, 1, 0.7)
-  love.graphics.printf(tostring(#self.cards), self.x, self.y + self.h / 2 - 18, self.w, "center")
   love.graphics.setColor(1, 1, 1, 1)
 end
 
