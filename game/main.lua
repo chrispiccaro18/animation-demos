@@ -84,19 +84,34 @@ function love.load()
   --   dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 }, { type = "threat",  value = 1 } },
   -- }
 
-    local exampleData = {
+  local exampleData = {
     topEnergy    = 1,
     bottomEnergy = 1,
-    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 } },
+    play    = { { type = "progress", value = 1 }, { type = "nullify", value = 1 } },
     discard = { { type = "threat", value = 1 }, { type = "threat",   value = 1 } },
     dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 } },
   }
+  local exampleData2 = {
+    topEnergy    = 2,
+    bottomEnergy = 2,
+    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 } },
+    discard = { { type = "threat", value = 1 }, { type = "nullify",   value = 1 } },
+    dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 }, { type = "threat",   value = 1 } },
+  }
 
-  for _ = 1, 5 do
+  for _ = 1, 3 do
     local card = Card.new(
       love.graphics.getWidth() / 2,
       love.graphics.getHeight() / 2,
       exampleData
+    )
+    hand:add(card, true, true)
+  end
+  for _ = 1, 2 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      exampleData2
     )
     hand:add(card, true, true)
   end
@@ -122,16 +137,6 @@ function love.draw()
   end
   -- areas.drawBefore(hand:isDragging())
 
-  if dtorFont then
-    local previousFont = love.graphics.getFont()
-    love.graphics.setFont(dtorFont)
-    love.graphics.setColor(Color("#D56E6E"))
-    local YNudge = -8 * SCALE_Y
-    love.graphics.printf("DESTRUCTOR-QUEUE", areas.dtorText.x, areas.dtorText.y + YNudge, areas.dtorText.w, "center")
-    -- love.graphics.rectangle("line", areas.dtorText.x, areas.dtorText.y, areas.dtorText.w, areas.dtorText.h)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.setFont(previousFont)
-  end
 
   -- if deck and hand:isDragging() then deck:draw() end
   -- if deck and not hand:isDragging() then deck:draw() end
@@ -187,6 +192,7 @@ function love.update(dt)
   laser.update(realDt)
   hand:update(mouseX, mouseY)
   Token.updateAll(realDt)
+  Dtor.update(realDt)
   areas.updateScanners(realDt)
   if not hand:isDragging() and not areas.endTurn.frozen then
     if areas.updateEndTurn(realDt, mouseX, mouseY) then

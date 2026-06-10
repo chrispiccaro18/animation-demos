@@ -202,7 +202,6 @@ function Hand:update(mouseX, mouseY)
       --     )
       --   end
       elseif areas.mouseInDiscard(mouseX, mouseY) then
-        print("discarding card")
         table.insert(self.discardQueue, card)
         card._excluded = true
         card.hover.can = false
@@ -268,7 +267,6 @@ function Hand:update(mouseX, mouseY)
     elseif hoveredCard then
       if Camera.state ~= "lookAt" or Camera.stateData.targetCard ~= hoveredCard then
         Camera:lookAt(hoveredCard)
-        print("looking at card", hoveredCard:isDissolved())
       end
     else
       if Camera.state ~= "idle" then Camera:setIdle() end

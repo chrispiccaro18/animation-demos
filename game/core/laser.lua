@@ -63,36 +63,34 @@ function laser.draw()
       nx = -dy / len
       ny =  dx / len
     end
+    local hw2 = GLOW2_WIDTH * SCALE_X
+    local hw1 = GLOW1_WIDTH * SCALE_X
+    local hw0 = BEAM_WIDTH * SCALE_X
 
     love.graphics.setColor(laser.glow2Color)
-    local hw2 = GLOW2_WIDTH * SCALE_X
+    love.graphics.circle("fill", tipX, tipY, hw2 * 0.9)
     love.graphics.polygon("fill",
       tailX, tailY,
       tipX + nx * hw2, tipY + ny * hw2,
       tipX - nx * hw2, tipY - ny * hw2
     )
-    love.graphics.circle("fill", tipX, tipY, hw2)
-    love.graphics.circle("fill", tipX, tipY, hw2)
 
     love.graphics.setColor(laser.glow1Color)
-    local hw1 = GLOW1_WIDTH * SCALE_X
+    love.graphics.circle("fill", tipX, tipY, hw1 * 0.9)
     love.graphics.polygon("fill",
       tailX, tailY,
       tipX + nx * hw1, tipY + ny * hw1,
       tipX - nx * hw1, tipY - ny * hw1
     )
-    love.graphics.circle("fill", tipX, tipY, hw1)
-    love.graphics.circle("fill", tipX, tipY, hw1)
 
 
     love.graphics.setColor(laser.beamColor)
-    local hw0 = BEAM_WIDTH * SCALE_X
+    love.graphics.circle("fill", tipX, tipY, hw0 * 0.9)
     love.graphics.polygon("fill",
       tailX, tailY,
       tipX + nx * hw0, tipY + ny * hw0,
       tipX - nx * hw0, tipY - ny * hw0
     )
-    love.graphics.circle("fill", tipX, tipY, hw0)
   end
   love.graphics.setLineWidth(1)
   love.graphics.setColor(1, 1, 1, 1)

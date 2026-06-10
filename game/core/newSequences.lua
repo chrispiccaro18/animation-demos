@@ -43,6 +43,106 @@ local playDeskFullRect = {
 local discardFlingOptions = { bounces = math.random(2, 3), target_rect = discardDeskArea, base_scale = 1.25 }
 local playFlingOptions = { bounces = math.random(2, 3), target_rect = playDeskArea, delay = false, base_scale = 1.25 }
 
+
+function sequences.scanDiscard()
+    events.push({
+    fn = function()
+      return not Token.isActive()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      areas.scanner.right.active = true
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 1.5, type = "after"
+  })
+    events.push({
+    fn = function()
+      Token.attractDone("threat", areas.threatDestination, { target_scale = 1.5 })
+
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+
+  -- 5. Poll until all tokens have arrived
+  events.push({
+    fn = function()
+      return Token.allDone()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      local removedTokens = Token.removeDone()
+      for _, t in ipairs(removedTokens) do
+        if t.token_type == "progress" then
+          areas.progressBar.count = math.min(areas.progressBar.count + 1, 5)
+        elseif t.token_type == "threat" then
+          areas.threatBar.count = math.min(areas.threatBar.count + 1, 5)
+        elseif t.token_type == "nullify" then
+          Dtor.nullifyNextSlot()
+        end
+      end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+end
+
+function sequences.restoreCard(card, hand)
+  events.push({
+    fn = function()
+      card:restoreAllSlots()
+      card:startReverseDissolve()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+
+  -- 7. Poll until reverse dissolve is done
+  events.push({
+    fn = function()
+      return not card:isDissolving()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+
+  -- 8. Restore state
+  events.push({
+    fn = function()
+      card:resetDissolve()
+      card:unlock()
+      hand:layout()
+      Camera:setIdle()
+      Dtor.compactSlots()
+      areas.endTurn.frozen = false
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.1, type = "after",
+  })
+
+  events.push({
+    fn = function()
+      return Token.allDone()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      Dtor.showText()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+end
+
 function sequences.discard(card, camera, hand)
   events.push({
     fn = function()
@@ -110,7 +210,7 @@ function sequences.discard(card, camera, hand)
       Token.attractDone(
         "dtor",
         function(_token)
-          return areas.reserveDtorSlot()
+          return Dtor.reserveSlot()
         end,
         {
           target_rotation = 0,
@@ -139,12 +239,13 @@ function sequences.discard(card, camera, hand)
       local slotIndices = {}
       for _, t in ipairs(dtorTokens) do
         if t.dest_meta and t.dest_meta.index then
-          areas.claimDtorSlot(t.dest_meta.index, t.scale)
+          Dtor.claimSlot(t.dest_meta.index, t.scale)
           table.insert(slotIndices, t.dest_meta.index)
         end
       end
       if #slotIndices > 0 then
         Dtor.register(card, slotIndices)
+        Dtor.showText()
       end
       areas.scanner.right.active = true
     end,
@@ -155,7 +256,7 @@ function sequences.discard(card, camera, hand)
     fn = function()
       Token.attractDone("progress", areas.progressDestination, { target_scale = 1.5 })
       Token.attractDone("threat", areas.threatDestination , { target_scale = 1.5 })
-      Token.attractDone("nullify", areas.nextUnnullifiedDtorSlot(), { target_scale = 1.5 })
+      Token.attractDone("nullify", Dtor.nextUnnullifiedSlot(), { target_scale = 1.5 })
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after"
@@ -176,10 +277,9 @@ function sequences.discard(card, camera, hand)
         elseif t.token_type == "threat" then
           areas.threatBar.count = math.min(areas.threatBar.count + 1, 5)
         elseif t.token_type == "nullify" then
-          areas.nullifyNextDtorSlot()
+          Dtor.nullifyNextSlot()
         end
       end
-      -- card.current.x = love.graphics.getWidth() + 400 * SCALE_X
       Camera:setIdle()
       hand:remove(card)
     end,
@@ -277,7 +377,7 @@ function sequences.play(card, camera, hand)
       card.target.y = 471 * SCALE_Y
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 1.5, type = "before"
+    delay = 0.5, type = "before"
   })
   events.push({
     fn = function()
@@ -295,7 +395,7 @@ function sequences.play(card, camera, hand)
   })
   events.push({
     fn = function()
-      card.current.r = math.rad(-5)
+      -- card.current.r = math.rad(-2)
       card.target.x = card.current.x + 150 * SCALE_X
       card.target.y = card.current.y - card.h / 4
     end,
@@ -319,6 +419,7 @@ function sequences.play(card, camera, hand)
   events.push({
     fn = function()
       Token.attractDone("progress", areas.progressDestination, { target_scale = 1.5 })
+      Token.attractDone("nullify", Dtor.nextUnnullifiedSlot(), { target_scale = 1.5 })
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after"
@@ -338,8 +439,8 @@ function sequences.play(card, camera, hand)
           areas.progressBar.count = math.min(areas.progressBar.count + 1, 5)
         elseif t.token_type == "threat" then
           areas.threatBar.count = math.min(areas.threatBar.count + 1, 5)
-        -- elseif t.token_type == "nullify" then
-        --   areas.nullifyNextDtorSlot()
+        elseif t.token_type == "nullify" then
+          Dtor.nullifyNextSlot()
         end
       end
       -- card.current.x = love.graphics.getWidth() + 400 * SCALE_X
@@ -358,7 +459,7 @@ function sequences.endTurn(hand)
     return
   end
 
-  local entry = Dtor.popEntry()
+  local entry = Dtor.peekEntry()
   if not entry then
     Camera:setIdle()
     areas.endTurn.frozen = false
@@ -368,17 +469,12 @@ function sequences.endTurn(hand)
   local card        = entry.card
   local slotIndices = entry.slotIndices
 
-
-  -- 1. Position dissolved card at dtorQueue center, add it back to hand so
-  --    card:update() runs every frame (required for reverse dissolve to tick).
-  --    It is fully dissolved (invisible) so being in the hand is fine here.
   events.push({
     fn = function()
-      local dq = areas.dtorQueue
       local cx = love.graphics.getWidth() / 2
       local cy = love.graphics.getHeight() / 2
-      -- local cx = dq.x + dq.w / 2
-      -- local cy = dq.y + dq.h / 2
+      -- local cx = Dtor.area.x + Dtor.area.w / 2
+      -- local cy = Dtor.area.y + Dtor.area.h / 2
       hand:add(card, false, false)
       card:setZoneState("idle")
       card.current.x = cx
@@ -391,108 +487,42 @@ function sequences.endTurn(hand)
     delay = 0.25, type = "after",
   })
 
-  -- 2. Fling sub-tokens from the slot; compact remaining entries up to slot 1
   events.push({
     fn = function()
-      local dq    = areas.dtorQueue
-      local dtorText = areas.dtorText
-      local slotH = dq.h / dq.maxSlots
-      local idx   = slotIndices[1]
-      local sx    = dtorText.x + dtorText.w / 2
-      local sy    = dtorText.y + dtorText.h / 2
-      -- local sx    = dq.x + dq.w / 2
-      -- local sy    = dq.y + (idx - 0.5) * slotH
-      areas.releaseDtorSlot(idx)
-      for _, effect in ipairs(card.data.dtor or {}) do
-        Token.new_fling(sx, sy, discardDeskFullRect, {
-          type       = effect.type,
-          bounces    = 1,
-          base_scale = 1.25,
-          delay      = false,
-          target_rect = discardDeskFullRect,
-        })
+      Dtor.hideText()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after",
+  })
+
+  events.push({
+    fn = function()
+      if Dtor.isEntryNullified() then
+        screenshake.trigger(5, 0.15)
+        Dtor.popEntry()
+        local idx   = slotIndices[1]
+        Dtor.releaseSlot(idx)
+        sequences.restoreCard(card, hand)
+      else
+        local sx, sy = Dtor.getTextCenter()
+        for _, effect in ipairs(card.data.dtor or {}) do
+          Token.new_fling(sx, sy, discardDeskFullRect, {
+            type       = effect.type,
+            bounces    = 1,
+            base_scale = 1.25,
+            delay      = false,
+            target_rect = discardDeskFullRect,
+          })
+        end
+        Dtor.popEntry()
+        local idx   = slotIndices[1]
+        Dtor.releaseSlot(idx)
+        sequences.scanDiscard()
+        sequences.restoreCard(card, hand)
       end
-      Dtor.compactSlots()
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.1, type = "after",
-  })
-
-  -- 3. Poll until flung tokens have landed and compact tokens have slid into place
-  events.push({
-    fn = function()
-      return not Token.isActive()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll",
-  })
-
-  events.push({
-    fn = function()
-      areas.scanner.right.active = true
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 1.5, type = "after"
-  })
-  -- 4. Attract tokens back to the card's dtorEffect slot positions
-  events.push({
-    fn = function()
-      Token.attractDone("threat", areas.threatDestination, { target_scale = 1.5 })
-
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
-  })
-
-  -- 5. Poll until all tokens have arrived
-  events.push({
-    fn = function()
-      return Token.allDone()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll",
-  })
-
-  -- 6. Remove tokens and start reverse dissolve
-  events.push({
-    fn = function()
-      local removedTokens = Token.removeDone()
-      for _, t in ipairs(removedTokens) do
-        if t.token_type == "progress" then
-          areas.progressBar.count = math.min(areas.progressBar.count + 1, 5)
-        elseif t.token_type == "threat" then
-          areas.threatBar.count = math.min(areas.threatBar.count + 1, 5)
-        elseif t.token_type == "nullify" then
-          areas.nullifyNextDtorSlot()
-        end
-      end
-      card:restoreAllSlots()
-      card:startReverseDissolve()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
-  })
-
-  -- 7. Poll until reverse dissolve is done
-  events.push({
-    fn = function()
-      return not card:isDissolving()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll",
-  })
-
-  -- 8. Restore state
-  events.push({
-    fn = function()
-      card:resetDissolve()
-      card:unlock()
-      hand:layout()
-      Camera:setIdle()
-      areas.endTurn.frozen = false
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
   })
 end
 

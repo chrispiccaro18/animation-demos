@@ -1,42 +1,204 @@
-local areas = require("core.areas")
-local Token = require("core.token")
+local animation = require("lib.animation")
+local Token     = require("core.token")
+local Color = require("lib.color")
+
+local W = love.graphics.getWidth()
+local H = love.graphics.getHeight()
 
 local Dtor = {}
 
+-- Public: position + slot state (replaces areas.dtorQueue)
+Dtor.area = {
+  x        = 3194 * W / 3840,
+  y        = 639  * H / 2160,
+  w        = 494  * W / 3840,
+  h        = 1088 * H / 2160,
+  maxSlots = 6,
+  slots    = {},
+}
+
 local _queue         = {}
 local _dtorSlotAsset = nil
+local _emptyNullifySlot  = nil
 local _tokenAssets   = {}
+local _font          = nil
+
+local _text = {
+  x           = 2176 * W / 3840,
+  y           = 448  * H / 2160,
+  w           = 1095 * W / 3840,
+  h           = 80   * H / 2160,
+  content     = "",
+  alpha       = 0,
+  targetAlpha = 0,
+}
+
+------------------------------------------------------------------------
+-- Private: rebuild text from the current top queue entry
+------------------------------------------------------------------------
+local function _updateTextContent()
+  if #_queue == 0 then
+    _text.content = ""
+    return
+  end
+  local effects = _queue[1].card.data.dtor
+  if not effects or #effects == 0 then
+    _text.content = ""
+    return
+  end
+  local counts = {}
+  local order  = {}
+  for _, effect in ipairs(effects) do
+    local t = effect.type:upper()
+    if not counts[t] then
+      counts[t] = 0
+      table.insert(order, t)
+    end
+    counts[t] = counts[t] + 1
+  end
+  local parts = {}
+  for _, t in ipairs(order) do
+    if counts[t] > 1 then
+      table.insert(parts, counts[t] .. " " .. t)
+    else
+      table.insert(parts, t)
+    end
+  end
+  _text.content = table.concat(parts, "  ·  ")
+end
+
+------------------------------------------------------------------------
 
 function Dtor.load()
+  for i = 1, Dtor.area.maxSlots do
+    Dtor.area.slots[i] = { occupied = false, reserved = false }
+  end
   _dtorSlotAsset = love.graphics.newImage("assets/proto/dtor-slot.png", { mipmaps = true })
+  _emptyNullifySlot = love.graphics.newImage("assets/proto/empty-nullify-dtor.png",  { mipmaps = true })
   _tokenAssets = {
     threat   = love.graphics.newImage("assets/proto/threat-token.png",   { mipmaps = true }),
     progress = love.graphics.newImage("assets/proto/progress-token.png", { mipmaps = true }),
     nullify  = love.graphics.newImage("assets/proto/nullify-token.png",  { mipmaps = true }),
     ram      = love.graphics.newImage("assets/proto/ram-chip.png",       { mipmaps = true }),
   }
+  _font = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
 end
 
+------------------------------------------------------------------------
+-- Entry queue
+------------------------------------------------------------------------
 function Dtor.register(card, slotIndices)
   table.insert(_queue, { card = card, slotIndices = slotIndices })
+  _updateTextContent()
 end
 
 function Dtor.hasEntry()
   return #_queue > 0
 end
 
+function Dtor.peekEntry()
+  return _queue[1]
+end
+
 function Dtor.popEntry()
-  return table.remove(_queue, 1)
+  local entry = table.remove(_queue, 1)
+  _updateTextContent()
+  return entry
+end
+
+function Dtor.isEntryNullified(index)
+  local entry = _queue[index or 1]
+  if not entry or not entry.slotIndices or #entry.slotIndices == 0 then return false end
+  local slotIdx = entry.slotIndices[1]
+  return Dtor.area.slots[slotIdx] and Dtor.area.slots[slotIdx].nullified
+end
+
+------------------------------------------------------------------------
+-- Slot management (replaces areas.reserveDtorSlot / claimDtorSlot etc.)
+------------------------------------------------------------------------
+function Dtor.reserveSlot()
+  local dq    = Dtor.area
+  local slotH = dq.h / dq.maxSlots
+  for i = 1, dq.maxSlots do
+    if not dq.slots[i].occupied and not dq.slots[i].reserved then
+      dq.slots[i].reserved = true
+      return {
+        x     = dq.x + dq.w / 2,
+        y     = dq.y + (i - 0.5) * slotH,
+        index = i,
+      }
+    end
+  end
+  return nil
+end
+
+function Dtor.claimSlot(index, scale)
+  local slot = Dtor.area.slots[index]
+  if slot then
+    slot.reserved = false
+    slot.occupied = true
+    slot.scale    = scale or 1
+  end
+end
+
+function Dtor.releaseSlot(index)
+  local slot = Dtor.area.slots[index]
+  if slot then
+    slot.occupied = false
+    slot.reserved = false
+    slot.scale    = nil
+  end
+end
+
+function Dtor.nextUnnullifiedSlot()
+  local dq    = Dtor.area
+  local slotH = dq.h / dq.maxSlots
+  for i = 1, dq.maxSlots do
+    if dq.slots[i].occupied and not dq.slots[i].nullified then
+      return { x = dq.x + dq.w / 2, y = dq.y + (i - 0.5) * slotH, index = i }
+    end
+  end
+  return nil
+end
+
+function Dtor.nullifyNextSlot()
+  local dq = Dtor.area
+  for i = 1, dq.maxSlots do
+    if dq.slots[i].occupied and not dq.slots[i].nullified then
+      dq.slots[i].nullified = true
+      break
+    end
+  end
+end
+
+------------------------------------------------------------------------
+-- Text visibility
+------------------------------------------------------------------------
+function Dtor.showText()
+  _text.targetAlpha = 1
+end
+
+function Dtor.hideText()
+  _text.targetAlpha = 0
+end
+
+function Dtor.getTextCenter()
+  return _text.x + _text.w / 2, _text.y + _text.h / 2
+end
+
+------------------------------------------------------------------------
+-- Update — tick text alpha animation
+------------------------------------------------------------------------
+function Dtor.update(dt)
+  _text.alpha = animation.expDecay(_text.alpha, _text.targetAlpha, 12, dt)
 end
 
 ------------------------------------------------------------------------
 -- Animate remaining entries sliding up to fill from slot 1.
--- Releases each old slot, creates a Token.new_attract to the new
--- position, and on arrival re-claims the slot then self-removes.
 ------------------------------------------------------------------------
 function Dtor.compactSlots()
   if #_queue == 0 then return end
-  local dq    = areas.dtorQueue
+  local dq    = Dtor.area
   local slotH = dq.h / dq.maxSlots
 
   local nextSlot = 1
@@ -55,7 +217,7 @@ function Dtor.compactSlots()
         for _, effect in ipairs(entry.card.data.dtor or {}) do
           table.insert(subTokens, effect.type)
         end
-        areas.releaseDtorSlot(oldIdx)
+        Dtor.releaseSlot(oldIdx)
         Token.new_attract(
           oldSx, oldSy,
           dq.x + dq.w / 2, newSy,
@@ -84,12 +246,11 @@ function Dtor.compactSlots()
 end
 
 ------------------------------------------------------------------------
--- Draw dtor-slot.png as background for each entry, with the card's
--- individual token types distributed on top.
+-- Draw slots + text
 ------------------------------------------------------------------------
 function Dtor.drawAll()
   if not _dtorSlotAsset then return end
-  local dq    = areas.dtorQueue
+  local dq    = Dtor.area
   local slotH = dq.h / dq.maxSlots
   local sw, sh = _dtorSlotAsset:getDimensions()
 
@@ -106,7 +267,8 @@ function Dtor.drawAll()
         love.graphics.scale(sc, sc)
 
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(_dtorSlotAsset, 0, 0, 0, 1, 1, sw / 2, sh / 2)
+        local slotAsset = slot.nullified and _emptyNullifySlot or _dtorSlotAsset
+        love.graphics.draw(slotAsset, 0, 0, 0, 1, 1, sw / 2, sh / 2)
 
         local effects = entry.card.data.dtor
         if effects and #effects > 0 then
@@ -127,12 +289,28 @@ function Dtor.drawAll()
       end
     end
 
-    if entryIdx < #_queue and #entry.slotIndices > 0 then
-      local lastIdx = entry.slotIndices[#entry.slotIndices]
-      local sepY    = dq.y + lastIdx * slotH + slotH * 0.1
-      love.graphics.setColor(1, 0.3, 0.3, 0.5)
-      love.graphics.setLineWidth(1.5 * SCALE_Y)
-      love.graphics.line(dq.x + 4 * SCALE_X, sepY, dq.x + dq.w - 4 * SCALE_X, sepY)
+    -- if entryIdx < #_queue and #entry.slotIndices > 0 then
+    --   local lastIdx = entry.slotIndices[#entry.slotIndices]
+    --   local sepY    = dq.y + lastIdx * slotH + slotH * 0.1
+    --   love.graphics.setColor(1, 0.3, 0.3, 0.5)
+    --   love.graphics.setLineWidth(1.5 * SCALE_Y)
+    --   love.graphics.line(dq.x + 4 * SCALE_X, sepY, dq.x + dq.w - 4 * SCALE_X, sepY)
+    -- end
+  end
+
+  -- Text overlay
+  if _text.alpha > 0.01 and _text.content ~= "" and _font then
+    local isTopEntryNullified = Dtor.isEntryNullified()
+    -- local isTopEntryNullified = _queue[1] and _queue[1].slotIndices and #_queue[1].slotIndices > 0 and Dtor.area.slots[_queue[1].slotIndices[1]] and Dtor.area.slots[_queue[1].slotIndices[1]].nullified
+    love.graphics.setColor(Color("#D56E6E", _text.alpha))
+    local prevFont = love.graphics.getFont()
+    love.graphics.setFont(_font)
+    love.graphics.printf(_text.content, _text.x, _text.y + (_text.h - _font:getHeight()) / 2, _text.w, "center")
+    love.graphics.setFont(prevFont)
+    if isTopEntryNullified then
+      love.graphics.setColor(Color("#FF8C00", _text.alpha))
+      love.graphics.setLineWidth(8 * SCALE_X)
+      love.graphics.line(_text.x + 20 * SCALE_X, _text.y + _text.h / 2, _text.x + _text.w - 20 * SCALE_X, _text.y + _text.h / 2)
     end
   end
 

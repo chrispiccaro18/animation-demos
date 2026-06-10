@@ -45,22 +45,6 @@ areas.desk = {
   h = 1684 * love.graphics.getHeight() / 2160,
 }
 
-areas.dtorQueue = {
-  x = 3194 * love.graphics.getWidth() / 3840,
-  y = 639 * love.graphics.getHeight() / 2160,
-  w = 494 * love.graphics.getWidth() / 3840,
-  h = 1088 * love.graphics.getHeight() / 2160,
-  color = { 1, 0.2, 0.2, 1 },
-  maxSlots = 6,
-  slots = {},
-}
-
-areas.dtorText = {
-  x = 2176 * love.graphics.getWidth() / 3840,
-  y = 448 * love.graphics.getHeight() / 2160,
-  w = 1095 * love.graphics.getWidth() / 3840,
-  h = 80 * love.graphics.getHeight() / 2160,
-}
 
 areas.progressBar = {
   x = 873 * love.graphics.getWidth() / 3840,
@@ -82,12 +66,6 @@ areas.threatBar = {
   count = 0,
 }
 
-do
-  local dq = areas.dtorQueue
-  for i = 1, dq.maxSlots do
-    dq.slots[i] = { occupied = false, reserved = false }
-  end
-end
 
 areas.endTurn           = {
   x = 3136 * love.graphics.getWidth() / 3840,
@@ -827,64 +805,5 @@ function areas.drawStatic()
   end
 end
 
--- Reserves the next free dtor slot for an in-flight token.
--- Marks the slot reserved (prevents double-booking) but NOT occupied.
--- Returns {x, y, index}, or nil if all slots are full or reserved.
-function areas.reserveDtorSlot()
-  local dq = areas.dtorQueue
-  local slotH = dq.h / dq.maxSlots
-  for i = 1, dq.maxSlots do
-    if not dq.slots[i].occupied and not dq.slots[i].reserved then
-      dq.slots[i].reserved = true
-      return {
-        x = dq.x + dq.w / 2,
-        y = dq.y + (i - 0.5) * slotH,
-        index = i,
-      }
-    end
-  end
-  return nil
-end
-
--- Finalizes a reserved slot: marks it occupied so areas draws the token there.
--- Call this only after the token has physically arrived (ownership transfer).
-function areas.claimDtorSlot(index, scale)
-  local dq = areas.dtorQueue
-  if dq.slots[index] then
-    dq.slots[index].reserved = false
-    dq.slots[index].occupied = true
-    dq.slots[index].scale    = scale or 1
-  end
-end
-
--- Frees a slot entirely (reserved or occupied).
-function areas.releaseDtorSlot(index)
-  local dq = areas.dtorQueue
-  if dq.slots[index] then
-    dq.slots[index].occupied = false
-    dq.slots[index].reserved = false
-    dq.slots[index].scale    = nil
-  end
-end
-
-function areas.nextUnnullifiedDtorSlot()
-  local dq = areas.dtorQueue
-  for i = 1, dq.maxSlots do
-    if dq.slots[i].occupied and not dq.slots[i].nullified then
-      return { x = dq.x + dq.w / 2, y = dq.y + (i - 0.5) * (dq.h / dq.maxSlots), index = i }
-    end
-  end
-  return nil
-end
-
-function areas.nullifyNextDtorSlot()
-  local dq = areas.dtorQueue
-  for i = 1, dq.maxSlots do
-    if dq.slots[i].occupied and not dq.slots[i].nullified then
-      dq.slots[i].nullified = true
-      break
-    end
-  end
-end
 
 return areas
