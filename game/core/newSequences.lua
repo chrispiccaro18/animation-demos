@@ -10,6 +10,9 @@ local Dtor  = require("core.dtor")
 
 local sequences = {}
 
+local _deck = nil
+function sequences.setDeck(d) _deck = d end
+
 
 
 local discardDeskArea = {
@@ -104,10 +107,26 @@ function sequences.restoreCard(card, hand)
     delay = 0, type = "immediate",
   })
 
-  -- 7. Poll until reverse dissolve is done
   events.push({
     fn = function()
       return not card:isDissolving()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      card.target.x = _deck:position().x
+      card.target.y = _deck:position().y
+      card.target.scale = 0.1
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "before",
+  })
+
+  events.push({
+    fn = function()
+      return card:isAtTarget()
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "poll",
@@ -116,9 +135,8 @@ function sequences.restoreCard(card, hand)
   -- 8. Restore state
   events.push({
     fn = function()
-      card:resetDissolve()
-      card:unlock()
-      hand:layout()
+      hand:remove(card)
+      _deck:add(card)
       Camera:setIdle()
       Dtor.compactSlots()
       areas.endTurn.frozen = false
@@ -446,6 +464,7 @@ function sequences.play(card, camera, hand)
       -- card.current.x = love.graphics.getWidth() + 400 * SCALE_X
       Camera:setIdle()
       hand:remove(card)
+      _deck:add(card)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"

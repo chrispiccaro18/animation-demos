@@ -18,6 +18,7 @@ end
 --- Add a card to the bottom of the deck and fully reset its state.
 --- @param card table  Card object
 function Deck:add(card)
+  print("here")
   table.insert(self.cards, card)
   card:resetToInitial(self.x, self.y)
   card.current.scale = 0.95
