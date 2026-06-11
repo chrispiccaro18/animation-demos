@@ -401,6 +401,7 @@ function Card:flingZone(zone, rect, options)
     return
   end
 
+  local acc = options and options.cascade_step and Token.makeCascadeAccumulator(options.cascade_step) or nil
   for i, slot in pairs(zoneSlots) do
     if slot.token then
       if slot.token.flingFromSlot then
@@ -410,6 +411,7 @@ function Card:flingZone(zone, rect, options)
         local flingOpts = {}
         for k, v in pairs(options or {}) do flingOpts[k] = v end
         flingOpts.type = slot.token.token_type
+        if acc then flingOpts = acc:next(flingOpts) end
         Token.new_fling(pos.x, pos.y, rect, flingOpts)
         slot.token       = nil
         slot.targetAlpha = 0

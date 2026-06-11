@@ -5,6 +5,7 @@ local W                 = love.graphics.getWidth()
 local H                 = love.graphics.getHeight()
 
 local areas             = {}
+-- local statFont          = nil
 
 local playDiscardGap = 250 * love.graphics.getWidth() / 3840
 
@@ -34,7 +35,7 @@ areas.progressDestination = {
 }
 
 areas.threatDestination = {
-  x = 3264 * love.graphics.getWidth() / 3840,
+  x = 3333 * love.graphics.getWidth() / 3840,
   y = 142 * love.graphics.getHeight() / 2160,
 }
 
@@ -54,6 +55,13 @@ areas.progressBar = {
   gapX = 64 * love.graphics.getWidth() / 3840,
   asset = nil,
   count = 0,
+  textArea = {
+    x = 522 * love.graphics.getWidth() / 3840,
+    y = 120 * love.graphics.getHeight() / 2160,
+    w = 291 * love.graphics.getWidth() / 3840,
+    h = 66 * love.graphics.getHeight() / 2160,
+    value = ""
+  },
 }
 
 areas.threatBar = {
@@ -64,6 +72,13 @@ areas.threatBar = {
   gapX = 64 * love.graphics.getWidth() / 3840,
   asset = nil,
   count = 0,
+  textArea = {
+    x = 2997 * love.graphics.getWidth() / 3840,
+    y = 110 * love.graphics.getHeight() / 2160,
+    w = 291 * love.graphics.getWidth() / 3840,
+    h = 66 * love.graphics.getHeight() / 2160,
+    value = ""
+  },
 }
 
 
@@ -306,6 +321,8 @@ function areas.load()
 
   -- areas.addToDestructorQueue()
   -- areas.addToDestructorQueue()
+  areas.progressBar.textArea.value = "00/10"
+  areas.threatBar.textArea.value = "00/10"
 end
 
 function areas.addPoolChip(x, y)
@@ -756,6 +773,38 @@ function areas.drawStatic()
         0, SCALE_X, SCALE_Y
       )
     end
+  end
+
+  if areas.progressBar.textArea.value ~= "" then
+    love.graphics.setColor(1, 1, 1, 1)
+    local prevFont = love.graphics.getFont()
+    if statFont then love.graphics.setFont(statFont) end
+    local progressCount = areas.progressBar.count
+    areas.progressBar.textArea.value = string.format("%02d/%02d", progressCount, 10)
+    love.graphics.printf(
+      areas.progressBar.textArea.value,
+      areas.progressBar.textArea.x,
+      areas.progressBar.textArea.y,
+      areas.progressBar.textArea.w,
+      "right"
+    )
+    love.graphics.setFont(prevFont)
+  end
+
+  if areas.threatBar.textArea.value ~= "" then
+    love.graphics.setColor(1, 1, 1, 1)
+    local prevFont = love.graphics.getFont()
+    if statFont then love.graphics.setFont(statFont) end
+    local threatCount = areas.threatBar.count
+    areas.threatBar.textArea.value = string.format("%02d/%02d", threatCount, 10)
+    love.graphics.printf(
+      areas.threatBar.textArea.value,
+      areas.threatBar.textArea.x,
+      areas.threatBar.textArea.y,
+      areas.threatBar.textArea.w,
+      "left"
+    )
+    love.graphics.setFont(prevFont)
   end
 
   -- love.graphics.setColor(p.color)

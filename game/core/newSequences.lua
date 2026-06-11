@@ -13,8 +13,6 @@ local sequences = {}
 local _deck = nil
 function sequences.setDeck(d) _deck = d end
 
-
-
 local discardDeskArea = {
   x = areas.desk.x + areas.desk.w * 0.6,
   y = areas.desk.y + areas.desk.h * 0.25,
@@ -46,6 +44,41 @@ local playDeskFullRect = {
 local discardFlingOptions = { bounces = math.random(2, 3), target_rect = discardDeskArea, base_scale = 1.25 }
 local playFlingOptions = { bounces = math.random(2, 3), target_rect = playDeskArea, delay = false, base_scale = 1.25 }
 
+local function terminalEvent(tokenType)
+  return function()
+    events.push({
+      fn = function()
+        print("terminal event for token type", tokenType)
+        if tokenType == "progress" then
+          areas.progressBar.count = math.min(areas.progressBar.count + 1, 10)
+        elseif tokenType == "threat" then
+          areas.threatBar.count = math.min(areas.threatBar.count + 1, 10)
+        elseif tokenType == "nullify" then
+          Dtor.nullifyNextSlot()
+        end
+      end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "immediate",
+    }, "terminalArrive")
+  end
+end
+
+local function startTerminalAttract(tokenType, target, acc)
+  local tokenOptions = {
+    target_scale = 1.5,
+    acc = acc,
+    terminal = true,
+    onArrive = terminalEvent(tokenType),
+  }
+  Token.attractDone(tokenType, target, tokenOptions)
+end
+
+local function terminalAttract()
+  local acc = Token.makeCascadeAccumulator()
+  startTerminalAttract("progress", areas.progressDestination, acc)
+  startTerminalAttract("threat", areas.threatDestination, acc)
+  startTerminalAttract("nullify", Dtor.nextUnnullifiedSlot(), acc)
+end
 
 function sequences.scanDiscard()
     events.push({
@@ -271,11 +304,7 @@ function sequences.discard(card, camera, hand)
     delay = 1.5, type = "after"
   })
   events.push({
-    fn = function()
-      Token.attractDone("progress", areas.progressDestination, { target_scale = 1.5 })
-      Token.attractDone("threat", areas.threatDestination , { target_scale = 1.5 })
-      Token.attractDone("nullify", Dtor.nextUnnullifiedSlot(), { target_scale = 1.5 })
-    end,
+    fn = terminalAttract,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after"
   })
@@ -288,16 +317,17 @@ function sequences.discard(card, camera, hand)
   })
   events.push({
     fn = function()
-      local removedTokens = Token.removeDone()
-      for _, t in ipairs(removedTokens) do
-        if t.token_type == "progress" then
-          areas.progressBar.count = math.min(areas.progressBar.count + 1, 5)
-        elseif t.token_type == "threat" then
-          areas.threatBar.count = math.min(areas.threatBar.count + 1, 5)
-        elseif t.token_type == "nullify" then
-          Dtor.nullifyNextSlot()
-        end
-      end
+      Token.removeDone()
+      -- local removedTokens = Token.removeDone()
+      -- for _, t in ipairs(removedTokens) do
+      --   if t.token_type == "progress" then
+      --     areas.progressBar.count = math.min(areas.progressBar.count + 1, 10)
+      --   elseif t.token_type == "threat" then
+      --     areas.threatBar.count = math.min(areas.threatBar.count + 1, 10)
+      --   elseif t.token_type == "nullify" then
+      --     Dtor.nullifyNextSlot()
+      --   end
+      -- end
       Camera:setIdle()
       hand:remove(card)
     end,
@@ -347,19 +377,20 @@ function sequences.play(card, camera, hand)
         Camera:setIdle()
       else
         print("enough ram to play card", #ramChips)
+        local acc = Token.makeCascadeAccumulator()
         for i, chip in ipairs(ramChips) do
           local slotPos = card:getTargetSlotPosition("topEnergyHoles", i)
           local slotIndex = i
           Token.new_attract(
             chip.x, chip.y,
             slotPos.x, slotPos.y,
-            {
+            acc:next({
               type = "ram",
               target_scale = 1,
               onArrive = function(t)
                 t:attachToSlot(card, "topEnergyHoles", slotIndex)
               end
-            }
+            })
           )
         end
       end
@@ -435,10 +466,7 @@ function sequences.play(card, camera, hand)
     delay = 1.5, type = "after"
   })
   events.push({
-    fn = function()
-      Token.attractDone("progress", areas.progressDestination, { target_scale = 1.5 })
-      Token.attractDone("nullify", Dtor.nextUnnullifiedSlot(), { target_scale = 1.5 })
-    end,
+    fn = terminalAttract,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after"
   })
@@ -451,17 +479,7 @@ function sequences.play(card, camera, hand)
   })
   events.push({
     fn = function()
-      local removedTokens = Token.removeDone()
-      for _, t in ipairs(removedTokens) do
-        if t.token_type == "progress" then
-          areas.progressBar.count = math.min(areas.progressBar.count + 1, 5)
-        elseif t.token_type == "threat" then
-          areas.threatBar.count = math.min(areas.threatBar.count + 1, 5)
-        elseif t.token_type == "nullify" then
-          Dtor.nullifyNextSlot()
-        end
-      end
-      -- card.current.x = love.graphics.getWidth() + 400 * SCALE_X
+      Token.removeDone()
       Camera:setIdle()
       hand:remove(card)
       _deck:add(card)

@@ -213,6 +213,7 @@ function Dtor.compactSlots()
   local nextSlot = 1
 
   -- Pass 1: compact occupied queue-entry slots
+  local acc1 = Token.makeCascadeAccumulator(0.08)
   for _, entry in ipairs(_queue) do
     local newIndices = {}
     for _, oldIdx in ipairs(entry.slotIndices) do
@@ -233,7 +234,7 @@ function Dtor.compactSlots()
         Token.new_attract(
           oldSx, oldSy,
           dq.x + dq.w / 2, newSy,
-          {
+          acc1:next({
             type          = slotNullif and "dtor_null" or "dtor",
             base_scale    = slotScale or 1,
             subTokens     = slotNullif and nil or subTokens,
@@ -246,7 +247,7 @@ function Dtor.compactSlots()
               dq.slots[capturedN].nullified = slotNullif
               Token.removeSingle(t)
             end,
-          }
+          })
         )
       end
 
@@ -257,6 +258,7 @@ function Dtor.compactSlots()
   end
 
   -- Pass 2: compact pre-nullified empty slots
+  local acc2 = Token.makeCascadeAccumulator(0.08)
   for i = 1, dq.maxSlots do
     if dq.slots[i].nullified and not dq.slots[i].occupied and not dq.slots[i].reserved then
       if i ~= nextSlot then
@@ -266,7 +268,7 @@ function Dtor.compactSlots()
         Token.new_attract(
           dq.x + dq.w / 2, dq.y + (i - 0.5) * slotH,
           dq.x + dq.w / 2, dq.y + (nextSlot - 0.5) * slotH,
-          {
+          acc2:next({
             type          = "dtor_null",
             base_scale    = 1.5,
             initial_speed = 100 * SCALE_X,
@@ -276,7 +278,7 @@ function Dtor.compactSlots()
               dq.slots[capturedN].reserved  = false
               Token.removeSingle(t)
             end,
-          }
+          })
         )
       end
       nextSlot = nextSlot + 1

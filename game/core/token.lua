@@ -16,7 +16,37 @@ local SPEED = 2000
 local TOP_SPEED = 100000
 local ACCEL = 5000
 
-local DEFAULT_DELAY = 0.3
+local DEFAULT_DELAY = 0.2
+
+local function defaultDelay()
+    return math.min(0.5, math.random() + DEFAULT_DELAY)
+end
+
+------------------------------------------------------------------------
+-- Returns a stateful accumulator for cascading delays across a loop of
+-- new_attract / new_fling calls. Call acc:next(opts) per iteration.
+-- step (optional number): fixed step size; omit for random increments.
+------------------------------------------------------------------------
+function Token.makeCascadeAccumulator(step)
+    local running = 0
+    local function advance()
+        local d = running
+        running = running + (step or defaultDelay())
+        return d
+    end
+    return {
+        next = function(self, opts)
+            opts = opts or {}
+            local merged = {}
+            for k, v in pairs(opts) do merged[k] = v end
+            merged.delay = advance()
+            return merged
+        end,
+        nextDelay = function(self)
+            return advance()
+        end,
+    }
+end
 
 local ramAsset = nil
 local progressAsset = nil
@@ -205,7 +235,7 @@ function Token.new_fling(start_x, start_y, rect, options)
     elseif options.delay then
         self.delay = options.delay
     else
-        self.delay = math.random() * DEFAULT_DELAY
+        self.delay = defaultDelay()
     end
     self.token_type = options.type
     self.asset      = resolveAsset(options.type)
@@ -242,7 +272,7 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     elseif options.delay then
         self.delay = options.delay
     else
-        self.delay = math.random() * DEFAULT_DELAY
+        self.delay = defaultDelay()
     end
     self.token_type      = options.type
     self.start_rotation  = 0
@@ -263,9 +293,9 @@ end
 ------------------------------------------------------------------------
 -- Shared update
 ------------------------------------------------------------------------
-function Token:update(dt)
+function Token:update(dt, gameDt)
     if self.delay and self.delay > 0 then
-        self.delay = self.delay - dt
+        self.delay = self.delay - gameDt
         return
     end
     if self.mode == "fling" then
@@ -400,9 +430,9 @@ end
 ------------------------------------------------------------------------
 -- Module-level update/draw — call these from main instead of iterating
 ------------------------------------------------------------------------
-function Token.updateAll(dt)
+function Token.updateAll(dt, gameDt)
     for _, token in ipairs(instances) do
-        token:update(dt)
+        token:update(dt, gameDt)
     end
 end
 
@@ -435,6 +465,7 @@ end
 ------------------------------------------------------------------------
 function Token.attractDone(token_type, destination, options)
     options = options or {}
+    local running_delay = options.running_delay or 0
 
     for _, token in ipairs(instances) do
         if token.done and token.token_type == token_type then
@@ -467,12 +498,16 @@ function Token.attractDone(token_type, destination, options)
                 token.start_scale      = token.scale
                 token.target_scale     = options.target_scale   or token.base_scale
                 token.attract_dist     = math.max(math.sqrt(adx*adx + ady*ady), 1)
-                if options.delay == false then
+                if options.acc then
+                    token.delay = options.acc:nextDelay()
+                elseif options.delay == false then
                     token.delay = 0
                 elseif options.delay then
-                    token.delay = options.delay
+                    token.delay = running_delay
+                    running_delay = running_delay + options.delay
                 else
-                    token.delay = 0.1 + math.random() * 0.3
+                    token.delay = running_delay
+                    running_delay = running_delay + defaultDelay()
                 end
                 token.done             = false
                 token.onArrive         = options.onArrive

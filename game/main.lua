@@ -103,14 +103,14 @@ function love.load()
   --   deck:add(Card.new(0, 0, exampleData))
   -- end
 
-  -- for _ = 1, 3 do
-  --   local card = Card.new(
-  --     love.graphics.getWidth() / 2,
-  --     love.graphics.getHeight() / 2,
-  --     exampleData
-  --   )
-  --   hand:add(card, true, true)
-  -- end
+  for _ = 1, 3 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      exampleData
+    )
+    hand:add(card, true, true)
+  end
   for _ = 1, 2 do
     local card = Card.new(
       love.graphics.getWidth() / 2,
@@ -119,7 +119,7 @@ function love.load()
     )
     hand:add(card, true, true)
   end
-  events.load()
+  events.loadAll()
   overlayStats.load()
 end
 
@@ -194,7 +194,7 @@ function love.update(dt)
   if camera then camera:update(realDt, mouseX, mouseY, areas.scanner) end
   laser.update(realDt)
   hand:update(mouseX, mouseY)
-  Token.updateAll(realDt)
+  Token.updateAll(realDt, gameDt)
   Dtor.update(realDt)
   areas.updateScanners(realDt)
   if not hand:isDragging() and not areas.endTurn.frozen then
@@ -206,7 +206,7 @@ function love.update(dt)
   if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y) end
   -- areas.update(mouseX, mouseY)
   -- for _, proj in pairs(projectiles) do proj:update() end
-  events.update()
+  events.updateAll()
   overlayStats.update(dt)
 end
 
