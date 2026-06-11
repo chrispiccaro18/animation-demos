@@ -184,6 +184,16 @@ end
 ------------------------------------------------------------------------
 -- Text visibility
 ------------------------------------------------------------------------
+function Dtor.reset()
+  _queue = {}
+  _text.content     = ""
+  _text.alpha       = 0
+  _text.targetAlpha = 0
+  for i = 1, Dtor.area.maxSlots do
+    Dtor.area.slots[i] = { occupied = false, reserved = false, nullified = false }
+  end
+end
+
 function Dtor.showText()
   _text.targetAlpha = 1
 end

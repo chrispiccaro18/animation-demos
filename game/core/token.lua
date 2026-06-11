@@ -430,6 +430,10 @@ end
 ------------------------------------------------------------------------
 -- Module-level update/draw — call these from main instead of iterating
 ------------------------------------------------------------------------
+function Token.clearAll()
+    instances = {}
+end
+
 function Token.updateAll(dt, gameDt)
     for _, token in ipairs(instances) do
         token:update(dt, gameDt)

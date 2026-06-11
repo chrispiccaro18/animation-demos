@@ -19,6 +19,7 @@ local Dtor         = require("core.dtor")
 local Color = require("lib.color")
 
 local shipAsset = nil
+local cardBackAsset = nil
 local dissolveShader = nil
 local tiltShader = nil
 screenshake = require("lib.screenshake")
@@ -40,7 +41,7 @@ SCALE_Y = love.graphics.getHeight() / 2160
 function love.load()
   https = runtimeLoader.loadHTTPS()
   shipAsset = love.graphics.newImage("assets/main-ship.png")
-  local cardBackAsset    = love.graphics.newImage("assets/kilo-card-back.png")
+  cardBackAsset = love.graphics.newImage("assets/kilo-card-back.png")
   -- ramChipAsset = love.graphics.newImage("assets/ram-chip-tiny.png")
   -- erdnaseAsset = love.graphics.newImage("assets/erdnase.png")
 
@@ -121,6 +122,74 @@ function love.load()
   end
   events.loadAll()
   overlayStats.load()
+end
+
+local function resetGame()
+  events.loadAll()
+  Token.clearAll()
+  Dtor.reset()
+  laser.hide()
+
+  areas.progressBar.count = 0
+  areas.progressBar.textArea.value = "00/10"
+  areas.threatBar.count = 0
+  areas.threatBar.textArea.value = "00/10"
+  areas.endTurn.frozen = false
+  areas.endTurn.state = "idle"
+  areas.endTurn.hover.can = true
+  areas.endTurn.hover.is = false
+  areas.endTurn.click.can = false
+  areas.endTurn.click.is = false
+  areas.destructor.queue = {}
+  areas.scanner.left.active = false
+  areas.scanner.left.y = areas.desk.y
+  areas.scanner.right.active = false
+  areas.scanner.right.y = areas.desk.y
+  areas.pool.chips = {}
+  local pos1x, pos1y = areas.randomPoolPosition()
+  local pos2x, pos2y = areas.randomPoolPosition()
+  local pos3x, pos3y = areas.randomPoolPosition()
+  areas.addPoolChip(pos1x, pos1y)
+  areas.addPoolChip(pos2x, pos2y)
+  areas.addPoolChip(pos3x, pos3y)
+  areas.message.text = ""
+
+  hand = NewHand.new()
+  deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
+  sequences.setDeck(deck)
+
+  local exampleData = {
+    topEnergy    = 1,
+    bottomEnergy = 1,
+    play    = { { type = "progress", value = 1 }, { type = "nullify", value = 1 } },
+    discard = { { type = "threat", value = 1 }, { type = "threat",   value = 1 } },
+    dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 } },
+  }
+  local exampleData2 = {
+    topEnergy    = 2,
+    bottomEnergy = 2,
+    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 } },
+    discard = { { type = "threat", value = 1 }, { type = "nullify",   value = 1 } },
+    dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 }, { type = "threat",   value = 1 } },
+  }
+  for _ = 1, 3 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      exampleData
+    )
+    hand:add(card, true, true)
+  end
+  for _ = 1, 2 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      exampleData2
+    )
+    hand:add(card, true, true)
+  end
+
+  camera:setIdle()
 end
 
 function love.draw()
@@ -225,6 +294,8 @@ end
 function love.keypressed(key)
   if key == "escape" and love.system.getOS() ~= "Web" then
     love.event.quit()
+  elseif key == "r" then
+    resetGame()
   elseif key == "space" then
     -- if hand.cards[1] then print(hand.cards[1].current.r) end
     areas.takeFromDestructorQueue()

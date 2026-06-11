@@ -93,7 +93,14 @@ function sequences.scanDiscard()
       areas.scanner.right.active = true
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 1.5, type = "after"
+    delay = 0.1, type = "after"
+  })
+  events.push({
+    fn = function()
+      return not areas.scanner.right.active
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll"
   })
     events.push({
     fn = function()
@@ -301,7 +308,14 @@ function sequences.discard(card, camera, hand)
       areas.scanner.right.active = true
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 1.5, type = "after"
+    delay = 0.1, type = "after"
+  })
+  events.push({
+    fn = function()
+      return not areas.scanner.right.active
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll"
   })
   events.push({
     fn = terminalAttract,
@@ -463,7 +477,14 @@ function sequences.play(card, camera, hand)
       areas.scanner.left.active = true
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 1.5, type = "after"
+    delay = 0.1, type = "after"
+  })
+  events.push({
+    fn = function()
+      return not areas.scanner.left.active
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll"
   })
   events.push({
     fn = terminalAttract,
