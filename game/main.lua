@@ -23,6 +23,7 @@ local cardBackAsset = nil
 local dissolveShader = nil
 local tiltShader = nil
 screenshake = require("lib.screenshake")
+gameOver = nil
 -- local ramChipAsset = nil
 -- local erdnaseAsset = nil
 local hand = NewHand.new()
@@ -153,6 +154,9 @@ local function resetGame()
   areas.addPoolChip(pos2x, pos2y)
   areas.addPoolChip(pos3x, pos3y)
   areas.message.text = ""
+  areas.message.subtitle = ""
+  areas.message.textColor = { 1, 1, 1, 1 }
+  gameOver = nil
 
   hand = NewHand.new()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
@@ -234,6 +238,9 @@ function love.update(dt)
   realDt = dt
   gameDt = dt * config.speed
   screenshake.update(realDt)
+  overlayStats.update(dt)
+  areas.updateMessage(realDt)
+  if gameOver then return end
   local mouseX, mouseY = love.mouse.getPosition()
   -- if singleNewCard then
   -- --   if singleNewCard:containsPoint(mouseX, mouseY) and singleNewCard.hover.can then
@@ -276,7 +283,6 @@ function love.update(dt)
   -- areas.update(mouseX, mouseY)
   -- for _, proj in pairs(projectiles) do proj:update() end
   events.updateAll()
-  overlayStats.update(dt)
 end
 
 function love.mousepressed(x, y, button, istouch, presses)

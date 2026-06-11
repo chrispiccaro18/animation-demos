@@ -54,7 +54,8 @@ areas.progressBar = {
   h = 138 * love.graphics.getHeight() / 2160,
   gapX = 64 * love.graphics.getWidth() / 3840,
   asset = nil,
-  count = 0,
+  count = 9,
+  max = 10,
   textArea = {
     x = 522 * love.graphics.getWidth() / 3840,
     y = 120 * love.graphics.getHeight() / 2160,
@@ -71,7 +72,8 @@ areas.threatBar = {
   h = 138 * love.graphics.getHeight() / 2160,
   gapX = 64 * love.graphics.getWidth() / 3840,
   asset = nil,
-  count = 0,
+  count = 9,
+  max = 10,
   textArea = {
     x = 2997 * love.graphics.getWidth() / 3840,
     y = 110 * love.graphics.getHeight() / 2160,
@@ -121,7 +123,7 @@ areas.pool              = {
 }
 areas.progress          = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
 areas.threat            = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
-areas.message           = { text = "", textColor = { 1, 1, 1, 1 }, current = { scale = 1 }, target = { scale = 1 } }
+areas.message           = { text = "", subtitle = "", textColor = { 1, 1, 1, 1 }, subtitleColor = { 1, 1, 1, 0.7 }, current = { scale = 1 }, target = { scale = 1 } }
 
 local slotBottomAsset   = nil
 local slotTopAsset      = nil
@@ -144,6 +146,7 @@ local ramTokenAsset        = nil
 local destructorQueueAsset = nil
 local dtorTokenAsset       = nil
 local dtorTokenNullAsset       = nil
+local subtitleFont         = nil
 
 function areas.load()
   slotBottomAsset          = love.graphics.newImage("assets/slot-bottom.png")
@@ -165,6 +168,7 @@ function areas.load()
   spiderThreatAsset        = love.graphics.newImage("assets/spider-guy-w-threat.png")
   statFont                 = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
   messageFont              = love.graphics.newFont("assets/NotoSans-Medium.ttf", 120)
+  subtitleFont             = love.graphics.newFont("assets/NotoSans-Medium.ttf", 60)
 
   klakAsset                = love.graphics.newImage("assets/klak.png")
   klakBGAsset              = love.graphics.newImage("assets/klak-bg.png")
@@ -458,6 +462,11 @@ function areas.updateEndTurn(dt, mouseX, mouseY)
     et.click.can = false
     return false
   end
+end
+
+function areas.updateMessage(dt)
+  local msg = areas.message
+  msg.current.scale = animation.expDecay(msg.current.scale, msg.target.scale, 18, dt)
 end
 
 function areas.update(mouseX, mouseY)
@@ -780,7 +789,7 @@ function areas.drawStatic()
     local prevFont = love.graphics.getFont()
     if statFont then love.graphics.setFont(statFont) end
     local progressCount = areas.progressBar.count
-    areas.progressBar.textArea.value = string.format("%02d/%02d", progressCount, 10)
+    areas.progressBar.textArea.value = string.format("%02d/%02d", progressCount, areas.progressBar.max)
     love.graphics.printf(
       areas.progressBar.textArea.value,
       areas.progressBar.textArea.x,
@@ -796,7 +805,7 @@ function areas.drawStatic()
     local prevFont = love.graphics.getFont()
     if statFont then love.graphics.setFont(statFont) end
     local threatCount = areas.threatBar.count
-    areas.threatBar.textArea.value = string.format("%02d/%02d", threatCount, 10)
+    areas.threatBar.textArea.value = string.format("%02d/%02d", threatCount, areas.threatBar.max)
     love.graphics.printf(
       areas.threatBar.textArea.value,
       areas.threatBar.textArea.x,
@@ -848,6 +857,12 @@ function areas.drawStatic()
     love.graphics.scale(s, s)
     love.graphics.setColor(msg.textColor)
     love.graphics.print(msg.text, -textW / 2, -textH / 2)
+    if subtitleFont and msg.subtitle ~= "" then
+      love.graphics.setFont(subtitleFont)
+      local subW = subtitleFont:getWidth(msg.subtitle)
+      love.graphics.setColor(msg.subtitleColor)
+      love.graphics.print(msg.subtitle, -subW / 2, textH / 2 + 20)
+    end
     love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setFont(prevFont)

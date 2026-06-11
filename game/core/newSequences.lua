@@ -56,6 +56,19 @@ local function terminalEvent(tokenType)
         elseif tokenType == "nullify" then
           Dtor.nullifyNextSlot()
         end
+        if areas.progressBar.count >= areas.progressBar.max then
+          gameOver = "win"
+          areas.message.text = "SUCCESS"
+          areas.message.subtitle = "Press R to reset"
+          areas.message.textColor = { 0.4, 1, 0.6, 1 }
+          areas.message.current.scale = 6
+        elseif areas.threatBar.count >= areas.threatBar.max then
+          gameOver = "loss"
+          areas.message.text = "FAILURE"
+          areas.message.subtitle = "Press R to reset"
+          areas.message.current.scale = 6
+          areas.message.textColor = { 1, 0.3, 0.3, 1 }
+        end
       end,
       blocking = true, blockable = true, persistent = false,
       delay = 0, type = "immediate",
