@@ -195,6 +195,7 @@ local function applyFlingPhysics(self, rect, options)
   self.mode        = "fling"
   self.done        = false
   self.scale       = self.base_scale
+  self.quivered    = false
   self.waypoints   = trace_ray(self.x, self.y, angle, total_dist, walls, rect)
   self.total_dist  = total_dist
   self.dist_so_far = 0
@@ -312,6 +313,17 @@ function Token:update(dt, gameDt)
             self.quiver.active = false
             self.rotation = self.quiver.baseRot
             self.scale    = self.base_scale
+            self.target_rotation = shortest_rotation_target(self.rotation, 0)
+        end
+    end
+
+    if self.done and not (self.quiver and self.quiver.active) and self.target_rotation then
+        local diff = self.target_rotation - self.rotation
+        if math.abs(diff) > 0.005 then
+            self.rotation = self.rotation + diff * math.min(dt * 6, 1)
+        else
+            self.rotation = self.target_rotation
+            self.target_rotation = nil
         end
     end
 end
@@ -514,6 +526,7 @@ function Token.attractDone(token_type, destination, options)
                     running_delay = running_delay + defaultDelay()
                 end
                 token.done             = false
+                token.quivered         = false
                 token.onArrive         = options.onArrive
             end
         end
@@ -591,12 +604,14 @@ end
 
 ------------------------------------------------------------------------
 -- Trigger quiver on all done tokens within threshold pixels of scannerY.
+------------------------------------------------------------------------
 function Token.triggerQuiverNear(scannerY, threshold, duration)
     threshold = threshold or (40 * SCALE_Y)
     duration  = duration  or 0.25
     for _, token in ipairs(instances) do
         if token.done and math.abs(token.y - scannerY) < threshold then
-            if not (token.quiver and token.quiver.active) then
+            if not (token.quiver and token.quiver.active) and not token.quivered then
+                token.quivered = true
                 token.quiver = {
                     active   = true,
                     time     = 0,

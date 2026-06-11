@@ -379,7 +379,15 @@ function Card:flingZone(zone, rect, options)
   end
 
   if zoneCfg and zoneCfg.flingAsUnit then
-    local pos = self:getSlotPosition(zone, 1)
+    local n = #zoneSlots
+    local pos
+    if n <= 1 then
+      pos = self:getSlotPosition(zone, 1)
+    else
+      local p1 = self:getSlotPosition(zone, 1)
+      local pn = self:getSlotPosition(zone, n)
+      pos = { x = (p1.x + pn.x) / 2, y = (p1.y + pn.y) / 2 }
+    end
     if pos.x then
       local flingOpts = {}
       for k, v in pairs(options or {}) do flingOpts[k] = v end
