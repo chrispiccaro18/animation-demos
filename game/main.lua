@@ -19,6 +19,8 @@ local CardData     = require("data.cards")
 
 local Color = require("lib.color")
 
+local touches = {}
+
 local shipAsset = nil
 local cardBackAsset = nil
 local dissolveShader = nil
@@ -39,6 +41,78 @@ local dtorFont = nil
 
 SCALE_X = love.graphics.getWidth() / 3840
 SCALE_Y = love.graphics.getHeight() / 2160
+
+local function resetGame()
+  events.loadAll()
+  Token.clearAll()
+  Dtor.reset()
+  laser.hide()
+
+  areas.progressBar.count = 0
+  areas.progressBar.textArea.value = "00/10"
+  areas.threatBar.count = 0
+  areas.threatBar.textArea.value = "00/10"
+  areas.endTurn.frozen = false
+  areas.endTurn.state = "idle"
+  areas.endTurn.hover.can = true
+  areas.endTurn.hover.is = false
+  areas.endTurn.click.can = false
+  areas.endTurn.click.is = false
+  areas.destructor.queue = {}
+  areas.scanner.left.active = false
+  areas.scanner.left.y = areas.desk.y
+  areas.scanner.right.active = false
+  areas.scanner.right.y = areas.desk.y
+  areas.pool.chips = {}
+  areas.message.text = ""
+  areas.message.subtitle = ""
+  areas.message.textColor = { 1, 1, 1, 1 }
+  gameOver = nil
+
+  hand = NewHand.new()
+  deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
+  sequences.setDeck(deck)
+
+  for _ = 1, 2 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      CardData.cards.card1
+    )
+    deck:add(card)
+  end
+  for _ = 1, 2 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      CardData.cards.card2
+    )
+    deck:add(card)
+  end
+  for _ = 1, 2 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      CardData.cards.card3
+    )
+    deck:add(card)
+  end
+  for _ = 1, 2 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      CardData.cards.card4
+    )
+    deck:add(card)
+  end
+  deck:shuffle()
+
+  for _ = 1, 4 do
+    sequences.dealCardToHand(hand)
+  end
+
+  camera:setIdle()
+end
 
 function love.load()
   https = runtimeLoader.loadHTTPS()
@@ -123,78 +197,7 @@ function love.load()
   end
   events.loadAll()
   overlayStats.load()
-end
-
-local function resetGame()
-  events.loadAll()
-  Token.clearAll()
-  Dtor.reset()
-  laser.hide()
-
-  areas.progressBar.count = 0
-  areas.progressBar.textArea.value = "00/10"
-  areas.threatBar.count = 0
-  areas.threatBar.textArea.value = "00/10"
-  areas.endTurn.frozen = false
-  areas.endTurn.state = "idle"
-  areas.endTurn.hover.can = true
-  areas.endTurn.hover.is = false
-  areas.endTurn.click.can = false
-  areas.endTurn.click.is = false
-  areas.destructor.queue = {}
-  areas.scanner.left.active = false
-  areas.scanner.left.y = areas.desk.y
-  areas.scanner.right.active = false
-  areas.scanner.right.y = areas.desk.y
-  areas.pool.chips = {}
-  areas.message.text = ""
-  areas.message.subtitle = ""
-  areas.message.textColor = { 1, 1, 1, 1 }
-  gameOver = nil
-
-  hand = NewHand.new()
-  deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
-  sequences.setDeck(deck)
-
-  for _ = 1, 2 do
-    local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
-      CardData.cards.card1
-    )
-    deck:add(card)
-  end
-  for _ = 1, 2 do
-    local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
-      CardData.cards.card2
-    )
-    deck:add(card)
-  end
-  for _ = 1, 2 do
-    local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
-      CardData.cards.card3
-    )
-    deck:add(card)
-  end
-  for _ = 1, 2 do
-    local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
-      CardData.cards.card4
-    )
-    deck:add(card)
-  end
-  deck:shuffle()
-
-  for _ = 1, 4 do
-    sequences.dealCardToHand(hand)
-  end
-
-  camera:setIdle()
+  resetGame()
 end
 
 function love.draw()
@@ -238,6 +241,11 @@ end
 function love.update(dt)
   realDt = dt
   gameDt = dt * config.speed
+  local touchCount = 0
+  for _ in pairs(touches) do touchCount = touchCount + 1 end
+  if touchCount == 3 then
+    resetGame()
+  end
   screenshake.update(realDt)
   overlayStats.update(dt)
   areas.updateMessage(realDt)
@@ -533,6 +541,20 @@ function love.keypressed(key)
   end
 end
 
+
 function love.touchpressed(id, x, y, dx, dy, pressure)
+  touches[id] = { x = x, y = y }
   overlayStats.handleTouch(id, x, y, dx, dy, pressure)
+end
+
+function love.touchmoved(id, x, y)
+  if touches[id] then
+    touches[id] = { x = x, y = y }
+  end
+end
+
+function love.touchreleased(id, x, y, dx, dy, pressure)
+  if touches[id] then
+    touches[id] = nil
+  end
 end
