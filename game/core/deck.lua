@@ -18,7 +18,6 @@ end
 --- Add a card to the bottom of the deck and fully reset its state.
 --- @param card table  Card object
 function Deck:add(card)
-  print("here")
   table.insert(self.cards, card)
   card:resetToInitial(self.x, self.y)
   card.current.scale = 0.95
@@ -53,6 +52,14 @@ end
 --- @return table { x = number, y = number }
 function Deck:position()
   return { x = self.x, y = self.y }
+end
+
+function Deck:shuffle()
+  local n = #self.cards
+  for i = n, 2, -1 do
+    local j = math.random(1, i)
+    self.cards[i], self.cards[j] = self.cards[j], self.cards[i]
+  end
 end
 
 --- Draw the visual card-back pile.

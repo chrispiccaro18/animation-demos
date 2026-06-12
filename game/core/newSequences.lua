@@ -93,7 +93,24 @@ local function terminalAttract()
   startTerminalAttract("nullify", Dtor.nextUnnullifiedSlot(), acc)
 end
 
-function sequences.scanDiscard()
+function sequences.dealCardToHand(hand)
+  events.push({
+    fn = function()
+      local card = _deck:deal()
+      if card then
+        card:resetToInitial(_deck.x, _deck.y)
+        card.current.scale = 0.05
+        hand:add(card, false, true)
+      else
+        print("no card to deal to hand")
+      end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.5, type = "after",
+  })
+end
+
+function sequences.scan(scanner)
     events.push({
     fn = function()
       return not Token.isActive()
@@ -103,50 +120,22 @@ function sequences.scanDiscard()
   })
   events.push({
     fn = function()
-      areas.scanner.right.active = true
+      scanner.active = true
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.1, type = "after"
   })
   events.push({
     fn = function()
-      return not areas.scanner.right.active
+      return not scanner.active
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "poll"
   })
     events.push({
-    fn = function()
-      Token.attractDone("threat", areas.threatDestination, { target_scale = 1.5 })
-
-    end,
+    fn = terminalAttract,
     blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
-  })
-
-  -- 5. Poll until all tokens have arrived
-  events.push({
-    fn = function()
-      return Token.allDone()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll",
-  })
-  events.push({
-    fn = function()
-      local removedTokens = Token.removeDone()
-      for _, t in ipairs(removedTokens) do
-        if t.token_type == "progress" then
-          areas.progressBar.count = math.min(areas.progressBar.count + 1, 5)
-        elseif t.token_type == "threat" then
-          areas.threatBar.count = math.min(areas.threatBar.count + 1, 5)
-        elseif t.token_type == "nullify" then
-          Dtor.nullifyNextSlot()
-        end
-      end
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
+    delay = 0.5, type = "after",
   })
 end
 
@@ -211,6 +200,19 @@ function sequences.restoreCard(card, hand)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
+    local handSize = hand:handSize()
+      print("hand size after end turn:", handSize)
+      local toDeal = math.min(4 - handSize, 4)
+      print("cards to deal after end turn:", toDeal)
+      for _ = 1, toDeal do
+        sequences.dealCardToHand(hand)
+      end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.1, type = "after",
   })
 end
 
@@ -318,23 +320,13 @@ function sequences.discard(card, camera, hand)
         Dtor.register(card, slotIndices)
         Dtor.showText()
       end
-      areas.scanner.right.active = true
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.1, type = "after"
   })
-  events.push({
-    fn = function()
-      return not areas.scanner.right.active
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll"
-  })
-  events.push({
-    fn = terminalAttract,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after"
-  })
+
+  sequences.scan(areas.scanner.right)
+
   events.push({
     fn = function()
       return Token.allDone()
@@ -345,16 +337,6 @@ function sequences.discard(card, camera, hand)
   events.push({
     fn = function()
       Token.removeDone()
-      -- local removedTokens = Token.removeDone()
-      -- for _, t in ipairs(removedTokens) do
-      --   if t.token_type == "progress" then
-      --     areas.progressBar.count = math.min(areas.progressBar.count + 1, 10)
-      --   elseif t.token_type == "threat" then
-      --     areas.threatBar.count = math.min(areas.threatBar.count + 1, 10)
-      --   elseif t.token_type == "nullify" then
-      --     Dtor.nullifyNextSlot()
-      --   end
-      -- end
       Camera:setIdle()
       hand:remove(card)
     end,
@@ -478,32 +460,9 @@ function sequences.play(card, camera, hand)
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"
   })
-  events.push({
-    fn = function()
-      return not Token.isActive()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll"
-  })
-  events.push({
-    fn = function()
-      areas.scanner.left.active = true
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.1, type = "after"
-  })
-  events.push({
-    fn = function()
-      return not areas.scanner.left.active
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll"
-  })
-  events.push({
-    fn = terminalAttract,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after"
-  })
+
+  sequences.scan(areas.scanner.left)
+
   events.push({
     fn = function()
       return Token.allDone()
@@ -588,7 +547,7 @@ function sequences.endTurn(hand)
         Dtor.popEntry()
         local idx   = slotIndices[1]
         Dtor.releaseSlot(idx)
-        sequences.scanDiscard()
+        sequences.scan(areas.scanner.right)
         sequences.restoreCard(card, hand)
       end
     end,

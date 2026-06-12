@@ -15,6 +15,7 @@ local Camera       = require("core.camera")
 local Token        = require("core.token")
 local laser        = require("core.laser")
 local Dtor         = require("core.dtor")
+local CardData     = require("data.cards")
 
 local Color = require("lib.color")
 
@@ -147,12 +148,6 @@ local function resetGame()
   areas.scanner.right.active = false
   areas.scanner.right.y = areas.desk.y
   areas.pool.chips = {}
-  local pos1x, pos1y = areas.randomPoolPosition()
-  local pos2x, pos2y = areas.randomPoolPosition()
-  local pos3x, pos3y = areas.randomPoolPosition()
-  areas.addPoolChip(pos1x, pos1y)
-  areas.addPoolChip(pos2x, pos2y)
-  areas.addPoolChip(pos3x, pos3y)
   areas.message.text = ""
   areas.message.subtitle = ""
   areas.message.textColor = { 1, 1, 1, 1 }
@@ -162,35 +157,42 @@ local function resetGame()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
   sequences.setDeck(deck)
 
-  local exampleData = {
-    topEnergy    = 1,
-    bottomEnergy = 1,
-    play    = { { type = "progress", value = 1 }, { type = "nullify", value = 1 } },
-    discard = { { type = "threat", value = 1 }, { type = "threat",   value = 1 } },
-    dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 } },
-  }
-  local exampleData2 = {
-    topEnergy    = 2,
-    bottomEnergy = 2,
-    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 } },
-    discard = { { type = "threat", value = 1 }, { type = "nullify",   value = 1 } },
-    dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 }, { type = "threat",   value = 1 } },
-  }
-  for _ = 1, 3 do
+  for _ = 1, 2 do
     local card = Card.new(
       love.graphics.getWidth() / 2,
       love.graphics.getHeight() / 2,
-      exampleData
+      CardData.cards.card1
     )
-    hand:add(card, true, true)
+    deck:add(card)
   end
   for _ = 1, 2 do
     local card = Card.new(
       love.graphics.getWidth() / 2,
       love.graphics.getHeight() / 2,
-      exampleData2
+      CardData.cards.card2
     )
-    hand:add(card, true, true)
+    deck:add(card)
+  end
+  for _ = 1, 2 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      CardData.cards.card3
+    )
+    deck:add(card)
+  end
+  for _ = 1, 2 do
+    local card = Card.new(
+      love.graphics.getWidth() / 2,
+      love.graphics.getHeight() / 2,
+      CardData.cards.card4
+    )
+    deck:add(card)
+  end
+  deck:shuffle()
+
+  for _ = 1, 4 do
+    sequences.dealCardToHand(hand)
   end
 
   camera:setIdle()
@@ -272,7 +274,7 @@ function love.update(dt)
   hand:update(mouseX, mouseY)
   Token.updateAll(realDt, gameDt)
   Dtor.update(realDt)
-  areas.updateScanners(realDt)
+  areas.updateScanners(gameDt)
   if not hand:isDragging() and not areas.endTurn.frozen then
     if areas.updateEndTurn(realDt, mouseX, mouseY) then
       sequences.endTurn(hand)
