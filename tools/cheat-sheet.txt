@@ -1,5 +1,9 @@
 # Fatal Exception Build Cheat Sheet
 
+git tag 0.0.2
+git push
+git push origin 0.0.2
+
 # --------------------------------------------------
 # LOVE package (.love)
 # --------------------------------------------------

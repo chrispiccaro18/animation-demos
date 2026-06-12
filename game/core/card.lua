@@ -136,20 +136,20 @@ Card.__index = Card
 function Card.load(dissolveShader, tiltShader)
   _shaders.dissolve   = dissolveShader
   _shaders.tilt       = tiltShader
-  _assets.base        = love.graphics.newImage("assets/proto/card-base.png",        { mipmaps = true })
-  _assets.ramHole     = love.graphics.newImage("assets/proto/ram-hole.png",          { mipmaps = true })
-  _assets.tokenHole   = love.graphics.newImage("assets/proto/token-hole.png",        { mipmaps = true })
-  _assets.ramChip     = love.graphics.newImage("assets/proto/ram-chip.png",          { mipmaps = true })
-  _assets.dtorSlot    = love.graphics.newImage("assets/proto/dtor-slot.png",         { mipmaps = true })
-  _assets.line        = love.graphics.newImage("assets/proto/card-line2.png",        { mipmaps = true })
-  _assets.playLine    = love.graphics.newImage("assets/proto/card-play-line2.png",   { mipmaps = true })
-  _assets.discardLine = love.graphics.newImage("assets/proto/card-discard-line.png", { mipmaps = true })
+  _assets.base        = love.graphics.newImage("assets/proto/card-base.png")
+  _assets.ramHole     = love.graphics.newImage("assets/proto/ram-hole.png")
+  _assets.tokenHole   = love.graphics.newImage("assets/proto/token-hole.png")
+  _assets.ramChip     = love.graphics.newImage("assets/proto/ram-chip.png")
+  _assets.dtorSlot    = love.graphics.newImage("assets/proto/dtor-slot.png")
+  _assets.line        = love.graphics.newImage("assets/proto/card-line2.png")
+  _assets.playLine    = love.graphics.newImage("assets/proto/card-play-line2.png")
+  _assets.discardLine = love.graphics.newImage("assets/proto/card-discard-line.png")
   _assets.tokens = {
-    progress = love.graphics.newImage("assets/proto/progress-token.png", { mipmaps = true }),
-    threat   = love.graphics.newImage("assets/proto/threat-token.png",   { mipmaps = true }),
-    nullify  = love.graphics.newImage("assets/proto/nullify-token.png",  { mipmaps = true }),
+    progress = love.graphics.newImage("assets/proto/progress-token.png"),
+    threat   = love.graphics.newImage("assets/proto/threat-token.png"),
+    nullify  = love.graphics.newImage("assets/proto/nullify-token.png"),
     ram      = _assets.ramChip,
-    dtor     = love.graphics.newImage("assets/proto/dtor-token.png",     { mipmaps = true }),
+    dtor     = love.graphics.newImage("assets/proto/dtor-token.png"),
   }
 end
 

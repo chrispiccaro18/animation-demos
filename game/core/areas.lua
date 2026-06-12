@@ -155,8 +155,8 @@ function areas.load()
   endTurnHoverAsset        = love.graphics.newImage("assets/proto/end-turn-hover.png")
   endTurnClickAsset        = love.graphics.newImage("assets/proto/end-turn-down.png")
 
-  areas.progressBar.asset = love.graphics.newImage("assets/proto/progress-tick.png", { mipmaps = true })
-  areas.threatBar.asset = love.graphics.newImage("assets/proto/threat-tick.png", { mipmaps = true })
+  areas.progressBar.asset = love.graphics.newImage("assets/proto/progress-tick.png")
+  areas.threatBar.asset = love.graphics.newImage("assets/proto/threat-tick.png")
   areas.endTurn.baseAsset  = endTurnAsset
   areas.endTurn.hoverAsset = endTurnHoverAsset
   areas.endTurn.clickAsset = endTurnClickAsset
@@ -174,9 +174,9 @@ function areas.load()
   klakBGAsset              = love.graphics.newImage("assets/klak-bg.png")
 
   destructorQueueAsset = love.graphics.newImage("assets/destructor-queue.png")
-  dtorTokenAsset       = love.graphics.newImage("assets/proto/dtor-token.png", { mipmaps = true })
-  dtorTokenNullAsset       = love.graphics.newImage("assets/proto/dtor-token-nullified.png", { mipmaps = true })
-  ramTokenAsset              = love.graphics.newImage("assets/proto/ram-chip.png", { mipmaps = true })
+  dtorTokenAsset       = love.graphics.newImage("assets/proto/dtor-token.png")
+  dtorTokenNullAsset       = love.graphics.newImage("assets/proto/dtor-token-nullified.png")
+  ramTokenAsset              = love.graphics.newImage("assets/proto/ram-chip.png")
 
   local klakBGW            = klakBGAsset:getWidth()
   local klakBGH            = klakBGAsset:getHeight()

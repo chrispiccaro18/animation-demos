@@ -53,11 +53,10 @@ function love.load()
   camera:setIdle()
 
   boardAsset = love.graphics.newImage(
-    "assets/proto/board.png",
-    { mipmaps = true }
+    "assets/proto/board.png"
   )
   boardAsset:setFilter("linear", "linear")
-  boardAsset:setMipmapFilter("linear")
+  -- boardAsset:setMipmapFilter("linear")
 
   dissolveShader = love.graphics.newShader("assets/dissolve.fs")
   tiltShader = love.graphics.newShader("assets/tilt.fs")

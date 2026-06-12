@@ -3,9 +3,9 @@ local Color = require("lib.color")
 local Camera = {}
 
 function Camera.load()
-  local baseAsset = love.graphics.newImage("assets/proto/camera-base.png", { mipmaps = true })
-  local lensAsset = love.graphics.newImage("assets/proto/camera-lens.png", { mipmaps = true })
-  local ringAsset = love.graphics.newImage("assets/proto/camera-ring.png", { mipmaps = true })
+  local baseAsset = love.graphics.newImage("assets/proto/camera-base.png")
+  local lensAsset = love.graphics.newImage("assets/proto/camera-lens.png")
+  local ringAsset = love.graphics.newImage("assets/proto/camera-ring.png")
   Camera.x = love.graphics.getWidth() / 2
   Camera.y = baseAsset:getHeight() / 2 - 300
   -- Camera.y = 75

@@ -73,13 +73,13 @@ function Dtor.load()
   for i = 1, Dtor.area.maxSlots do
     Dtor.area.slots[i] = { occupied = false, reserved = false, nullified = false }
   end
-  _dtorSlotAsset = love.graphics.newImage("assets/proto/dtor-slot.png", { mipmaps = true })
-  _emptyNullifySlot = love.graphics.newImage("assets/proto/empty-nullify-dtor.png",  { mipmaps = true })
+  _dtorSlotAsset = love.graphics.newImage("assets/proto/dtor-slot.png")
+  _emptyNullifySlot = love.graphics.newImage("assets/proto/empty-nullify-dtor.png")
   _tokenAssets = {
-    threat   = love.graphics.newImage("assets/proto/threat-token.png",   { mipmaps = true }),
-    progress = love.graphics.newImage("assets/proto/progress-token.png", { mipmaps = true }),
-    nullify  = love.graphics.newImage("assets/proto/nullify-token.png",  { mipmaps = true }),
-    ram      = love.graphics.newImage("assets/proto/ram-chip.png",       { mipmaps = true }),
+    threat   = love.graphics.newImage("assets/proto/threat-token.png"),
+    progress = love.graphics.newImage("assets/proto/progress-token.png"),
+    nullify  = love.graphics.newImage("assets/proto/nullify-token.png"),
+    ram      = love.graphics.newImage("assets/proto/ram-chip.png"),
   }
   _font = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
 end

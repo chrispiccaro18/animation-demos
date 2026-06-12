@@ -204,12 +204,12 @@ local function applyFlingPhysics(self, rect, options)
 end
 
 function Token.load()
-  ramAsset = love.graphics.newImage("assets/proto/ram-chip.png", { mipmaps = true })
-  progressAsset = love.graphics.newImage("assets/proto/progress-token.png", { mipmaps = true })
-  threatAsset = love.graphics.newImage("assets/proto/threat-token.png", { mipmaps = true })
-  dtorAsset = love.graphics.newImage("assets/proto/dtor-slot.png", { mipmaps = true })
-  nullifyAsset = love.graphics.newImage("assets/proto/nullify-token.png", { mipmaps = true })
-  emptyNullifyDtorAsset = love.graphics.newImage("assets/proto/empty-nullify-dtor.png", { mipmaps = true })
+  ramAsset = love.graphics.newImage("assets/proto/ram-chip.png")
+  progressAsset = love.graphics.newImage("assets/proto/progress-token.png")
+  threatAsset = love.graphics.newImage("assets/proto/threat-token.png")
+  dtorAsset = love.graphics.newImage("assets/proto/dtor-slot.png")
+  nullifyAsset = love.graphics.newImage("assets/proto/nullify-token.png")
+  emptyNullifyDtorAsset = love.graphics.newImage("assets/proto/empty-nullify-dtor.png")
 end
 
 ------------------------------------------------------------------------
