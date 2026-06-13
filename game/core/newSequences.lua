@@ -446,6 +446,7 @@ function sequences.play(card, camera, hand)
   })
   events.push({
     fn = function()
+      card:clearZone("topEnergyHoles")
       card:flingZone("playEffect", playDeskFullRect, playFlingOptions)
     end,
     blocking = true, blockable = true, persistent = false,
@@ -454,8 +455,25 @@ function sequences.play(card, camera, hand)
   events.push({
     fn = function()
       -- card.current.r = math.rad(-2)
-      card.target.x = card.current.x + 150 * SCALE_X
-      card.target.y = card.current.y - card.h / 4
+      -- card.target.x = card.current.x + 150 * SCALE_X
+      -- card.target.y = card.current.y - card.h / 4
+
+      -- card.target.x = _deck:position().x / 2
+      card.target.y = _deck:position().y * 0.7
+      card.target.scale = 0.5
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "after"
+  })
+  events.push({
+    fn = function()
+      -- card.current.r = math.rad(-2)
+      -- card.target.x = card.current.x + 150 * SCALE_X
+      -- card.target.y = card.current.y - card.h / 4
+
+      card.target.x = _deck:position().x
+      card.target.y = _deck:position().y
+      card.target.scale = 0
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"

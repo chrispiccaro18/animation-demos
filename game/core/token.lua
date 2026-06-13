@@ -556,6 +556,7 @@ function Token:attachToSlot(card, zone, index)
     local zoneSlots  = card._slots and card._slots[zone]
     if zoneSlots and zoneSlots[index] then
         zoneSlots[index].token       = self
+        zoneSlots[index].alpha = 1
         zoneSlots[index].targetAlpha = 1
     end
     Token.removeSingle(self)
