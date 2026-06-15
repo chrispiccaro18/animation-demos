@@ -12,7 +12,11 @@ local MIN_SPEED   = 2       -- px/s below which we snap to rest
 local ARC_SCALE   = 1.5    -- max scale delta at arc peak
 local SPIN_SCALE  = 0.012   -- rotation rate relative to horizontal speed (rad/px)
 
-local SPEED = 2000
+local ANT_DUR        = 0.15
+local ANT_PAUSE      = 0.15
+local ANT_PEAK_SCALE = 1.35
+
+local SPEED = 4000
 local TOP_SPEED = 10000
 local ACCEL = 5000
 
@@ -284,6 +288,10 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     local adx = target_x - start_x
     local ady = target_y - start_y
     self.attract_dist    = math.max(math.sqrt(adx*adx + ady*ady), 1)
+    self.elapsed         = 0
+    self.ant_dur         = options.no_anticipation and 0 or ANT_DUR
+    self.ant_pause       = options.no_anticipation and 0 or ANT_PAUSE
+    self.ant_peak_scale  = options.no_anticipation and self.start_scale or self.start_scale * ANT_PEAK_SCALE
     self.asset           = resolveAsset(options.type)
     self.subTokens       = options.subTokens
     self.onArrive        = options.onArrive
@@ -379,6 +387,8 @@ function Token:_update_fling(dt)
 end
 
 function Token:_update_attract(dt)
+    self.elapsed = (self.elapsed or 0) + dt
+
     local dx = self.target_x - self.x
     local dy = self.target_y - self.y
     local dist = math.sqrt(dx*dx + dy*dy)
@@ -390,6 +400,32 @@ function Token:_update_attract(dt)
         self.done        = true
         if self.onArrive then self.onArrive(self) end
         return
+    end
+
+    -- slingshot pullback: drift away from target before the main pull
+    local ant_dur   = self.ant_dur   or 0
+    local ant_pause = self.ant_pause or 0
+    if self.elapsed < ant_dur then
+        local phase = self.elapsed / ant_dur
+        local pull_speed = self.max_speed * 0.15 * (1 - phase * phase)
+        local nx = dx / dist
+        local ny = dy / dist
+        self.x = self.x - nx * pull_speed * dt
+        self.y = self.y - ny * pull_speed * dt
+        self.scale = self.start_scale + (self.ant_peak_scale - self.start_scale) * (phase * phase)
+        return
+    end
+
+    -- pause at peak pullback before releasing
+    if self.elapsed < ant_dur + ant_pause then
+        self.scale = self.ant_peak_scale
+        return
+    end
+
+    -- first frame after pause: recalibrate distance so ease-in starts fresh
+    if (self.elapsed - dt) < (ant_dur + ant_pause) then
+        self.attract_dist = math.max(dist, 1)
+        self.speed = self.initial_speed
     end
 
     local t = 1 - math.min(dist / self.attract_dist, 1)
@@ -408,10 +444,8 @@ function Token:_update_attract(dt)
     -- tween rotation based on travel progress
     self.rotation = self.start_rotation + (self.target_rotation - self.start_rotation) * t
 
-    -- scale: dip slightly in first ~25% of travel ("gather"), then ease up to target
-    local scale_t = t * t
-    local gather  = math.sin(math.pi * math.min(t * 4, 1)) * 0.12
-    self.scale    = (self.start_scale + (self.target_scale - self.start_scale) * scale_t) * (1 - gather)
+    -- scale deflates from anticipation peak down to target as token travels
+    self.scale = self.ant_peak_scale + (self.target_scale - self.ant_peak_scale) * t
 end
 
 function Token:draw()
@@ -522,6 +556,10 @@ function Token.attractDone(token_type, destination, options)
                 token.start_scale      = token.scale
                 token.target_scale     = options.target_scale   or token.base_scale
                 token.attract_dist     = math.max(math.sqrt(adx*adx + ady*ady), 1)
+                token.elapsed          = 0
+                token.ant_dur          = options.no_anticipation and 0 or ANT_DUR
+                token.ant_pause        = options.no_anticipation and 0 or ANT_PAUSE
+                token.ant_peak_scale   = options.no_anticipation and token.start_scale or token.start_scale * ANT_PEAK_SCALE
                 if options.acc then
                     token.delay = options.acc:nextDelay()
                 elseif options.delay == false then

@@ -245,11 +245,12 @@ function Dtor.compactSlots()
           oldSx, oldSy,
           dq.x + dq.w / 2, newSy,
           acc1:next({
-            type          = slotNullif and "dtor_null" or "dtor",
-            base_scale    = slotScale or 1,
-            subTokens     = slotNullif and nil or subTokens,
-            initial_speed = 100 * SCALE_X,
-            acceleration  = 200 * SCALE_X,
+            type             = slotNullif and "dtor_null" or "dtor",
+            base_scale       = slotScale or 1,
+            subTokens        = slotNullif and nil or subTokens,
+            initial_speed    = 100 * SCALE_X,
+            acceleration     = 200 * SCALE_X,
+            no_anticipation  = true,
             onArrive      = function(t)
               dq.slots[capturedN].occupied  = true
               dq.slots[capturedN].reserved  = false
@@ -279,10 +280,11 @@ function Dtor.compactSlots()
           dq.x + dq.w / 2, dq.y + (i - 0.5) * slotH,
           dq.x + dq.w / 2, dq.y + (nextSlot - 0.5) * slotH,
           acc2:next({
-            type          = "dtor_null",
-            base_scale    = 1.5,
-            initial_speed = 100 * SCALE_X,
-            acceleration  = 200 * SCALE_X,
+            type            = "dtor_null",
+            base_scale      = 1.5,
+            initial_speed   = 100 * SCALE_X,
+            acceleration    = 200 * SCALE_X,
+            no_anticipation = true,
             onArrive      = function(t)
               dq.slots[capturedN].nullified = true
               dq.slots[capturedN].reserved  = false
