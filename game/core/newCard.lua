@@ -10,8 +10,8 @@ NewCard.__index = NewCard
 -- local BUFFER = 0
 local BUFFER = 20
 function NewCard:containsPoint(x, y)
-  local windowScaleX = love.graphics.getWidth() / 3840
-  local windowScaleY = love.graphics.getHeight() / 2160
+  local windowScaleX = SCALE_X
+  local windowScaleY = SCALE_Y
   local hw = self.offsetX * self.current.scale * windowScaleX + BUFFER * self.current.scale * windowScaleX
   local hh = self.offsetY * self.current.scale * windowScaleY + BUFFER * self.current.scale * windowScaleY
   return x >= self.current.x - hw
@@ -433,7 +433,7 @@ function NewCard:_applyDissolveUniforms(asset)
 end
 
 function NewCard:_applyTiltUniforms(includeMouse)
-  local windowScaleX = love.graphics.getWidth() / 3840
+  local windowScaleX = SCALE_X
   local screenCX = self.current.x
   local screenCY = self.current.y
   local screenScale = self.offsetX * self.current.scale * windowScaleX
@@ -451,8 +451,8 @@ function NewCard:_applyTiltUniforms(includeMouse)
 end
 
 function NewCard:draw()
-  local windowScaleX = love.graphics.getWidth() / 3840
-  local windowScaleY = love.graphics.getHeight() / 2160
+  local windowScaleX = SCALE_X
+  local windowScaleY = SCALE_Y
 
   local useShader = false
   -- local useShader = self.shader ~= nil and self.dissolveAmount > 0.001

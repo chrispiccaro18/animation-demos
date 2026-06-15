@@ -26,7 +26,7 @@ local EFFECT_ZONES = {
 }
 
 local ENERGY_GAP = 7
-local EFFECT_GAP = 8
+local EFFECT_GAP = 20
 
 local STATE_CONFIG = {
   idle = {
@@ -63,7 +63,7 @@ local STATE_CONFIG = {
 
 local function fitScale(asset, holeW, holeH)
   local w, h = asset:getDimensions()
-  return math.min(holeW / w, holeH / h) * 0.85
+  return math.min(holeW / w, holeH / h) * 0.75
 end
 
 local function buildParts(data)
@@ -270,8 +270,8 @@ end
 function Card:getPartPositionById(id)
   local part = self:getPartById(id)
   if part then
-    local wxs = love.graphics.getWidth()  / 3840
-    local wys = love.graphics.getHeight() / 2160
+    local wxs = SCALE_X
+    local wys = SCALE_Y
     local cs  = self.current.scale
     local px  = part.origin.x - self.offsetX + part.current.dx
     local py  = part.origin.y - self.offsetY + part.current.dy
@@ -291,8 +291,8 @@ function Card:getSlotPosition(zone, index)
   if part and part.slotCenters then
     local sc = part.slotCenters[index]
     if sc then
-      local wxs = love.graphics.getWidth()  / 3840
-      local wys = love.graphics.getHeight() / 2160
+      local wxs = SCALE_X
+      local wys = SCALE_Y
       local cs  = self.current.scale
       local px  = part.origin.x - self.offsetX + sc.dx + part.current.dx
       local py  = part.origin.y - self.offsetY + sc.dy + part.current.dy
@@ -313,8 +313,8 @@ function Card:getTargetSlotPosition(zone, index)
   if part and part.slotCenters then
     local sc = part.slotCenters[index]
     if sc then
-      local wxs = love.graphics.getWidth()  / 3840
-      local wys = love.graphics.getHeight() / 2160
+      local wxs = SCALE_X
+      local wys = SCALE_Y
       local cs  = self.target.scale
       local px  = part.origin.x - self.offsetX + sc.dx + part.target.dx
       local py  = part.origin.y - self.offsetY + sc.dy + part.target.dy
@@ -513,7 +513,7 @@ function Card:resetDissolve()
 end
 
 function Card:enterSlot(edgeY)
-  local wys = love.graphics.getHeight() / 2160
+  local wys = SCALE_Y
   -- default: use the card's current top edge so the full card is visible at entry
   self.slotEdgeY = edgeY or (self.current.y - self.offsetY * self.current.scale * wys)
 end
@@ -555,8 +555,8 @@ function Card:isDissolved()
 end
 
 function Card:containsPoint(x, y)
-  local windowScaleX = love.graphics.getWidth()  / 3840
-  local windowScaleY = love.graphics.getHeight() / 2160
+  local windowScaleX = SCALE_X
+  local windowScaleY = SCALE_Y
   local hw = self.offsetX * self.current.scale * windowScaleX + BUFFER * self.current.scale * windowScaleX
   local hh = self.offsetY * self.current.scale * windowScaleY + BUFFER * self.current.scale * windowScaleY
   return x >= self.current.x - hw
@@ -639,7 +639,7 @@ function Card:_applyDissolveUniforms(asset)
 end
 
 function Card:_applyTiltUniforms(includeMouse)
-  local windowScaleX = love.graphics.getWidth() / 3840
+  local windowScaleX = SCALE_X
   local screenCX     = self.current.x
   local screenCY     = self.current.y
   local screenScale  = self.offsetX * self.current.scale * windowScaleX
@@ -657,10 +657,10 @@ function Card:_applyTiltUniforms(includeMouse)
 end
 
 function Card:draw()
-  local windowScaleX = love.graphics.getWidth()  / 3840
-  local windowScaleY = love.graphics.getHeight() / 2160
-  local W = love.graphics.getWidth()
-  local H = love.graphics.getHeight()
+  local windowScaleX = SCALE_X
+  local windowScaleY = SCALE_Y
+  local W = SCALE_X * 3840
+  local H = SCALE_Y * 2160
 
   -- Slot entry: clip below slot edge (hide the portion inside the slot)
   if self.slotEdgeY then

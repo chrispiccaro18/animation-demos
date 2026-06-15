@@ -2,8 +2,8 @@ local animation = require("lib.animation")
 local Token     = require("core.token")
 local Color = require("lib.color")
 
-local W = love.graphics.getWidth()
-local H = love.graphics.getHeight()
+local W = SCALE_X * 3840
+local H = SCALE_Y * 2160
 
 local Dtor = {}
 

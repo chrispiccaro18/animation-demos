@@ -6,7 +6,7 @@ function Camera.load()
   local baseAsset = love.graphics.newImage("assets/proto/camera-base.png")
   local lensAsset = love.graphics.newImage("assets/proto/camera-lens.png")
   local ringAsset = love.graphics.newImage("assets/proto/camera-ring.png")
-  Camera.x = love.graphics.getWidth() / 2
+  Camera.x = SCALE_X * 1920
   Camera.y = baseAsset:getHeight() / 2 - 300
   -- Camera.y = 75
   Camera.scale = 1
@@ -67,8 +67,8 @@ function Camera:lookAt(card, color)
 end
 
 function Camera:getLensPosition()
-  local windowScaleX = love.graphics.getWidth() / (3840 * 2)
-  local windowScaleY = love.graphics.getHeight() / (2160 * 2)
+  local windowScaleX = SCALE_X / 2
+  local windowScaleY = SCALE_Y / 2
   return self.x +
       self.parts.lens.offsetX * self.scale * windowScaleX +
       self.parts.lens.originalPosition.x * self.scale * windowScaleX
@@ -94,11 +94,11 @@ function Camera:update(dt, mouseX, mouseY, scanners)
   local targetOffsetX, targetOffsetY
 
   if self.state == "followMouse" then
-    local distanceFromScreenCenterX = mouseX - love.graphics.getWidth() / 2
-    local distanceFromScreenCenterY = mouseY - love.graphics.getHeight() / 2
+    local distanceFromScreenCenterX = mouseX - SCALE_X * 1920
+    local distanceFromScreenCenterY = mouseY - SCALE_Y * 1080
     -- normalize for any screen size
-    local offsetX = distanceFromScreenCenterX / love.graphics.getWidth()
-    local offsetY = distanceFromScreenCenterY / love.graphics.getHeight()
+    local offsetX = distanceFromScreenCenterX / (SCALE_X * 3840)
+    local offsetY = distanceFromScreenCenterY / (SCALE_Y * 2160)
     targetOffsetX = offsetX * 200
     targetOffsetY = offsetY * 50
 
@@ -111,10 +111,10 @@ function Camera:update(dt, mouseX, mouseY, scanners)
 
   elseif self.state == "lookAt" then
     local card = self.stateData.targetCard
-    local distanceFromScreenCenterX = card.current.x - love.graphics.getWidth() / 2
-    local distanceFromScreenCenterY = card.current.y - love.graphics.getHeight() / 2
-    local offsetX = distanceFromScreenCenterX / love.graphics.getWidth()
-    local offsetY = distanceFromScreenCenterY / love.graphics.getHeight()
+    local distanceFromScreenCenterX = card.current.x - SCALE_X * 1920
+    local distanceFromScreenCenterY = card.current.y - SCALE_Y * 1080
+    local offsetX = distanceFromScreenCenterX / (SCALE_X * 3840)
+    local offsetY = distanceFromScreenCenterY / (SCALE_Y * 2160)
     targetOffsetX = offsetX * 200
     targetOffsetY = offsetY * 50
   end
@@ -122,7 +122,7 @@ function Camera:update(dt, mouseX, mouseY, scanners)
   if scanners then
     for _, s in pairs(scanners) do
       if s.active then
-        local scanOffsetY = (s.y - love.graphics.getHeight() / 2) / love.graphics.getHeight()
+        local scanOffsetY = (s.y - SCALE_Y * 1080) / (SCALE_Y * 2160)
         targetOffsetY = scanOffsetY * 50
         break
       end
@@ -152,8 +152,8 @@ function Camera:drawScannerLines(scanners)
 end
 
 function Camera:draw()
-  local windowScaleX = love.graphics.getWidth() / (3840 * 2)
-  local windowScaleY = love.graphics.getHeight() / (2160 * 2)
+  local windowScaleX = SCALE_X / 2
+  local windowScaleY = SCALE_Y / 2
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.draw(
     self.parts.base.asset,

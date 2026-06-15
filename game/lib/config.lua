@@ -9,4 +9,8 @@ function config.cycleSpeed()
   config.speed = config.speedPresets[config.speedIndex]
 end
 
+function config.currentSpeed()
+  return config.speed
+end
+
 return config

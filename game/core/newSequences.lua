@@ -519,8 +519,10 @@ function sequences.endTurn(hand)
 
   events.push({
     fn = function()
-      local cx = love.graphics.getWidth() / 2
-      local cy = love.graphics.getHeight() / 2
+      local cx = SCALE_X * 1920
+      local cy = SCALE_Y * 1080
+      -- local cx = love.graphics.getWidth() / 2
+      -- local cy = love.graphics.getHeight() / 2
       -- local cx = Dtor.area.x + Dtor.area.w / 2
       -- local cy = Dtor.area.y + Dtor.area.h / 2
       hand:add(card, false, false)

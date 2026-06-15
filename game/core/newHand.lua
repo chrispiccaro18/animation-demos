@@ -20,8 +20,8 @@ function Hand:layout()
   end
   local cardW = active[1] and active[1].w * SCALE_X or 0
   local totalW = #active * cardW + math.max(#active - 1, 0) * gap
-  local startX = (love.graphics.getWidth() - totalW) / 2
-  local startY = love.graphics.getHeight() - 400 * SCALE_Y
+  local startX = (SCALE_X * 3840 - totalW) / 2
+  local startY = SCALE_Y * 1760
 
   for i, card in ipairs(active) do
     card._startX = startX + (i - 1) * (cardW + gap)
@@ -136,7 +136,7 @@ function Hand:update(mouseX, mouseY)
   end
 
   -- Reorder cards when dragged card center crosses a neighbor's layout center
-  if draggingCard and mouseY > love.graphics.getHeight() / 2 then
+  if draggingCard and mouseY > SCALE_Y * 1080 then
     local dragIdx
     for i, c in ipairs(self.cards) do
       if c == draggingCard then dragIdx = i; break end

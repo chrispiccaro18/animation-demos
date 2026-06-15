@@ -1,5 +1,8 @@
 https = nil
-local overlayStats = require("lib.overlayStats")
+SCALE_X = love.graphics.getWidth() / 3840
+SCALE_Y = love.graphics.getHeight() / 2160
+local overlayStats   = require("lib.overlayStats")
+local speedControl   = require("lib.speedControl")
 local runtimeLoader = require("runtime.loader")
 local events = require("lib.events")
 local areas  = require("core.areas")
@@ -38,9 +41,26 @@ local boardAsset = nil
 local camera = nil
 
 local dtorFont = nil
+local previousSpeed = config.speed
 
-SCALE_X = love.graphics.getWidth() / 3840
-SCALE_Y = love.graphics.getHeight() / 2160
+local gameCanvas = nil
+local canvasW    = 0
+local canvasH    = 0
+local viewX      = 0
+local viewY      = 0
+local viewScale  = 1
+
+local function updateViewport()
+  local sw = love.graphics.getWidth()
+  local sh = love.graphics.getHeight()
+  viewScale = math.min(sw / canvasW, sh / canvasH)
+  viewX = math.floor((sw - canvasW * viewScale) / 2)
+  viewY = math.floor((sh - canvasH * viewScale) / 2)
+end
+
+local function toGame(x, y)
+  return (x - viewX) / viewScale, (y - viewY) / viewScale
+end
 
 local function resetGame()
   events.loadAll()
@@ -139,7 +159,7 @@ function love.load()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
   sequences.setDeck(deck)
   local projFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
-  dtorFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 64 * love.graphics.getHeight() / 2160)
+  dtorFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", 64 * SCALE_Y)
   projectiles.ram = Projectile.new({ asset = love.graphics.newImage("assets/large-ram.png"), font = projFont })
   projectiles.ramChip = Projectile.new({ asset = love.graphics.newImage("assets/ram-chip.png"), font = projFont, animationExp = 18 })
   projectiles.ramChip2 = Projectile.new({ asset = love.graphics.newImage("assets/ram-chip.png"), font = projFont, animationExp = 18 })
@@ -148,9 +168,7 @@ function love.load()
   projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/new-threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
   projectiles.spiderThreat = Projectile.new({ asset = love.graphics.newImage("assets/spider-guy-w-threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
   -- projectiles.threat = Projectile.new({ asset = love.graphics.newImage("assets/threat.png"), font = projFont, fontColor = {1, 1, 1, 1} })
-  local scaleX = love.graphics.getWidth() / 3840
-  local scaleY = love.graphics.getHeight() / 2160
-  print("ScaleX: " .. scaleX .. ", ScaleY: " .. scaleY)
+  print("ScaleX: " .. SCALE_X .. ", ScaleY: " .. SCALE_Y)
 
   -- local exampleData = {
   --   topEnergy    = 3,
@@ -197,14 +215,26 @@ function love.load()
   end
   events.loadAll()
   overlayStats.load()
+  speedControl.load()
+  canvasW    = love.graphics.getWidth()
+  canvasH    = love.graphics.getHeight()
+  gameCanvas = love.graphics.newCanvas(canvasW, canvasH)
+  updateViewport()
   resetGame()
 end
 
 function love.draw()
-  -- #12131A
+  -- Fill full screen to cover letterbox bars
   love.graphics.setColor(Color("#12131A"))
   -- love.graphics.setColor(hexToRGBA("#20222E"))
   love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+  love.graphics.setColor(1, 1, 1, 1)
+
+  -- Draw all game content into the fixed-resolution canvas
+  love.graphics.setCanvas(gameCanvas)
+  love.graphics.clear(0, 0, 0, 0)
+  love.graphics.setColor(Color("#12131A"))
+  love.graphics.rectangle("fill", 0, 0, canvasW, canvasH)
   love.graphics.setColor(1, 1, 1, 1)
 
   local sx, sy = screenshake.getOffset()
@@ -236,6 +266,12 @@ function love.draw()
   -- end
 
   overlayStats.draw()
+  speedControl.draw()
+  love.graphics.setCanvas()
+
+  -- Blit the canvas onto the screen, centered and letterboxed
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.draw(gameCanvas, viewX, viewY, 0, viewScale, viewScale)
 end
 
 function love.update(dt)
@@ -250,7 +286,8 @@ function love.update(dt)
   overlayStats.update(dt)
   areas.updateMessage(realDt)
   if gameOver then return end
-  local mouseX, mouseY = love.mouse.getPosition()
+  local mx, my = love.mouse.getPosition()
+  local mouseX, mouseY = toGame(mx, my)
   -- if singleNewCard then
   -- --   if singleNewCard:containsPoint(mouseX, mouseY) and singleNewCard.hover.can then
   -- --    singleNewCard.hover.is = true
@@ -303,7 +340,17 @@ function love.mousepressed(x, y, button, istouch, presses)
   --   singleNewCard.hover.can = false
   --   singleNewCard.target.scale = 1.0
   -- end
-  hand:mousepressed(x, y, button)
+  if speedControl.mousepressed(x, y, button) then return end
+  local gx, gy = toGame(x, y)
+  hand:mousepressed(gx, gy, button)
+end
+
+function love.keyreleased(key)
+  if key == "space" then
+    config.speed = previousSpeed
+    speedControl.setSpaceHeld(false)
+    print("Speed: " .. config.speed .. "x")
+  end
 end
 
 function love.keypressed(key)
@@ -311,9 +358,6 @@ function love.keypressed(key)
     love.event.quit()
   elseif key == "r" then
     resetGame()
-  elseif key == "space" then
-    -- if hand.cards[1] then print(hand.cards[1].current.r) end
-    areas.takeFromDestructorQueue()
   elseif key == "s" then
     screenshake.trigger()
   elseif key == "q" then
@@ -322,6 +366,12 @@ function love.keypressed(key)
     areas.scanner.right.active = not areas.scanner.right.active
   elseif key == "tab" then
     config.cycleSpeed()
+    print("Speed: " .. config.speed .. "x")
+
+  elseif key == "space" then
+    previousSpeed = config.speed
+    config.speed = 3.0
+    speedControl.setSpaceHeld(true)
     print("Speed: " .. config.speed .. "x")
   elseif key == "1" then
     -- local card = hand.cards[1]
@@ -541,6 +591,10 @@ function love.keypressed(key)
   end
 end
 
+
+function love.resize(w, h)
+  updateViewport()
+end
 
 function love.touchpressed(id, x, y, dx, dy, pressure)
   touches[id] = { x = x, y = y }

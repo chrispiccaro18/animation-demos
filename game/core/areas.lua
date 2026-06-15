@@ -1,19 +1,18 @@
 local animation         = require("lib.animation")
 
-
-local W                 = love.graphics.getWidth()
-local H                 = love.graphics.getHeight()
+local W                 = SCALE_X * 3840
+local H                 = SCALE_Y * 2160
 
 local areas             = {}
 -- local statFont          = nil
 
-local playDiscardGap = 250 * love.graphics.getWidth() / 3840
+local playDiscardGap = 250 * SCALE_X
 
 areas.play              = {
   x = 1,
   y = 1,
   w = W / 2 - playDiscardGap,
-  h = H / 2,
+  h = H * 0.6,
   color = { 0.5, 0.5, 0.5, 1 },
   slotText = "",
 }
@@ -22,7 +21,7 @@ areas.discard           = {
   x        = W / 2 + playDiscardGap,
   startY   = 1,
   w        = W / 2 - playDiscardGap,
-  h        = H / 2,
+  h        = H * 0.6,
   color    = { 0.5, 0.5, 0.5, 1 },
   slotText = "",
   current  = { y = 1 },
@@ -30,65 +29,65 @@ areas.discard           = {
 }
 
 areas.progressDestination = {
-  x = 436 * love.graphics.getWidth() / 3840,
-  y = 142 * love.graphics.getHeight() / 2160,
+  x = 436 * SCALE_X,
+  y = 142 * SCALE_Y,
 }
 
 areas.threatDestination = {
-  x = 3333 * love.graphics.getWidth() / 3840,
-  y = 142 * love.graphics.getHeight() / 2160,
+  x = 3333 * SCALE_X,
+  y = 142 * SCALE_Y,
 }
 
 areas.desk = {
-  x = 241 * love.graphics.getWidth() / 3840,
-  y = 305 * love.graphics.getHeight() / 2160,
-  w = 3268 * love.graphics.getWidth() / 3840,
-  h = 1684 * love.graphics.getHeight() / 2160,
+  x = 241 * SCALE_X,
+  y = 305 * SCALE_Y,
+  w = 3268 * SCALE_X,
+  h = 1684 * SCALE_Y,
 }
 
 
 areas.progressBar = {
-  x = 873 * love.graphics.getWidth() / 3840,
-  y = 73 * love.graphics.getHeight() / 2160,
-  w = 38 * love.graphics.getWidth() / 3840,
-  h = 138 * love.graphics.getHeight() / 2160,
-  gapX = 64 * love.graphics.getWidth() / 3840,
+  x = 873 * SCALE_X,
+  y = 73 * SCALE_Y,
+  w = 38 * SCALE_X,
+  h = 138 * SCALE_Y,
+  gapX = 64 * SCALE_X,
   asset = nil,
   count = 9,
   max = 10,
   textArea = {
-    x = 522 * love.graphics.getWidth() / 3840,
-    y = 120 * love.graphics.getHeight() / 2160,
-    w = 291 * love.graphics.getWidth() / 3840,
-    h = 66 * love.graphics.getHeight() / 2160,
+    x = 522 * SCALE_X,
+    y = 120 * SCALE_Y,
+    w = 291 * SCALE_X,
+    h = 66 * SCALE_Y,
     value = ""
   },
 }
 
 areas.threatBar = {
-  x = 2320 * love.graphics.getWidth() / 3840,
-  y = 73 * love.graphics.getHeight() / 2160,
-  w = 38 * love.graphics.getWidth() / 3840,
-  h = 138 * love.graphics.getHeight() / 2160,
-  gapX = 64 * love.graphics.getWidth() / 3840,
+  x = 2320 * SCALE_X,
+  y = 73 * SCALE_Y,
+  w = 38 * SCALE_X,
+  h = 138 * SCALE_Y,
+  gapX = 64 * SCALE_X,
   asset = nil,
   count = 9,
   max = 10,
   textArea = {
-    x = 2997 * love.graphics.getWidth() / 3840,
-    y = 110 * love.graphics.getHeight() / 2160,
-    w = 291 * love.graphics.getWidth() / 3840,
-    h = 66 * love.graphics.getHeight() / 2160,
+    x = 2997 * SCALE_X,
+    y = 110 * SCALE_Y,
+    w = 291 * SCALE_X,
+    h = 66 * SCALE_Y,
     value = ""
   },
 }
 
 
 areas.endTurn           = {
-  x = 3136 * love.graphics.getWidth() / 3840,
-  y = 1732 * love.graphics.getHeight() / 2160,
-  w = 614 * love.graphics.getWidth() / 3840,
-  h = 229 * love.graphics.getHeight() / 2160,
+  x = 3136 * SCALE_X,
+  y = 1732 * SCALE_Y,
+  w = 614 * SCALE_X,
+  h = 229 * SCALE_Y,
   color = { 1, 0, 0, 1 },
   baseAsset = nil,
   hoverAsset = nil,
@@ -118,7 +117,7 @@ areas.pool              = {
   x = 0,
   y = 0,
   w = playDiscardGap * 2,
-  h = 800 * love.graphics.getHeight() / 2160,
+  h = 800 * SCALE_Y,
   chips = {}
 }
 areas.progress          = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
@@ -295,7 +294,7 @@ function areas.load()
   areas.ram.y        = 2
 
   areas.pool.x       = (W - areas.pool.w) / 2
-  areas.pool.y       = 500 * love.graphics.getHeight() / 2160
+  areas.pool.y       = 500 * SCALE_Y
   -- areas.pool.y = H * 0.55
 
   areas.progress.w   = progressAsset:getWidth()
@@ -816,16 +815,16 @@ function areas.drawStatic()
     love.graphics.setFont(prevFont)
   end
 
-  -- love.graphics.setColor(p.color)
-  -- love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
-  -- love.graphics.setColor(1, 1, 1, 1)
-  -- love.graphics.setColor(d.color)
-  -- love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
-  -- love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setColor(p.color)
+  love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setColor(d.color)
+  love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
+  love.graphics.setColor(1, 1, 1, 1)
 
   local po = areas.pool
-  -- love.graphics.setColor(0.5, 0.5, 0.5, 1)
-  -- love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
+  love.graphics.setColor(0.5, 0.5, 0.5, 1)
+  love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
   love.graphics.setColor(1, 1, 1, 1)
   if ramTokenAsset then
     for _, chip in ipairs(po.chips) do
