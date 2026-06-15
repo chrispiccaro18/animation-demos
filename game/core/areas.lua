@@ -55,6 +55,7 @@ areas.progressBar = {
   asset = nil,
   count = 9,
   max = 10,
+  popScale = 1.0,
   textArea = {
     x = 522 * SCALE_X,
     y = 120 * SCALE_Y,
@@ -73,6 +74,7 @@ areas.threatBar = {
   asset = nil,
   count = 9,
   max = 10,
+  popScale = 1.0,
   textArea = {
     x = 2997 * SCALE_X,
     y = 110 * SCALE_Y,
@@ -468,6 +470,16 @@ function areas.updateMessage(dt)
   msg.current.scale = animation.expDecay(msg.current.scale, msg.target.scale, 18, dt)
 end
 
+function areas.triggerBarPop(bar)
+  local peak = 1.0 + 0.6 * (bar.count / bar.max)
+  bar.popScale = peak
+end
+
+function areas.updateBars(dt)
+  areas.progressBar.popScale = animation.expDecay(areas.progressBar.popScale, 1.0, 10, dt)
+  areas.threatBar.popScale   = animation.expDecay(areas.threatBar.popScale,   1.0, 10, dt)
+end
+
 function areas.update(mouseX, mouseY)
 
   -- areas.discard.current.y = animation.expDecay(areas.discard.current.y, areas.discard.target.y, 10, realDt)
@@ -762,24 +774,26 @@ function areas.drawStatic()
   love.graphics.setColor(1, 1, 1, 1)
 
   if areas.progressBar.asset then
-    for i = 0, areas.progressBar.count - 1 do
-      love.graphics.draw(
-        areas.progressBar.asset,
-        areas.progressBar.x + i * areas.progressBar.gapX,
-        areas.progressBar.y,
-        0, SCALE_X, SCALE_Y
-      )
+    local pb = areas.progressBar
+    local aw = pb.w / SCALE_X
+    local ah = pb.h / SCALE_Y
+    for i = 0, pb.count - 1 do
+      local s = (i == pb.count - 1) and pb.popScale or 1.0
+      local cx = pb.x + i * pb.gapX + pb.w / 2
+      local cy = pb.y + pb.h / 2
+      love.graphics.draw(pb.asset, cx, cy, 0, SCALE_X * s, SCALE_Y * s, aw / 2, ah / 2)
     end
   end
 
   if areas.threatBar.asset then
-    for i = 0, areas.threatBar.count - 1 do
-      love.graphics.draw(
-        areas.threatBar.asset,
-        areas.threatBar.x + i * areas.threatBar.gapX,
-        areas.threatBar.y,
-        0, SCALE_X, SCALE_Y
-      )
+    local tb = areas.threatBar
+    local aw = tb.w / SCALE_X
+    local ah = tb.h / SCALE_Y
+    for i = 0, tb.count - 1 do
+      local s = (i == tb.count - 1) and tb.popScale or 1.0
+      local cx = tb.x + i * tb.gapX + tb.w / 2
+      local cy = tb.y + tb.h / 2
+      love.graphics.draw(tb.asset, cx, cy, 0, SCALE_X * s, SCALE_Y * s, aw / 2, ah / 2)
     end
   end
 

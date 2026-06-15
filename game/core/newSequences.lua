@@ -51,10 +51,15 @@ local function terminalEvent(tokenType)
         print("terminal event for token type", tokenType)
         if tokenType == "progress" then
           areas.progressBar.count = math.min(areas.progressBar.count + 1, 10)
+          areas.triggerBarPop(areas.progressBar)
+          screenshake.trigger(5, 0.2)
         elseif tokenType == "threat" then
           areas.threatBar.count = math.min(areas.threatBar.count + 1, 10)
+          areas.triggerBarPop(areas.threatBar)
+          screenshake.trigger(5, 0.2)
         elseif tokenType == "nullify" then
           Dtor.nullifyNextSlot()
+          screenshake.triggerH(2)
         end
         if areas.progressBar.count >= areas.progressBar.max then
           gameOver = "win"
@@ -398,6 +403,7 @@ function sequences.play(card, camera, hand)
               target_scale = 1,
               onArrive = function(t)
                 t:attachToSlot(card, "topEnergyHoles", slotIndex)
+                screenshake.triggerH(2)
               end
             })
           )

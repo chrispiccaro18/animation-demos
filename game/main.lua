@@ -285,6 +285,7 @@ function love.update(dt)
   screenshake.update(realDt)
   overlayStats.update(dt)
   areas.updateMessage(realDt)
+  areas.updateBars(realDt)
   if gameOver then return end
   local mx, my = love.mouse.getPosition()
   local mouseX, mouseY = toGame(mx, my)
