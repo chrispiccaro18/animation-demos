@@ -1,5 +1,6 @@
 local events        = require("lib.events")
 local projectiles   = require("core.projectiles")
+local barParticles  = require("core.barParticles")
 local animation    = require("lib.animation")
 local areas       = require("core.areas")
 local Token       = require("core.token")
@@ -45,17 +46,27 @@ local discardFlingOptions = { bounces = math.random(2, 3), target_rect = discard
 local playFlingOptions = { bounces = math.random(2, 3), target_rect = playDeskArea, delay = false, base_scale = 1.25 }
 
 local function terminalEvent(tokenType)
-  return function()
+  return function(token)
     events.push({
       fn = function()
         print("terminal event for token type", tokenType)
         if tokenType == "progress" then
+          token:triggerPop(token.scale * 2.5, 0.35)
           areas.progressBar.count = math.min(areas.progressBar.count + 1, 10)
           areas.triggerBarPop(areas.progressBar)
+          local pb = areas.progressBar
+          local pbCount = math.floor(8 + 12 * (pb.count / pb.max))
+          barParticles.emit(pb, "progress")
+          barParticles.emitAt(areas.progressDestination.x, areas.progressDestination.y, "progress", pbCount)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "threat" then
+          token:triggerPop(token.scale * 2.5, 0.35)
           areas.threatBar.count = math.min(areas.threatBar.count + 1, 10)
           areas.triggerBarPop(areas.threatBar)
+          local tb = areas.threatBar
+          local tbCount = math.floor(8 + 12 * (tb.count / tb.max))
+          barParticles.emit(tb, "threat")
+          barParticles.emitAt(areas.threatDestination.x, areas.threatDestination.y, "threat", tbCount)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "nullify" then
           Dtor.nullifyNextSlot()
@@ -234,7 +245,7 @@ function sequences.discard(card, camera, hand)
   events.push({
     fn = function()
       card.target.x = areas.discard.x + areas.discard.w / 4
-      card.target.y = areas.discard.current.y + areas.discard.h
+      card.target.y = areas.discard.current.y + areas.discard.h * 0.75
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"
@@ -363,7 +374,7 @@ function sequences.play(card, camera, hand)
   events.push({
     fn = function()
       card.target.x = areas.play.x + areas.play.w * 0.6
-      card.target.y = areas.play.y + areas.play.h
+      card.target.y = areas.play.y + areas.play.h * 0.75
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"

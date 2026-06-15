@@ -310,7 +310,7 @@ function Token:update(dt, gameDt)
         return
     end
     if self.mode == "fling" then
-        if not self.done then self:_update_fling(dt) end
+        if not self.done then self:_update_fling(gameDt) end
     else
         if not self.done then self:_update_attract(gameDt) end
     end
@@ -324,6 +324,17 @@ function Token:update(dt, gameDt)
             self.rotation = self.quiver.baseRot
             self.scale    = self.base_scale
             self.target_rotation = shortest_rotation_target(self.rotation, 0)
+        end
+    end
+
+    if self.done and self.pop and self.pop.active then
+        self.pop.time = self.pop.time + dt
+        local t = self.pop.time / self.pop.duration
+        if t >= 1 then
+            self.pop.active = false
+            self.scale = self.pop.restScale
+        else
+            self.scale = self.pop.restScale + math.sin(t * math.pi) * (self.pop.peak - self.pop.restScale)
         end
     end
 
@@ -481,6 +492,18 @@ function Token:draw()
   love.graphics.pop()
 end
 
+function Token:triggerPop(peakScale, duration)
+    self.rotation        = 0
+    self.target_rotation = 0
+    self.pop = {
+        active    = true,
+        time      = 0,
+        duration  = duration or 0.4,
+        restScale = self.scale,
+        peak      = peakScale or self.scale * 2,
+    }
+end
+
 ------------------------------------------------------------------------
 -- Module-level update/draw — call these from main instead of iterating
 ------------------------------------------------------------------------
@@ -509,8 +532,11 @@ end
 
 function Token.allDone(token_type)
     for _, token in ipairs(instances) do
-        if (token_type == nil or token.token_type == token_type) and not token.done then
-            return false
+        -- if (token_type == nil or token.token_type == token_type) and not token.done then
+        --     return false
+        if (token_type == nil or token.token_type == token_type) then
+          if not token.done then return false end
+          if token.pop and token.pop.active then return false end
         end
     end
     return true

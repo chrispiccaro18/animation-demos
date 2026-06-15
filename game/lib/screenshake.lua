@@ -32,8 +32,8 @@ end
 
 function screenshake.getOffset()
   if trauma <= 0 then return 0, 0 end
-  local ox = _intensity * trauma * math.sin(elapsed * 50)
-  local oy = _intensity * trauma * math.sin(elapsed * 50 * 1.6180339887) * _yScale
+  local ox = _intensity * trauma * math.sin(elapsed * 50) * (SCALE_X or 1)
+  local oy = _intensity * trauma * math.sin(elapsed * 50 * 1.6180339887) * _yScale * (SCALE_Y or 1)
   return ox, oy
 end
 
