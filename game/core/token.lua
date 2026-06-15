@@ -13,7 +13,7 @@ local ARC_SCALE   = 1.5    -- max scale delta at arc peak
 local SPIN_SCALE  = 0.012   -- rotation rate relative to horizontal speed (rad/px)
 
 local SPEED = 2000
-local TOP_SPEED = 100000
+local TOP_SPEED = 10000
 local ACCEL = 5000
 
 local DEFAULT_DELAY = 0.2
@@ -261,6 +261,7 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     self.target_x    = target_x
     self.target_y    = target_y
     self.speed       = options.initial_speed  or (SPEED  * SCALE_X)
+    self.initial_speed = self.speed
     self.max_speed   = options.max_speed      or (TOP_SPEED * SCALE_X)
     self.accel       = options.acceleration   or (ACCEL * SCALE_X)
     self.threshold   = options.threshold      or 4
@@ -302,7 +303,7 @@ function Token:update(dt, gameDt)
     if self.mode == "fling" then
         if not self.done then self:_update_fling(dt) end
     else
-        if not self.done then self:_update_attract(dt) end
+        if not self.done then self:_update_attract(gameDt) end
     end
 
     if self.done and self.quiver and self.quiver.active then
@@ -391,8 +392,11 @@ function Token:_update_attract(dt)
         return
     end
 
-    -- accelerate toward target
-    self.speed = math.min(self.speed + self.accel * dt, self.max_speed)
+    local t = 1 - math.min(dist / self.attract_dist, 1)
+
+    -- cubic ease-in: nearly still early, rockets toward the end
+    local eased = t * t * t
+    self.speed = self.initial_speed + (self.max_speed - self.initial_speed) * eased
 
     local nx = dx / dist
     local ny = dy / dist
@@ -401,10 +405,13 @@ function Token:_update_attract(dt)
     self.x = self.x + nx * step
     self.y = self.y + ny * step
 
-    -- tween rotation and scale based on travel progress
-    local t = 1 - math.min(dist / self.attract_dist, 1)
+    -- tween rotation based on travel progress
     self.rotation = self.start_rotation + (self.target_rotation - self.start_rotation) * t
-    self.scale    = self.start_scale    + (self.target_scale    - self.start_scale)    * t
+
+    -- scale: dip slightly in first ~25% of travel ("gather"), then ease up to target
+    local scale_t = t * t
+    local gather  = math.sin(math.pi * math.min(t * 4, 1)) * 0.12
+    self.scale    = (self.start_scale + (self.target_scale - self.start_scale) * scale_t) * (1 - gather)
 end
 
 function Token:draw()
@@ -506,6 +513,7 @@ function Token.attractDone(token_type, destination, options)
                 token.target_x         = target_x
                 token.target_y         = target_y
                 token.speed            = options.initial_speed  or (SPEED  * SCALE_X)
+                token.initial_speed    = token.speed
                 token.max_speed        = options.max_speed      or (TOP_SPEED * SCALE_X)
                 token.accel            = options.acceleration   or (ACCEL * SCALE_X)
                 token.threshold        = options.threshold      or 4

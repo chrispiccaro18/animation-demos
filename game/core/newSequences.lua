@@ -558,7 +558,7 @@ function sequences.endTurn(hand)
         for _, effect in ipairs(card.data.dtor or {}) do
           Token.new_fling(sx, sy, discardDeskFullRect, {
             type       = effect.type,
-            bounces    = 1,
+            bounces    = 2,
             base_scale = 1.25,
             delay      = false,
             target_rect = discardDeskFullRect,

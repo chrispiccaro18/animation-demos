@@ -21,7 +21,7 @@ local EFFECT_ZONES = {
   { dataKey = "topEnergy",    id = "topEnergyHoles", holeKey = "ramHole"                                                              },
   { dataKey = "play",         id = "playEffect",     holeKey = "tokenHole", hasTypedTokens = true                                     },
   { dataKey = "discard",      id = "discardEffect",  holeKey = "tokenHole", hasTypedTokens = true                                     },
-  { dataKey = "dtor",         id = "dtorEffect",     holeKey = "dtorSlot",  hasTypedTokens = true, singleBackground = true, flingAsUnit = "dtor" },
+  { dataKey = "dtor",         id = "dtorEffect",     holeKey = "dtorSlot",  hasTypedTokens = true, singleBackground = true, fixedCount = 3, flingAsUnit = "dtor" },
   { dataKey = "bottomEnergy", id = "bottomEnergy",   holeKey = "ramHole",   tokenKey = "ramChip", hidden = true                       },
 }
 
@@ -61,9 +61,13 @@ local STATE_CONFIG = {
   },
 }
 
-local function fitScale(asset, holeW, holeH)
+local function fitScale(asset, holeW, holeH, zoneId)
   local w, h = asset:getDimensions()
-  return math.min(holeW / w, holeH / h) * 0.75
+  local scalePercent = 0.75
+  if zoneId == "topEnergyHoles" or zoneId == "bottomEnergy" then
+    scalePercent = 1.0
+  end
+  return math.min(holeW / w, holeH / h) * scalePercent
 end
 
 local function buildParts(data)
@@ -99,7 +103,7 @@ local function buildParts(data)
         groupOriginY = ZONES[zone.id].cy - holePH / 2
         table.insert(items, { asset = holeAsset, offsetX = 0, offsetY = 0 })
         local slotW = holePW / n
-        tokenSlotW  = slotW
+        tokenSlotW  = holePW / (zone.fixedCount or n)
         tokenSlotH  = holePH
         for i = 1, n do
           slotCenters[i] = { dx = (i - 0.5) * slotW, dy = holePH / 2 }
@@ -794,7 +798,7 @@ function Card:draw()
                   local cx = part.origin.x - self.offsetX + sc.dx + part.current.dx
                   local cy = part.origin.y - self.offsetY + sc.dy + part.current.dy
                   local iw, ih = tokenAsset:getDimensions()
-                  local s = fitScale(tokenAsset, fitW, fitH) * part.current.scale
+                  local s = fitScale(tokenAsset, fitW, fitH, zone.id) * part.current.scale
                   if partAlpha > 0.001 and useShader then
                     self:_applyDissolveUniforms(tokenAsset)
                     love.graphics.setShader(self.shader)
