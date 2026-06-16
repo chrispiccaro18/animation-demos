@@ -189,6 +189,10 @@ local function applyFlingPhysics(self, rect, options)
     dest_y = rect.y + math.random() * rect.h
   end
 
+  if options and options.downward then
+    dest_y = math.max(dest_y, self.y + rect.h * 0.1)
+  end
+
   local walls = n_bounces > 0 and random_wall_sequence(n_bounces) or {}
   local angle, total_dist = solve_unfolded(self.x, self.y, dest_x, dest_y, walls, rect)
   local v0 = total_dist * (1 - drag) * 60
@@ -296,6 +300,7 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     self.asset           = resolveAsset(options.type)
     self.subTokens       = options.subTokens
     self.onArrive        = options.onArrive
+    self.self_remove     = options.self_remove
 
     table.insert(instances, self)
     return self
@@ -332,7 +337,7 @@ function Token:update(dt, gameDt)
         local t = self.pop.time / self.pop.duration
         if t >= 1 then
             self.pop.active = false
-            self.scale = self.pop.restScale
+            self._remove = true
         else
             self.scale = self.pop.restScale + math.sin(t * math.pi) * (self.pop.peak - self.pop.restScale)
         end
@@ -411,6 +416,9 @@ function Token:_update_attract(dt)
         self.scale       = self.target_scale
         self.done        = true
         if self.onArrive then self.onArrive(self) end
+        if self.self_remove and not (self.pop and self.pop.active) then
+            self._remove = true
+        end
         return
     end
 
@@ -508,38 +516,56 @@ end
 -- Module-level update/draw — call these from main instead of iterating
 ------------------------------------------------------------------------
 function Token.clearAll()
-    instances = {}
+  instances = {}
 end
 
 function Token.updateAll(dt, gameDt)
-    for _, token in ipairs(instances) do
-        token:update(dt, gameDt)
-    end
+  for _, token in ipairs(instances) do
+      token:update(dt, gameDt)
+  end
+  local remaining = {}
+  for _, token in ipairs(instances) do
+      if not token._remove then
+          remaining[#remaining + 1] = token
+      end
+  end
+  instances = remaining
 end
 
 function Token.drawAll()
-    for _, token in ipairs(instances) do
-        token:draw()
-    end
+  for _, token in ipairs(instances) do
+      token:draw()
+  end
 end
 
 function Token.isActive()
-    for _, token in ipairs(instances) do
-        if not token.done then return true end
-    end
-    return false
+  for _, token in ipairs(instances) do
+      if not token.done then return true end
+  end
+  return false
 end
 
 function Token.allDone(token_type)
-    for _, token in ipairs(instances) do
-        -- if (token_type == nil or token.token_type == token_type) and not token.done then
-        --     return false
-        if (token_type == nil or token.token_type == token_type) then
-          if not token.done then return false end
-          if token.pop and token.pop.active then return false end
-        end
+  for _, token in ipairs(instances) do
+    if (token_type == nil or token.token_type == token_type) and not token.done then
+        return false
+
+    -- if (token_type == nil or token.token_type == token_type) then
+    --   if not token.done then return false end
+    --   if token.pop and token.pop.active then return false end
     end
-    return true
+  end
+  return true
+end
+
+function Token.count(token_type)
+  local count = 0
+  for _, token in ipairs(instances) do
+    if token_type == nil or token.token_type == token_type then
+      count = count + 1
+    end
+  end
+  return count
 end
 
 ------------------------------------------------------------------------
@@ -601,6 +627,7 @@ function Token.attractDone(token_type, destination, options)
                 token.done             = false
                 token.quivered         = false
                 token.onArrive         = options.onArrive
+                token.self_remove      = options.self_remove
             end
         end
     end

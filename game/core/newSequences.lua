@@ -43,7 +43,7 @@ local playDeskFullRect = {
 }
 
 local discardFlingOptions = { bounces = math.random(2, 3), target_rect = discardDeskArea, base_scale = 1.25 }
-local playFlingOptions = { bounces = math.random(2, 3), target_rect = playDeskArea, delay = false, base_scale = 1.25 }
+local playFlingOptions = { bounces = math.random(2, 3), target_rect = playDeskArea, delay = false, base_scale = 1.25, downward = true }
 
 local function terminalEvent(tokenType)
   return function(token)
@@ -69,6 +69,7 @@ local function terminalEvent(tokenType)
           barParticles.emitAt(areas.threatDestination.x, areas.threatDestination.y, "threat", tbCount)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "nullify" then
+          token._remove = true
           Dtor.nullifyNextSlot()
           screenshake.triggerH(2)
         end
@@ -127,7 +128,7 @@ function sequences.dealCardToHand(hand)
 end
 
 function sequences.scan(scanner)
-    events.push({
+  events.push({
     fn = function()
       return not Token.isActive()
     end,
@@ -341,7 +342,16 @@ function sequences.discard(card, camera, hand)
     delay = 0.1, type = "after"
   })
 
-  sequences.scan(areas.scanner.right)
+  events.push({
+    fn = function()
+      print("Token count before discard scan:", Token.count())
+      if Token.count() > 0 then
+        sequences.scan(areas.scanner.right)
+      end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate"
+  })
 
   events.push({
     fn = function()
@@ -352,7 +362,7 @@ function sequences.discard(card, camera, hand)
   })
   events.push({
     fn = function()
-      Token.removeDone()
+      -- Token.removeDone()
       Camera:setIdle()
       hand:remove(card)
     end,
@@ -414,7 +424,7 @@ function sequences.play(card, camera, hand)
               target_scale = 1,
               onArrive = function(t)
                 t:attachToSlot(card, "topEnergyHoles", slotIndex)
-                screenshake.triggerH(2)
+                screenshake.triggerH(4)
               end
             })
           )
@@ -496,7 +506,16 @@ function sequences.play(card, camera, hand)
     delay = 0, type = "immediate"
   })
 
-  sequences.scan(areas.scanner.left)
+    events.push({
+    fn = function()
+      print("Token count before play scan:", Token.count())
+      if Token.count() > 0 then
+        sequences.scan(areas.scanner.left)
+      end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate"
+  })
 
   events.push({
     fn = function()
@@ -507,7 +526,7 @@ function sequences.play(card, camera, hand)
   })
   events.push({
     fn = function()
-      Token.removeDone()
+      -- Token.removeDone()
       Camera:setIdle()
       hand:remove(card)
       _deck:add(card)
@@ -579,12 +598,16 @@ function sequences.endTurn(hand)
             base_scale = 1.25,
             delay      = false,
             target_rect = discardDeskFullRect,
+            downward   = true,
           })
         end
         Dtor.popEntry()
         local idx   = slotIndices[1]
         Dtor.releaseSlot(idx)
-        sequences.scan(areas.scanner.right)
+        print("Token count before end turn scan:", Token.count())
+        if Token.count() > 0 then
+          sequences.scan(areas.scanner.right)
+        end
         sequences.restoreCard(card, hand)
       end
     end,
