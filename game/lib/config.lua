@@ -1,6 +1,6 @@
 local config = {}
 
-config.speedPresets = {0.5, 1.0, 2.0}
+config.speedPresets = {0.75, 1.0, 2.0}
 config.speedIndex   = 2
 config.speed        = 1.0
 

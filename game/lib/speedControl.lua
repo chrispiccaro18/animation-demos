@@ -1,5 +1,6 @@
-local config = require("lib.config")
-local Color  = require("lib.color")
+local config       = require("lib.config")
+local Color        = require("lib.color")
+local AssetManifest = require("assets.manifest")
 
 local speedControl = {}
 local spaceHeld = false
@@ -7,13 +8,12 @@ local spaceHeld = false
 -- fixed screen-pixel sizes, independent of game resolution
 local X0      = 16
 local Y0      = 16
-local BTN_W   = 52
-local BTN_H   = 36
+local BTN_W   = 36
+local BTN_H   = 24
+-- local BTN_W   = 52
+-- local BTN_H   = 36
 local GAP     = 8
-local CORNER  = 5
-local FONT_SZ = 16
-local HINT_SZ = 12
-
+local CORNER  = 2
 local font     = nil
 local hintFont = nil
 
@@ -23,8 +23,8 @@ local function totalW()
 end
 
 function speedControl.load()
-  font     = love.graphics.newFont("assets/NotoSans-Medium.ttf", FONT_SZ)
-  hintFont = love.graphics.newFont("assets/NotoSans-Medium.ttf", HINT_SZ)
+  font     = AssetManifest.getFont(32)
+  hintFont = AssetManifest.getFont(24)
 end
 
 function speedControl.setSpaceHeld(held)
@@ -91,7 +91,7 @@ function speedControl.draw()
 
     love.graphics.setFont(hintFont)
     love.graphics.setColor(0.45, 0.45, 0.5, 1)
-    love.graphics.print("TAB cycles  |  hold SPACE for 3x", X0, hintY)
+    love.graphics.print("TAB cycles\nHold SPACE for 3x", X0, hintY)
   end
 
   love.graphics.pop()

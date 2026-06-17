@@ -1,7 +1,5 @@
 local events        = require("lib.events")
-local projectiles   = require("core.projectiles")
 local barParticles  = require("core.barParticles")
-local animation    = require("lib.animation")
 local areas       = require("core.areas")
 local Token       = require("core.token")
 local Color = require("lib.color")
@@ -14,36 +12,34 @@ local sequences = {}
 local _deck = nil
 function sequences.setDeck(d) _deck = d end
 
-local discardDeskArea = {
-  x = areas.desk.x + areas.desk.w * 0.6,
-  y = areas.desk.y + areas.desk.h * 0.25,
-  w = areas.desk.w * 0.2,
-  h = areas.desk.h * 0.4,
-}
+local deskFullRect = areas.desk
 
-local discardDeskFullRect = {
-  x = areas.desk.x + areas.desk.w / 2,
-  y = areas.desk.y,
-  w = areas.desk.w / 2,
-  h = areas.desk.h,
-}
-
-local playDeskArea = {
-  x = areas.desk.x + areas.desk.w * 0.1,
-  y = areas.desk.y + areas.desk.h * 0.25,
-  w = areas.desk.w * 0.2,
-  h = areas.desk.h * 0.4,
-}
-
-local playDeskFullRect = {
-  x = areas.desk.x,
-  y = areas.desk.y,
-  w = areas.desk.w / 2,
-  h = areas.desk.h,
-}
-
-local discardFlingOptions = { bounces = math.random(2, 3), target_rect = discardDeskArea, base_scale = 1.25 }
-local playFlingOptions = { bounces = math.random(2, 3), target_rect = playDeskArea, delay = false, base_scale = 1.25, downward = true }
+local function discardFlingOptions()
+  return {
+    bounces = math.random(1, 3),
+    target_rect = areas.discardDeskArea,
+    base_scale = 1.25
+  }
+end
+local function playFlingOptions()
+  return {
+    bounces = math.random(1, 3),
+    target_rect = areas.playDeskArea,
+    delay = false,
+    base_scale = 1.25,
+    downward = true
+  }
+end
+local function endTurnFlingOptions(token_type)
+  return {
+    type       = token_type,
+    bounces    = math.random(1, 3),
+    base_scale = 1.25,
+    delay      = false,
+    target_rect = areas.discardDeskArea,
+    downward   = true,
+  }
+end
 
 local function terminalEvent(tokenType)
   return function(token)
@@ -194,7 +190,7 @@ function sequences.restoreCard(card, hand)
   -- 8. Restore state
   events.push({
     fn = function()
-      hand:remove(card)
+      Dtor.clearTransitCard()
       _deck:add(card)
       Camera:setIdle()
       Dtor.compactSlots()
@@ -280,9 +276,9 @@ function sequences.discard(card, camera, hand)
       camera:setColor(Color("#D56E6E"))
       laser.hide()
       card:startDissolve()
-      card:flingZone("bottomEnergy", discardDeskFullRect, discardFlingOptions)
-      card:flingZone("discardEffect",  discardDeskFullRect, discardFlingOptions)
-      card:flingZone("dtorEffect",     discardDeskFullRect, discardFlingOptions)
+      card:flingZone("bottomEnergy", deskFullRect, discardFlingOptions())
+      card:flingZone("discardEffect",  deskFullRect, discardFlingOptions())
+      card:flingZone("dtorEffect",     deskFullRect, discardFlingOptions())
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"
@@ -474,7 +470,7 @@ function sequences.play(card, camera, hand)
   events.push({
     fn = function()
       card:clearZone("topEnergyHoles")
-      card:flingZone("playEffect", playDeskFullRect, playFlingOptions)
+      card:flingZone("playEffect", deskFullRect, playFlingOptions())
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after"
@@ -561,12 +557,12 @@ function sequences.endTurn(hand)
       -- local cy = love.graphics.getHeight() / 2
       -- local cx = Dtor.area.x + Dtor.area.w / 2
       -- local cy = Dtor.area.y + Dtor.area.h / 2
-      hand:add(card, false, false)
       card:setZoneState("idle")
       card.current.x = cx
       card.current.y = cy
       card.target.x = cx
       card.target.y = cy
+      Dtor.setTransitCard(card)
       Camera:lookAt(card)
     end,
     blocking = true, blockable = true, persistent = false,
@@ -592,14 +588,7 @@ function sequences.endTurn(hand)
       else
         local sx, sy = Dtor.getTextCenter()
         for _, effect in ipairs(card.data.dtor or {}) do
-          Token.new_fling(sx, sy, discardDeskFullRect, {
-            type       = effect.type,
-            bounces    = 2,
-            base_scale = 1.25,
-            delay      = false,
-            target_rect = discardDeskFullRect,
-            downward   = true,
-          })
+          Token.new_fling(sx, sy, deskFullRect, endTurnFlingOptions(effect.type))
         end
         Dtor.popEntry()
         local idx   = slotIndices[1]

@@ -30,11 +30,11 @@ CardData.cards = {
     dtor = { { type = "threat", value = 1 } },
   },
   card5 = {
-    topEnergy    = 2,
-    bottomEnergy = 2,
-    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 } },
-    discard = { { type = "threat", value = 1 }, { type = "nullify",   value = 1 } },
-    dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 }, { type = "threat",   value = 1 } },
+    topEnergy    = 3,
+    bottomEnergy = 3,
+    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 }, { type = "progress", value = 1 } },
+    discard = { { type = "nullify",   value = 1 } },
+    dtor = { { type = "threat", value = 1 }, { type = "threat",   value = 1 }, { type = "threat", value = 1 } },
   },
   card6 = {
     topEnergy    = 1,

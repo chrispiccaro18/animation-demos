@@ -1,10 +1,10 @@
+local AssetManifest = require("assets.manifest")
 local animation         = require("lib.animation")
 
 local W                 = SCALE_X * 3840
 local H                 = SCALE_Y * 2160
 
 local areas             = {}
--- local statFont          = nil
 
 local playDiscardGap = 250 * SCALE_X
 
@@ -44,7 +44,6 @@ areas.desk = {
   w = 3268 * SCALE_X,
   h = 1684 * SCALE_Y,
 }
-
 
 areas.progressBar = {
   x = 873 * SCALE_X,
@@ -106,15 +105,6 @@ areas.endTurn           = {
   frozen = false,
 }
 
-areas.destructor        = {
-  x = 0,
-  y = 0,
-  w = 0,
-  h = 0,
-  color = { 1, 0, 0, 1 },
-}
-
-areas.ram               = { value = 1, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
 areas.pool              = {
   x = 0,
   y = 0,
@@ -122,151 +112,36 @@ areas.pool              = {
   h = 800 * SCALE_Y,
   chips = {}
 }
-areas.progress          = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
-areas.threat            = { value = 0, x = 0, y = 0, w = 0, h = 0, current = { scale = 1 }, target = { scale = 1 } }
 areas.message           = { text = "", subtitle = "", textColor = { 1, 1, 1, 1 }, subtitleColor = { 1, 1, 1, 0.7 }, current = { scale = 1 }, target = { scale = 1 } }
 
-local slotBottomAsset   = nil
-local slotTopAsset      = nil
-local playTextObject    = nil
-local discardTextObject = nil
-local textObjectScale   = 1
+
 local endTurnAsset      = nil
 local endTurnHoverAsset = nil
 local endTurnClickAsset = nil
-local progressAsset     = nil
-local threatAsset       = nil
-local spiderThreatAsset = nil
+
 local statFont          = nil
 local messageFont       = nil
 
-local klakAsset         = nil
-local klakBGAsset       = nil
-
 local ramTokenAsset        = nil
-local destructorQueueAsset = nil
-local dtorTokenAsset       = nil
-local dtorTokenNullAsset       = nil
+
 local subtitleFont         = nil
 
 function areas.load()
-  slotBottomAsset          = love.graphics.newImage("assets/slot-bottom.png")
-  slotTopAsset             = love.graphics.newImage("assets/slot-top.png")
-  endTurnAsset             = love.graphics.newImage("assets/proto/end-turn-idle.png")
-  endTurnHoverAsset        = love.graphics.newImage("assets/proto/end-turn-hover.png")
-  endTurnClickAsset        = love.graphics.newImage("assets/proto/end-turn-down.png")
+  endTurnAsset             = AssetManifest.get("endTurn", "idle")
+  endTurnHoverAsset        = AssetManifest.get("endTurn", "hover")
+  endTurnClickAsset        = AssetManifest.get("endTurn", "down")
 
-  areas.progressBar.asset = love.graphics.newImage("assets/proto/progress-tick.png")
-  areas.threatBar.asset = love.graphics.newImage("assets/proto/threat-tick.png")
+  areas.progressBar.asset = AssetManifest.get("ticks", "progress")
+  areas.threatBar.asset = AssetManifest.get("ticks", "threat")
+  ramTokenAsset              = AssetManifest.get("tokens", "ram")
+
   areas.endTurn.baseAsset  = endTurnAsset
   areas.endTurn.hoverAsset = endTurnHoverAsset
   areas.endTurn.clickAsset = endTurnClickAsset
 
-  progressAsset            = love.graphics.newImage("assets/new-progress.png")
-  -- progressAsset     = love.graphics.newImage("assets/progress.png")
-  threatAsset              = love.graphics.newImage("assets/new-threat.png")
-  -- threatAsset       = love.graphics.newImage("assets/threat.png")
-  spiderThreatAsset        = love.graphics.newImage("assets/spider-guy-w-threat.png")
-  statFont                 = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36 * (SCALE_X * 2))
-  messageFont              = love.graphics.newFont("assets/NotoSans-Medium.ttf", 120 * (SCALE_X * 2))
-  subtitleFont             = love.graphics.newFont("assets/NotoSans-Medium.ttf", 60 * (SCALE_X * 2))
-
-  klakAsset                = love.graphics.newImage("assets/klak.png")
-  klakBGAsset              = love.graphics.newImage("assets/klak-bg.png")
-
-  destructorQueueAsset = love.graphics.newImage("assets/destructor-queue.png")
-  dtorTokenAsset       = love.graphics.newImage("assets/proto/dtor-token.png")
-  dtorTokenNullAsset       = love.graphics.newImage("assets/proto/dtor-token-nullified.png")
-  ramTokenAsset              = love.graphics.newImage("assets/proto/ram-chip.png")
-
-  local klakBGW            = klakBGAsset:getWidth()
-  local klakBGH            = klakBGAsset:getHeight()
-  local klakW              = klakAsset:getWidth()
-  local klakH              = klakAsset:getHeight()
-
-  local rightSideGap       = (klakW - klakBGW) / 2
-
-  areas.klakBG             = {
-    x = areas.discard.x + areas.discard.w / 2 - rightSideGap - klakBGW,
-    -- x = areas.endTurn.x + areas.endTurn.w / 2 - klakBGW / 2,
-    -- x = W / 2 + W / 4 - klakBGW / 2,
-    -- y = H / 2 - klakBGH / 2 - 65,
-    y = areas.pool.h + klakH / 2,
-    w = klakBGW,
-    h = klakBGH,
-  }
-
-  areas.destructor         = {
-    x = areas.discard.x + areas.discard.w / 2 + rightSideGap,
-    y = areas.klakBG.y,
-    w = areas.klakBG.w,
-    h = areas.klakBG.h,
-    color = { 1, 0, 0, 1 },
-    queue = {},
-  }
-
-  areas.klak               = {
-    w = klakW,
-    h = klakH,
-    upY = areas.klakBG.y - klakH / 2,
-    downY = areas.klakBG.y + areas.klakBG.h - klakH / 2,
-    current = {
-      x = areas.klakBG.x + areas.klakBG.w / 2 - klakW / 2,
-      y = areas.klakBG.y - klakH / 2,
-      scale = 1,
-    },
-    target = {
-      x = areas.klakBG.x + areas.klakBG.w / 2 - klakW / 2,
-      y = areas.klakBG.y - klakH / 2,
-      scale = 1,
-    },
-    text = {
-      xOffset = 22,
-      yOffset = 19,
-      w = 308,
-      h = 48,
-      value = "DISCARD",
-      color = { 1, 1, 1, 1 },
-    }
-  }
-
-  areas.playKlakBG         = {
-    x = areas.play.x + areas.play.w / 2 - klakBGW / 2,
-    -- x = W / 2 + W / 4 - klakBGW / 2,
-    y = areas.pool.h + klakH / 2,
-    -- y = H / 2 - klakBGH / 2 - 65,
-    w = klakBGW,
-    h = klakBGH,
-  }
-
-  areas.playKlak           = {
-    w = klakW,
-    h = klakH,
-    upY = areas.playKlakBG.y - klakH / 2,
-    downY = areas.playKlakBG.y + areas.playKlakBG.h - klakH / 2,
-    current = {
-      x = areas.playKlakBG.x + areas.playKlakBG.w / 2 - klakW / 2,
-      y = areas.playKlakBG.y - klakH / 2,
-      scale = 1,
-    },
-    target = {
-      x = areas.playKlakBG.x + areas.playKlakBG.w / 2 - klakW / 2,
-      y = areas.playKlakBG.y - klakH / 2,
-      scale = 1,
-    },
-    text = {
-      xOffset = 22,
-      yOffset = 19,
-      w = 308,
-      h = 48,
-      value = "PLAY",
-      color = { 1, 1, 1, 1 },
-    }
-  }
-
-  -- areas.discard.h          = areas.klakBG.y + areas.klakBG.h
-  -- areas.play.h             = areas.playKlakBG.y + areas.playKlakBG.h
-
+  statFont                 = AssetManifest.getFont(72)
+  messageFont              = AssetManifest.getFont(240)
+  subtitleFont             = AssetManifest.getFont(120)
 
   local dk = areas.desk
   areas.scanner = {
@@ -290,44 +165,22 @@ function areas.load()
     },
   }
 
-  areas.ram.w        = ramTokenAsset:getWidth()
-  areas.ram.h        = ramTokenAsset:getHeight()
-  areas.ram.x        = (W - areas.ram.w) / 2
-  areas.ram.y        = 2
+  areas.discardDeskArea = {
+    x = areas.desk.x + areas.desk.w * 0.6,
+    y = areas.desk.y + areas.desk.h * 0.25,
+    w = areas.desk.w * 0.2,
+    h = areas.desk.h * 0.4,
+  }
+
+  areas.playDeskArea = {
+    x = areas.desk.x + areas.desk.w * 0.1,
+    y = areas.desk.y + areas.desk.h * 0.25,
+    w = areas.desk.w * 0.2,
+    h = areas.desk.h * 0.4,
+  }
 
   areas.pool.x       = (W - areas.pool.w) / 2
   areas.pool.y       = 500 * SCALE_Y
-  -- areas.pool.y = H * 0.55
-
-  areas.progress.w   = progressAsset:getWidth()
-  areas.progress.h   = progressAsset:getHeight()
-  areas.progress.x   = areas.play.x + areas.play.w / 2 - areas.progress.w / 2
-  areas.progress.y   = areas.play.y + 20
-  -- areas.progress.x = W / 2 - areas.progress.w - 5
-  -- areas.progress.y = H / 2 - areas.progress.h / 2
-
-  areas.threat.w     = threatAsset:getWidth()
-  areas.threat.h     = threatAsset:getHeight()
-  areas.threat.x     = areas.discard.x + areas.discard.w / 2 - areas.threat.w / 2
-  areas.threat.y     = areas.discard.startY + 20
-  -- areas.threat.x = W / 2 + 5
-  -- areas.threat.y = H / 2 - areas.threat.h / 2
-
-  local font         = love.graphics.newFont("assets/NotoSans-Medium.ttf", 40)
-  playTextObject     = love.graphics.newText(font, "PLAY")
-  discardTextObject  = love.graphics.newText(font, "DISCARD")
-
-  local pos1x, pos1y = areas.randomPoolPosition()
-  local pos2x, pos2y = areas.randomPoolPosition()
-  local pos3x, pos3y = areas.randomPoolPosition()
-  areas.addPoolChip(pos1x, pos1y)
-  areas.addPoolChip(pos2x, pos2y)
-  areas.addPoolChip(pos3x, pos3y)
-
-  -- areas.addToDestructorQueue()
-  -- areas.addToDestructorQueue()
-  areas.progressBar.textArea.value = "00/10"
-  areas.threatBar.textArea.value = "00/10"
 end
 
 function areas.addPoolChip(x, y)
@@ -340,44 +193,6 @@ function areas.consumePoolChips(n)
     consumed[i] = table.remove(areas.pool.chips)
   end
   return consumed
-end
-
--- Positions items top-to-bottom within the destructor area, stacked by index.
-function areas.reorderDestructorQueue()
-  local d = areas.destructor
-  local spiderH = spiderThreatAsset and spiderThreatAsset:getHeight() or 0
-  local spiderW = spiderThreatAsset and spiderThreatAsset:getWidth() or 0
-  for i, item in ipairs(d.queue) do
-    item.x = d.x + d.w / 2
-    item.y = d.y + spiderH + (i - 1) * (spiderH + 10)
-  end
-end
-
--- Returns the x, y position of the next available slot without modifying the queue.
-function areas.nextDestructorYPosition()
-  local d = areas.destructor
-  local spiderH = spiderThreatAsset and spiderThreatAsset:getHeight() or 0
-  local i = #d.queue + 1
-  return d.y + spiderH + (i - 1) * (spiderH + 10)
-end
-
-function areas.addToDestructorQueue()
-  local d = areas.destructor
-  local spiderH = spiderThreatAsset and spiderThreatAsset:getHeight() or 0
-  local spiderW = spiderThreatAsset and spiderThreatAsset:getWidth() or 0
-  local i = #d.queue + 1
-  table.insert(d.queue, {
-    x = d.x + d.w / 2,
-    y = d.y + spiderH + (i - 1) * (spiderH + 10),
-  })
-end
-
--- Returns and removes the oldest item in the queue (FIFO), or nil if empty.
--- Remaining items are shifted up to fill the gap.
-function areas.takeFromDestructorQueue()
-  local item = table.remove(areas.destructor.queue, 1)
-  -- areas.reorderDestructorQueue()
-  return item
 end
 
 function areas.updateScanners(dt)
@@ -481,26 +296,6 @@ function areas.updateBars(dt)
 end
 
 function areas.update(mouseX, mouseY)
-
-  -- areas.discard.current.y = animation.expDecay(areas.discard.current.y, areas.discard.target.y, 10, realDt)
-  -- local ra = areas.ram
-  -- ra.current.scale = animation.expDecay(ra.current.scale, ra.target.scale, 8, realDt)
-  -- local pr = areas.progress
-  -- pr.current.scale = animation.expDecay(pr.current.scale, pr.target.scale, 8, realDt)
-  -- local th = areas.threat
-  -- th.current.scale = animation.expDecay(th.current.scale, th.target.scale, 8, realDt)
-  -- local msg = areas.message
-  -- msg.current.scale = animation.expDecay(msg.current.scale, msg.target.scale, 8, realDt)
-
-  -- local klak = areas.klak
-  -- klak.current.x = animation.expDecay(klak.current.x, klak.target.x, 20, realDt)
-  -- klak.current.y = animation.expDecay(klak.current.y, klak.target.y, 20, realDt)
-  -- klak.current.scale = animation.expDecay(klak.current.scale, klak.target.scale, 20, realDt)
-
-  -- local playKlak = areas.playKlak
-  -- playKlak.current.x = animation.expDecay(playKlak.current.x, playKlak.target.x, 20, realDt)
-  -- playKlak.current.y = animation.expDecay(playKlak.current.y, playKlak.target.y, 20, realDt)
-  -- playKlak.current.scale = animation.expDecay(playKlak.current.scale, playKlak.target.scale, 20, realDt)
 end
 
 -- Hit detection
@@ -533,228 +328,6 @@ function areas.cardInDiscard(card)
 end
 
 -- Draw helpers
-
-local function drawSlotTops()
-  if not slotTopAsset then return end
-  local p = areas.play
-  local d = areas.discard
-  local deg180 = animation.degreesToRadians(180)
-
-  -- love.graphics.draw(slotTopAsset, p.x + (p.w - slotTopAsset:getWidth()) / 2, p.y)
-  -- -- love.graphics.draw(slotTopAsset, d.x + (d.w - slotTopAsset:getWidth()) / 2, d.current.y)
-  -- love.graphics.setColor(0, 0, 0, 1)
-  -- love.graphics.printf(p.slotText, p.x, p.y + 10, p.w, "center")
-  -- -- love.graphics.printf(d.slotText, d.x, d.current.y + 10, d.w, "center")
-  -- love.graphics.setColor(1, 1, 1, 1)
-  -- love.graphics.draw(
-  --   slotTopAsset,
-  --   d.x + (d.w - slotTopAsset:getWidth()) / 2,
-  --   love.graphics.getHeight() - slotTopAsset:getHeight(),
-  --   deg180, 1, 1,
-  --   slotTopAsset:getWidth(), slotTopAsset:getHeight()
-  -- )
-  if klakAsset then
-    local klak = areas.klak
-    love.graphics.draw(klakAsset, klak.current.x, klak.current.y, 0, klak.current.scale, klak.current.scale)
-    love.graphics.setColor(klak.text.color)
-    local previousFont = love.graphics.getFont()
-    if statFont then love.graphics.setFont(statFont) end
-    love.graphics.printf(
-      klak.text.value,
-      klak.current.x + klak.text.xOffset,
-      klak.current.y + klak.text.yOffset,
-      klak.text.w,
-      "center"
-    )
-
-    love.graphics.setColor(1, 1, 1, 1)
-    local playKlak = areas.playKlak
-    love.graphics.draw(klakAsset, playKlak.current.x, playKlak.current.y, 0, playKlak.current.scale,
-      playKlak.current.scale)
-    love.graphics.setColor(playKlak.text.color)
-    local previousFont = love.graphics.getFont()
-    if statFont then love.graphics.setFont(statFont) end
-    love.graphics.printf(
-      playKlak.text.value,
-      playKlak.current.x + playKlak.text.xOffset,
-      playKlak.current.y + playKlak.text.yOffset,
-      playKlak.text.w,
-      "center"
-    )
-
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.setFont(previousFont)
-  end
-
-  if statFont then
-    local prevFont = love.graphics.getFont()
-    love.graphics.setFont(statFont)
-
-    -- if ramAsset then
-    --   local ra = areas.ram
-    --   love.graphics.push()
-    --   love.graphics.translate(ra.x + ra.w / 2, ra.y + ra.h / 2)
-    --   love.graphics.scale(ra.current.scale, ra.current.scale)
-    --   love.graphics.setColor(1, 1, 1, 1)
-    --   love.graphics.draw(ramAsset, -ra.w / 2, -ra.h / 2)
-    --   love.graphics.setColor(0, 0, 0, 1)
-    --   love.graphics.printf(
-    --     tostring(ra.value),
-    --     -ra.w / 2,
-    --     -ra.h / 2 + (ra.h - statFont:getHeight()) / 2,
-    --     ra.w,
-    --     "center"
-    --   )
-    --   love.graphics.pop()
-    -- end
-
-    if progressAsset then
-      local pr = areas.progress
-      love.graphics.push()
-      love.graphics.translate(pr.x + pr.w / 2, pr.y + pr.h / 2)
-      love.graphics.scale(pr.current.scale, pr.current.scale)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.draw(progressAsset, -pr.w / 2, -pr.h / 2)
-      love.graphics.printf(
-        tostring(pr.value),
-        -pr.w / 2,
-        -pr.h / 2 + (pr.h - statFont:getHeight()) / 2,
-        pr.w,
-        "center"
-      )
-      love.graphics.pop()
-    end
-
-    if threatAsset then
-      local th = areas.threat
-      love.graphics.push()
-      love.graphics.translate(th.x + th.w / 2, th.y + th.h / 2)
-      love.graphics.scale(th.current.scale, th.current.scale)
-      love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.draw(threatAsset, -th.w / 2, -th.h / 2)
-      love.graphics.printf(
-        tostring(th.value),
-        -th.w / 2,
-        -th.h / 2 + (th.h - statFont:getHeight()) / 2,
-        th.w,
-        "center"
-      )
-      love.graphics.pop()
-    end
-
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.setFont(prevFont)
-  end
-end
-
--- Call before drawing cards. Draws area outlines, slot bottoms, and (when dragging)
--- the drop-zone labels and slot tops underneath the card.
-function areas.drawBefore(isDragging)
-  local p = areas.play
-  local d = areas.discard
-  local e = areas.endTurn
-  local dtor = areas.destructor
-  local deg180 = animation.degreesToRadians(180)
-  -- love.graphics.setColor(dtor.color)
-  -- love.graphics.rectangle("line", dtor.x, dtor.y, dtor.w, dtor.h)
-  love.graphics.setColor(1, 1, 1, 1)
-
-  love.graphics.setColor(p.color)
-  love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
-  love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.setColor(d.color)
-  love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
-  love.graphics.setColor(1, 1, 1, 1)
-  -- love.graphics.setColor(e.color)
-  -- love.graphics.rectangle("line", e.x, e.y, e.w, e.h)
-  love.graphics.setColor(1, 1, 1, 1)
-
-  love.graphics.rectangle("line", e.x, e.y, e.w, e.h)
-
-
-  if e.state == "idle" and endTurnAsset then
-    love.graphics.draw(endTurnAsset, e.x, e.y)
-  elseif e.state == "hover" and endTurnHoverAsset then
-    love.graphics.draw(endTurnHoverAsset, e.x, e.y)
-  elseif e.state == "click" and endTurnClickAsset then
-    love.graphics.draw(endTurnClickAsset, e.x, e.y)
-  end
-
-  if slotBottomAsset then
-    -- love.graphics.draw(slotBottomAsset, p.x + (p.w - slotBottomAsset:getWidth()) / 2, p.y)
-    -- love.graphics.draw(slotBottomAsset, d.x + (d.w - slotBottomAsset:getWidth()) / 2, d.current.y)
-    -- love.graphics.draw(
-    --   slotBottomAsset,
-    --   d.x + (d.w - slotBottomAsset:getWidth()) / 2,
-    --   love.graphics.getHeight() - slotBottomAsset:getHeight(),
-    --   deg180, 1, 1,
-    --   slotBottomAsset:getWidth(), slotBottomAsset:getHeight()
-    -- )
-  end
-
-  -- local po = areas.pool
-  -- love.graphics.setColor(0.5, 0.5, 0.5, 1)
-  -- love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
-  -- love.graphics.setColor(1, 1, 1, 1)
-  -- if ramTokenAsset then
-  --   for _, chip in ipairs(po.chips) do
-  --     love.graphics.draw(
-  --       ramTokenAsset,
-  --       chip.x,
-  --       chip.y,
-  --       0,
-  --       SCALE_X * 0.3,
-  --       SCALE_Y * 0.3
-  --     )
-  --   end
-  -- end
-
-  if destructorQueueAsset then
-    love.graphics.draw(destructorQueueAsset, dtor.x, dtor.y)
-  end
-
-  if spiderThreatAsset then
-    for _, item in ipairs(dtor.queue) do
-      love.graphics.draw(spiderThreatAsset, item.x, item.y, 0, 1, 1, spiderThreatAsset:getWidth() / 2, spiderThreatAsset:getHeight() / 2)
-    end
-  end
-
-  if klakBGAsset then
-    local klakBG = areas.klakBG
-    love.graphics.draw(klakBGAsset, klakBG.x, klakBG.y)
-    local playKlakBG = areas.playKlakBG
-    love.graphics.draw(klakBGAsset, playKlakBG.x, playKlakBG.y)
-  end
-
-  if isDragging then
-    drawSlotTops()
-    -- if playTextObject then
-    --   love.graphics.draw(
-    --     playTextObject,
-    --     p.x + p.w - playTextObject:getWidth() * textObjectScale - 10,
-    --     p.y + p.h - playTextObject:getHeight() * textObjectScale - 10,
-    --     0, textObjectScale, textObjectScale
-    --   )
-    -- end
-    -- if discardTextObject then
-    --   love.graphics.draw(
-    --     discardTextObject,
-    --     d.x + 10,
-    --     -- d.x + d.w - discardTextObject:getWidth() * textObjectScale,
-    --     d.current.y + d.h - discardTextObject:getHeight() * textObjectScale - 10,
-    --     0, textObjectScale, textObjectScale
-    --   )
-    -- end
-  end
-end
-
--- Call after drawing cards. Draws slot tops over the card when not dragging.
-function areas.drawAfter(isDragging)
-  if not isDragging then
-    drawSlotTops()
-  end
-end
-
 function areas.drawStatic()
   local p = areas.play
   local d = areas.discard
@@ -829,12 +402,19 @@ function areas.drawStatic()
     love.graphics.setFont(prevFont)
   end
 
-  love.graphics.setColor(p.color)
-  love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
+  love.graphics.setColor({ 0, 0, 1, 1})
+  love.graphics.rectangle("line", areas.playDeskArea.x, areas.playDeskArea.y, areas.playDeskArea.w, areas.playDeskArea.h)
   love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.setColor(d.color)
-  love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
+  love.graphics.setColor({1, 0, 0, 1})
+  love.graphics.rectangle("line", areas.discardDeskArea.x, areas.discardDeskArea.y, areas.discardDeskArea.w, areas.discardDeskArea.h)
   love.graphics.setColor(1, 1, 1, 1)
+
+  -- love.graphics.setColor(p.color)
+  -- love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
+  -- love.graphics.setColor(1, 1, 1, 1)
+  -- love.graphics.setColor(d.color)
+  -- love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
+  -- love.graphics.setColor(1, 1, 1, 1)
 
   local po = areas.pool
   love.graphics.setColor(0.5, 0.5, 0.5, 1)

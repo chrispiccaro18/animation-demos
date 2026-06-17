@@ -1,15 +1,15 @@
--- token_projectile.lua
--- Two modes: fling (derived or targeted) and attract (homing)
+local AssetManifest = require("assets.manifest")
 
+-- Two modes: fling (derived or targeted) and attract (homing)
 local Token = {}
 Token.__index = Token
 
 local instances = {}
 
 local DRAG        = 0.85   -- per-frame velocity multiplier (tune for feel)
-local RESTITUTION = 0.85    -- energy kept on wall bounce
-local MIN_SPEED   = 2       -- px/s below which we snap to rest
-local ARC_SCALE   = 1.5    -- max scale delta at arc peak
+local RESTITUTION = 0.85   -- energy kept on wall bounce
+local MIN_SPEED   = 1       -- px/s below which we snap to rest
+local ARC_SCALE   = 1.75    -- max scale delta at arc peak
 local SPIN_SCALE  = 0.012   -- rotation rate relative to horizontal speed (rad/px)
 
 local ANT_DUR        = 0.15
@@ -193,6 +193,9 @@ local function applyFlingPhysics(self, rect, options)
     dest_y = math.max(dest_y, self.y + rect.h * 0.1)
   end
 
+  self.debug_dest_x = dest_x
+  self.debug_dest_y = dest_y
+
   local walls = n_bounces > 0 and random_wall_sequence(n_bounces) or {}
   local angle, total_dist = solve_unfolded(self.x, self.y, dest_x, dest_y, walls, rect)
   local v0 = total_dist * (1 - drag) * 60
@@ -213,12 +216,12 @@ local function applyFlingPhysics(self, rect, options)
 end
 
 function Token.load()
-  ramAsset = love.graphics.newImage("assets/proto/ram-chip.png")
-  progressAsset = love.graphics.newImage("assets/proto/progress-token.png")
-  threatAsset = love.graphics.newImage("assets/proto/threat-token.png")
-  dtorAsset = love.graphics.newImage("assets/proto/dtor-slot.png")
-  nullifyAsset = love.graphics.newImage("assets/proto/nullify-token.png")
-  emptyNullifyDtorAsset = love.graphics.newImage("assets/proto/empty-nullify-dtor.png")
+  ramAsset = AssetManifest.get("tokens", "ram")
+  progressAsset = AssetManifest.get("tokens", "progress")
+  threatAsset = AssetManifest.get("tokens", "threat")
+  dtorAsset = AssetManifest.get("card", "dtorSlot")
+  nullifyAsset = AssetManifest.get("tokens", "nullify")
+  emptyNullifyDtorAsset = AssetManifest.get("card", "emptyNullifySlot")
 end
 
 ------------------------------------------------------------------------
@@ -498,6 +501,16 @@ function Token:draw()
     love.graphics.circle("fill", 0, 0, 100 * SCALE_X)
   end
   love.graphics.pop()
+
+  if self.debug_dest_x then
+    local sz = 15 * SCALE_X
+    love.graphics.setColor(1, 0, 0, 1)
+    love.graphics.setLineWidth(3 * SCALE_X)
+    love.graphics.line(self.debug_dest_x - sz, self.debug_dest_y - sz, self.debug_dest_x + sz, self.debug_dest_y + sz)
+    love.graphics.line(self.debug_dest_x + sz, self.debug_dest_y - sz, self.debug_dest_x - sz, self.debug_dest_y + sz)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setLineWidth(1)
+  end
 end
 
 function Token:triggerPop(peakScale, duration)

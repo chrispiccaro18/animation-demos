@@ -1,3 +1,4 @@
+local AssetManifest = require("assets.manifest")
 local animation = require("lib.animation")
 local Token     = require("core.token")
 
@@ -25,7 +26,7 @@ local EFFECT_ZONES = {
   { dataKey = "bottomEnergy", id = "bottomEnergy",   holeKey = "ramHole",   tokenKey = "ramChip", hidden = true                       },
 }
 
-local ENERGY_GAP = 7
+local ENERGY_GAP = 16
 local EFFECT_GAP = 20
 
 local STATE_CONFIG = {
@@ -140,20 +141,20 @@ Card.__index = Card
 function Card.load(dissolveShader, tiltShader)
   _shaders.dissolve   = dissolveShader
   _shaders.tilt       = tiltShader
-  _assets.base        = love.graphics.newImage("assets/proto/card-base.png")
-  _assets.ramHole     = love.graphics.newImage("assets/proto/ram-hole.png")
-  _assets.tokenHole   = love.graphics.newImage("assets/proto/token-hole.png")
-  _assets.ramChip     = love.graphics.newImage("assets/proto/ram-chip.png")
-  _assets.dtorSlot    = love.graphics.newImage("assets/proto/dtor-slot.png")
-  _assets.line        = love.graphics.newImage("assets/proto/card-line2.png")
-  _assets.playLine    = love.graphics.newImage("assets/proto/card-play-line2.png")
-  _assets.discardLine = love.graphics.newImage("assets/proto/card-discard-line.png")
+  _assets.base        = AssetManifest.get("card", "base")
+  _assets.ramHole     = AssetManifest.get("card", "ramHole")
+  _assets.tokenHole   = AssetManifest.get("card", "tokenHole")
+  _assets.ramChip     = AssetManifest.get("tokens", "ram")
+  _assets.dtorSlot    = AssetManifest.get("card", "dtorSlot")
+  _assets.line        = AssetManifest.get("card", "line")
+  _assets.playLine    = AssetManifest.get("card", "playLine")
+  _assets.discardLine = AssetManifest.get("card", "discardLine")
   _assets.tokens = {
-    progress = love.graphics.newImage("assets/proto/progress-token.png"),
-    threat   = love.graphics.newImage("assets/proto/threat-token.png"),
-    nullify  = love.graphics.newImage("assets/proto/nullify-token.png"),
+    progress = AssetManifest.get("tokens", "progress"),
+    threat   = AssetManifest.get("tokens", "threat"),
+    nullify  = AssetManifest.get("tokens", "nullify"),
     ram      = _assets.ramChip,
-    dtor     = love.graphics.newImage("assets/proto/dtor-token.png"),
+    dtor     = AssetManifest.get("tokens", "dtor"),
   }
 end
 

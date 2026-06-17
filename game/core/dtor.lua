@@ -1,5 +1,6 @@
-local animation = require("lib.animation")
+local AssetManifest = require("assets.manifest")
 local Token     = require("core.token")
+local animation = require("lib.animation")
 local Color = require("lib.color")
 
 local W = SCALE_X * 3840
@@ -18,6 +19,7 @@ Dtor.area = {
 }
 
 local _queue            = {}
+local _transitCard      = nil
 local _dtorSlotAsset    = nil
 local _emptyNullifySlot = nil
 local _tokenAssets      = {}
@@ -73,15 +75,15 @@ function Dtor.load()
   for i = 1, Dtor.area.maxSlots do
     Dtor.area.slots[i] = { occupied = false, reserved = false, nullified = false }
   end
-  _dtorSlotAsset = love.graphics.newImage("assets/proto/dtor-slot.png")
-  _emptyNullifySlot = love.graphics.newImage("assets/proto/empty-nullify-dtor.png")
+  _dtorSlotAsset = AssetManifest.get("card", "dtorSlot")
+  _emptyNullifySlot = AssetManifest.get("card", "emptyNullifySlot")
   _tokenAssets = {
-    threat   = love.graphics.newImage("assets/proto/threat-token.png"),
-    progress = love.graphics.newImage("assets/proto/progress-token.png"),
-    nullify  = love.graphics.newImage("assets/proto/nullify-token.png"),
-    ram      = love.graphics.newImage("assets/proto/ram-chip.png"),
+    threat   = AssetManifest.get("tokens", "threat"),
+    progress = AssetManifest.get("tokens", "progress"),
+    nullify  = AssetManifest.get("tokens", "nullify"),
+    ram      = AssetManifest.get("tokens", "ram"),
   }
-  _font = love.graphics.newFont("assets/NotoSans-Medium.ttf", 36)
+  _font = AssetManifest.getFont(72)
 end
 
 ------------------------------------------------------------------------
@@ -184,8 +186,17 @@ end
 ------------------------------------------------------------------------
 -- Text visibility
 ------------------------------------------------------------------------
+function Dtor.setTransitCard(card)
+  _transitCard = card
+end
+
+function Dtor.clearTransitCard()
+  _transitCard = nil
+end
+
 function Dtor.reset()
-  _queue = {}
+  _queue        = {}
+  _transitCard  = nil
   _text.content     = ""
   _text.alpha       = 0
   _text.targetAlpha = 0
@@ -211,6 +222,7 @@ end
 ------------------------------------------------------------------------
 function Dtor.update(dt)
   _text.alpha = animation.expDecay(_text.alpha, _text.targetAlpha, 12, dt)
+  if _transitCard then _transitCard:update() end
 end
 
 ------------------------------------------------------------------------
@@ -385,6 +397,8 @@ function Dtor.drawAll()
       love.graphics.line(_text.x + 20 * SCALE_X, _text.y + _text.h / 2, _text.x + _text.w - 20 * SCALE_X, _text.y + _text.h / 2)
     end
   end
+
+  if _transitCard then _transitCard:draw() end
 
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.setLineWidth(1)

@@ -1,11 +1,12 @@
+local AssetManifest = require("assets.manifest")
 local Color = require("lib.color")
 
 local Camera = {}
 
 function Camera.load()
-  local baseAsset = love.graphics.newImage("assets/proto/camera-base.png")
-  local lensAsset = love.graphics.newImage("assets/proto/camera-lens.png")
-  local ringAsset = love.graphics.newImage("assets/proto/camera-ring.png")
+  local baseAsset = AssetManifest.get("camera", "base")
+  local lensAsset = AssetManifest.get("camera", "lens")
+  local ringAsset = AssetManifest.get("camera", "ring")
   Camera.x = SCALE_X * 1920
   Camera.y = baseAsset:getHeight() / 2 - 300
   -- Camera.y = 75
