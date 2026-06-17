@@ -103,6 +103,7 @@ function Hand:returnCardToHand(card)
   self:layout()
   card.hover.can = true
   card.drag.can  = true
+  card:setZoneState("idle")
   screenshake.triggerH()
 end
 
@@ -113,6 +114,7 @@ function Hand:returnRemainingPlayQueueToHand()
     card._excluded = false
     card.hover.can = true
     card.drag.can  = true
+    card:setZoneState("idle")
   end
   self:layout()
   screenshake.triggerH()
@@ -238,13 +240,6 @@ function Hand:update(mouseX, mouseY)
                 if #areas.pool.chips < card.energy then
                   print("[play queue event] not enough RAM, returning card to hand")
                   self:returnRemainingPlayQueueToHand()
-                  -- should clear entire queue
-                  -- self:removeFromPlayQueue(card)
-                  -- card._excluded = false
-                  -- self:layout()
-                  -- card.hover.can = true
-                  -- card.drag.can  = true
-                  -- screenshake.triggerH()
                 else
                   print("[play queue event] enough RAM, calling sequences.play")
                   sequences.play(card, Camera, self)
@@ -357,15 +352,21 @@ function Hand:update(mouseX, mouseY)
 end
 
 function Hand:draw()
-  -- draw stationary cards first, then non dragging cards, then dragging cards on top
+  local queued = {}
+  for _, card in ipairs(self.discardQueue) do queued[card] = true end
+  for _, card in ipairs(self.playQueue)    do queued[card] = true end
+
   for _, card in ipairs(self.cards) do
-    if not card.drag.is and card.stationary then card:draw() end
+    if not card.drag.is and card.stationary and not queued[card] then card:draw() end
   end
   for _, card in ipairs(self.cards) do
-    if not card.drag.is and not card.stationary then card:draw() end
+    if not card.drag.is and not card.stationary and not queued[card] then card:draw() end
   end
+  -- reverse order so queue[1] (top of pile, next to process) is drawn on top
+  for i = #self.discardQueue, 1, -1 do self.discardQueue[i]:draw() end
+  for i = #self.playQueue,    1, -1 do self.playQueue[i]:draw()    end
   for _, card in ipairs(self.cards) do
-    if not card.drag.is and card.hover.is then card:draw() end
+    if not card.drag.is and card.hover.is and not queued[card] then card:draw() end
   end
   for _, card in ipairs(self.cards) do
     if card.drag.is then card:draw() end
