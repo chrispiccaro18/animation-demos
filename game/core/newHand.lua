@@ -9,7 +9,7 @@ local Hand      = {}
 Hand.__index    = Hand
 
 function Hand.new()
-  return setmetatable({ cards = {}, discardQueue = {} }, Hand)
+  return setmetatable({ cards = {}, discardQueue = {}, playQueue = {} }, Hand)
 end
 
 function Hand:layout()
@@ -65,6 +65,22 @@ function Hand:discardQueueSize()
   return #self.discardQueue
 end
 
+function Hand:playQueueSize()
+  return #self.playQueue
+end
+
+function Hand:removeFromPlayQueue(card)
+  for i, c in ipairs(self.playQueue) do
+    if c == card then table.remove(self.playQueue, i); return end
+  end
+end
+
+function Hand:removeFromDiscardQueue(card)
+  for i, c in ipairs(self.discardQueue) do
+    if c == card then table.remove(self.discardQueue, i); return end
+  end
+end
+
 function Hand:handSize()
   return #self.cards
 end
@@ -79,6 +95,27 @@ function Hand:unlockHand()
       card.drag.is      = false
     end
   end
+end
+
+function Hand:returnCardToHand(card)
+  self:removeFromPlayQueue(card)
+  card._excluded = false
+  self:layout()
+  card.hover.can = true
+  card.drag.can  = true
+  screenshake.triggerH()
+end
+
+function Hand:returnRemainingPlayQueueToHand()
+  local queue = self.playQueue
+  self.playQueue = {}
+  for _, card in ipairs(queue) do
+    card._excluded = false
+    card.hover.can = true
+    card.drag.can  = true
+  end
+  self:layout()
+  screenshake.triggerH()
 end
 
 function Hand:update(mouseX, mouseY)
@@ -186,18 +223,36 @@ function Hand:update(mouseX, mouseY)
           card.target.y = card._startY
         else
           print("enough ram", #areas.pool.chips)
+          table.insert(self.playQueue, card)
           card._excluded = true
           card.hover.can = false
           card.hover.is  = false
           card.drag.can  = false
-          card.target.scale = card.scales.hover
+          card.target.scale = self:playQueueSize() > 1 and card.scales.idle or card.scales.hover
+          print("play queue size: " .. self:playQueueSize())
 
-          events.push({
-            fn = function()
-            sequences.play(card, Camera, self)
-          end, blockable = true, blocking = true,
-          delay = 0.5, persistent = false, type = "after"
-        })
+          if self:playQueueSize() == 1 then
+            events.push({
+              fn = function()
+                print(string.format("[play queue event] firing — pool.chips=%d card.energy=%d", #areas.pool.chips, card.energy))
+                if #areas.pool.chips < card.energy then
+                  print("[play queue event] not enough RAM, returning card to hand")
+                  self:returnRemainingPlayQueueToHand()
+                  -- should clear entire queue
+                  -- self:removeFromPlayQueue(card)
+                  -- card._excluded = false
+                  -- self:layout()
+                  -- card.hover.can = true
+                  -- card.drag.can  = true
+                  -- screenshake.triggerH()
+                else
+                  print("[play queue event] enough RAM, calling sequences.play")
+                  sequences.play(card, Camera, self)
+                end
+              end, blockable = true, blocking = true,
+              delay = 0.5, persistent = false, type = "after"
+            })
+          end
         end
       --   if #areas.pool.chips < 2 then
       --     screenshake.triggerH()
@@ -226,13 +281,14 @@ function Hand:update(mouseX, mouseY)
         card.target.scale = self:discardQueueSize() > 1 and card.scales.idle or card.scales.hover
         print("discard queue size: " .. self:discardQueueSize())
 
-        events.push({
-          fn = function()
-            sequences.discard(card, Camera, self)
-            -- table.remove(self.discardQueue, 1)
-          end, blockable = true, blocking = true,
-          delay = 1.0, persistent = false, type = "after"
-        })
+        if self:discardQueueSize() == 1 then
+          events.push({
+            fn = function()
+              sequences.discard(card, Camera, self)
+            end, blockable = true, blocking = true,
+            delay = 1.0, persistent = false, type = "after"
+          })
+        end
         -- sequences.discard(card, Camera, self)
         -- table.insert(self.discardQueue, card)
         -- -- c._excluded = true

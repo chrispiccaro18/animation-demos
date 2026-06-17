@@ -588,6 +588,20 @@ function Token.clearAll()
   instances = {}
 end
 
+function Token.debugDump(label)
+  print(string.format("[Token.debugDump] %s — %d instance(s)", label or "", #instances))
+  for i, t in ipairs(instances) do
+    print(string.format("  [%d] type=%-10s done=%-5s is_terminal=%-5s _remove=%-5s mode=%s",
+      i,
+      tostring(t.token_type),
+      tostring(t.done),
+      tostring(t.is_terminal),
+      tostring(t._remove),
+      tostring(t.mode)
+    ))
+  end
+end
+
 function Token.updateAll(dt, gameDt)
   for _, token in ipairs(instances) do
       token:update(dt, gameDt)
@@ -630,7 +644,7 @@ end
 function Token.count(token_type)
   local count = 0
   for _, token in ipairs(instances) do
-    if token_type == nil or token.token_type == token_type then
+    if (token_type == nil or token.token_type == token_type) and not token.is_terminal then
       count = count + 1
     end
   end
@@ -697,6 +711,7 @@ function Token.attractDone(token_type, destination, options)
                 token.quivered         = false
                 token.onArrive         = options.onArrive
                 token.self_remove      = options.self_remove
+                token.is_terminal      = options.terminal or false
             end
         end
     end

@@ -121,10 +121,13 @@ local function startTerminalAttract(tokenType, target, acc)
 end
 
 local function terminalAttract()
+  print("[terminalAttract] firing")
+  Token.debugDump("before terminalAttract")
   local acc = Token.makeCascadeAccumulator()
   startTerminalAttract("progress", areas.progressDestination, acc)
   startTerminalAttract("threat", areas.threatDestination, acc)
   startTerminalAttract("nullify", Dtor.nextUnnullifiedSlot(), acc)
+  Token.debugDump("after terminalAttract")
 end
 
 function sequences.dealCardToHand(hand)
@@ -144,9 +147,15 @@ function sequences.dealCardToHand(hand)
   })
 end
 
+local _scanCount = 0
 function sequences.scan(scanner)
+  _scanCount = _scanCount + 1
+  local scanId = _scanCount
+  print(string.format("[sequences.scan #%d] called — Token.count=%d", scanId, Token.count()))
+  Token.debugDump("scan entry")
   events.push({
     fn = function()
+      print(string.format("[sequences.scan #%d] poll: waiting for isActive=false", scanId))
       return not Token.isActive()
     end,
     blocking = true, blockable = true, persistent = false,
@@ -154,6 +163,7 @@ function sequences.scan(scanner)
   })
   events.push({
     fn = function()
+      print(string.format("[sequences.scan #%d] activating scanner", scanId))
       scanner.active = true
     end,
     blocking = true, blockable = true, persistent = false,
@@ -166,8 +176,11 @@ function sequences.scan(scanner)
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "poll"
   })
-    events.push({
-    fn = terminalAttract,
+  events.push({
+    fn = function()
+      print(string.format("[sequences.scan #%d] scanner done, firing terminalAttract", scanId))
+      terminalAttract()
+    end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
   })
@@ -361,27 +374,32 @@ function sequences.discard(card, camera, hand)
 
   events.push({
     fn = function()
-      print("Token count before discard scan:", Token.count())
+      print("[discard scan-check] Token.count=" .. Token.count())
+      Token.debugDump("discard scan-check")
       if Token.count() > 0 then
         sequences.scan(areas.scanner.right)
+      else
+        print("[discard scan-check] skipping scan, no tokens")
       end
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate"
-  })
-
-  events.push({
-    fn = function()
-      return Token.allDone()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll"
-  })
-  events.push({
-    fn = function()
-      table.remove(hand.discardQueue, 1)
-      Camera:setIdle()
-      hand:remove(card)
+      events.push({
+        fn = function()
+          return Token.allDone()
+        end,
+        blocking = true, blockable = true, persistent = false,
+        delay = 0, type = "poll"
+      })
+      events.push({
+        fn = function()
+          hand:removeFromDiscardQueue(card)
+          Camera:setIdle()
+          hand:remove(card)
+          if #hand.discardQueue > 0 then
+            sequences.discard(hand.discardQueue[1], Camera, hand)
+          end
+        end,
+        blocking = true, blockable = true, persistent = false,
+        delay = 0, type = "immediate"
+      })
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"
@@ -525,28 +543,40 @@ function sequences.play(card, camera, hand)
 
     events.push({
     fn = function()
-      print("Token count before play scan:", Token.count())
+      print("[play scan-check] Token.count=" .. Token.count())
+      Token.debugDump("play scan-check")
       if Token.count() > 0 then
         sequences.scan(areas.scanner.left)
+      else
+        print("[play scan-check] skipping scan, no tokens")
       end
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate"
-  })
-
-  events.push({
-    fn = function()
-      return Token.allDone()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll"
-  })
-  events.push({
-    fn = function()
-      -- Token.removeDone()
-      Camera:setIdle()
-      hand:remove(card)
-      _deck:add(card)
+      events.push({
+        fn = function()
+          return Token.allDone()
+        end,
+        blocking = true, blockable = true, persistent = false,
+        delay = 0, type = "poll"
+      })
+      events.push({
+        fn = function()
+          hand:removeFromPlayQueue(card)
+          Camera:setIdle()
+          hand:remove(card)
+          _deck:add(card)
+          if #hand.playQueue > 0 then
+            local nextCard = hand.playQueue[1]
+            if #areas.pool.chips < nextCard.energy then
+              print("[play chain] not enough RAM, flushing remaining play queue")
+              hand:returnRemainingPlayQueueToHand()
+            else
+              print("[play chain] chaining to next queued card")
+              sequences.play(nextCard, Camera, hand)
+            end
+          end
+        end,
+        blocking = true, blockable = true, persistent = false,
+        delay = 0, type = "immediate"
+      })
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"
