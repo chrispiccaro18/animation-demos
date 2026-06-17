@@ -1,4 +1,5 @@
 local AssetManifest = require("assets.manifest")
+local particles     = require("core.particles")
 
 -- Two modes: fling (derived or targeted) and attract (homing)
 local Token = {}
@@ -7,14 +8,22 @@ Token.__index = Token
 local instances = {}
 
 local DRAG        = 0.85   -- per-frame velocity multiplier (tune for feel)
-local RESTITUTION = 0.85   -- energy kept on wall bounce
-local MIN_SPEED   = 1       -- px/s below which we snap to rest
+local RESTITUTION = 1.0   -- energy kept on wall bounce
+local MIN_SPEED   = 0.5       -- px/s below which we snap to rest
 local ARC_SCALE   = 1.75    -- max scale delta at arc peak
 local SPIN_SCALE  = 0.012   -- rotation rate relative to horizontal speed (rad/px)
 
 local ANT_DUR        = 0.15
 local ANT_PAUSE      = 0.15
 local ANT_PEAK_SCALE = 1.5
+
+local TRAIL_INHERIT_VEL  = false  -- true: comet tail (particles hang in world space), false: jet exhaust (particles fire backward)
+local TRAIL_VEL_FACTOR   = 0.5   -- fraction of token speed for comet mode
+local TRAIL_BACK_FACTOR  = 0.2   -- exhaust speed as a fraction of token speed (scales naturally with velocity)
+local TRAIL_SPREAD       = math.pi * 0.4
+local TRAIL_RATE         = 120    -- particles per second at peak speed
+local TRAIL_SPEED_THRESH = 150   -- game px/s below which trail is suppressed
+local TRAIL_PEAK_SPEED   = 1500  -- game px/s at which trail rate reaches full intensity
 
 local SPEED = 4000
 local TOP_SPEED = 20000
@@ -175,7 +184,6 @@ local function resolveAsset(token_type)
 end
 
 local function applyFlingPhysics(self, rect, options)
-  local drag      = options and options.drag or DRAG
   local n_bounces = options and options.bounces or math.random(0, 3)
 
   local dest_x, dest_y
@@ -198,21 +206,24 @@ local function applyFlingPhysics(self, rect, options)
 
   local walls = n_bounces > 0 and random_wall_sequence(n_bounces) or {}
   local angle, total_dist = solve_unfolded(self.x, self.y, dest_x, dest_y, walls, rect)
-  local v0 = total_dist * (1 - drag) * 60
+  local waypoints = trace_ray(self.x, self.y, angle, total_dist, walls, rect)
 
-  self.vx          = math.cos(angle) * v0
-  self.vy          = math.sin(angle) * v0
-  self.v0          = v0
-  self.rect        = rect
-  self.mode        = "fling"
-  self.done        = false
-  self.scale       = self.base_scale
-  self.quivered    = false
-  self.waypoints   = trace_ray(self.x, self.y, angle, total_dist, walls, rect)
-  self.total_dist  = total_dist
-  self.dist_so_far = 0
-  self.wp_index    = 1
-  self.seg_start   = { x = self.x, y = self.y }
+  -- Each bounce multiplies speed by RESTITUTION, so segment i starts with R^i less speed.
+  -- Compensate by weighting each segment's distance by 1/R^i before deriving v0.
+  local effective_dist = 0
+  for i, wp in ipairs(waypoints) do
+    effective_dist = effective_dist + wp.dist / (RESTITUTION ^ (i - 1))
+  end
+  local v0 = effective_dist * (1 - DRAG) * 60
+
+  self.vx       = math.cos(angle) * v0
+  self.vy       = math.sin(angle) * v0
+  self.v0       = v0
+  self.rect     = rect
+  self.mode     = "fling"
+  self.done     = false
+  self.scale    = self.base_scale
+  self.quivered = false
 end
 
 function Token.load()
@@ -230,7 +241,6 @@ end
 -- options = {
 --   target    = {x,y} (optional; if nil, lands at random point in rect)
 --   bounces   = int 0-3 (optional; random if nil)
---   drag      = float (overrides DRAG)
 --   base_scale = float
 -- }
 ------------------------------------------------------------------------
@@ -276,7 +286,7 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     self.initial_speed = self.speed
     self.max_speed   = options.max_speed      or (TOP_SPEED * SCALE_X)
     self.accel       = options.acceleration   or (ACCEL * SCALE_X)
-    self.threshold   = options.threshold      or 4
+    self.threshold   = options.threshold      or 1
     self.base_scale      = options.base_scale     or 1
     self.scale           = self.base_scale
     self.rotation        = 0
@@ -340,6 +350,7 @@ function Token:update(dt, gameDt)
         local t = self.pop.time / self.pop.duration
         if t >= 1 then
             self.pop.active = false
+            if self.pop.onComplete then self.pop.onComplete(self) end
             self._remove = true
         else
             self.scale = self.pop.restScale + math.sin(t * math.pi) * (self.pop.peak - self.pop.restScale)
@@ -364,39 +375,63 @@ function Token:_update_fling(dt)
     self.x = self.x + self.vx * dt
     self.y = self.y + self.vy * dt
 
-    -- wall bounce (clamped to rect)
+    -- wall bounce (clamped to rect); reset v0 so arc restarts cleanly per segment
     local r = self.rect
+    local bounced = false
     if self.x < r.x then
         self.x  = r.x
         self.vx = math.abs(self.vx) * RESTITUTION
+        bounced = true
     elseif self.x > r.x + r.w then
         self.x  = r.x + r.w
         self.vx = -math.abs(self.vx) * RESTITUTION
+        bounced = true
     end
     if self.y < r.y then
         self.y  = r.y
         self.vy = math.abs(self.vy) * RESTITUTION
+        bounced = true
     elseif self.y > r.y + r.h then
         self.y  = r.y + r.h
         self.vy = -math.abs(self.vy) * RESTITUTION
+        bounced = true
     end
 
-    -- track distance for arc
     local speed = math.sqrt(self.vx*self.vx + self.vy*self.vy)
-    self.dist_so_far = self.dist_so_far + speed * dt
+    if bounced then self.v0 = speed end
 
     -- drag (frame-rate independent: same decay per second regardless of fps)
     local frame_drag = drag ^ (dt * 60)
     self.vx = self.vx * frame_drag
     self.vy = self.vy * frame_drag
 
-    -- arc height: t = 0→1 as speed drops from v0 to 0, sin curve peaks at midpoint
+    -- arc height: t = 0→1 as speed drops from v0 to 0; resets each segment after a bounce
     local t = 1 - math.min(speed / self.v0, 1)
     local arc_height = math.sin(t * math.pi)
     self.scale = self.base_scale + arc_height * ARC_SCALE
 
     -- spin: driven by horizontal velocity so bounces naturally flip direction
     self.rotation = self.rotation + self.vx * SPIN_SCALE * dt
+
+    -- trail particles
+    local gameSpeed = speed / SCALE_X
+    if gameSpeed > TRAIL_SPEED_THRESH then
+      local speedFrac   = math.min(gameSpeed / TRAIL_PEAK_SPEED, 1)
+      local fwdAngle    = math.atan2(self.vy, self.vx)
+      local trailPreset = self.token_type and (self.token_type .. "_trail") or "token_trail"
+      self.trailAccum   = (self.trailAccum or 0) + TRAIL_RATE * speedFrac * dt
+      local emitCount   = math.floor(self.trailAccum)
+      if emitCount > 0 then
+        self.trailAccum = self.trailAccum - emitCount
+        if TRAIL_INHERIT_VEL then
+          particles.emitDir(trailPreset, self.x, self.y, emitCount, fwdAngle,             TRAIL_SPREAD, speed * TRAIL_VEL_FACTOR)
+        else
+          particles.emitDir(trailPreset, self.x, self.y, emitCount, fwdAngle + math.pi,   TRAIL_SPREAD, speed * TRAIL_BACK_FACTOR)
+        end
+      end
+    else
+      self.trailAccum = 0
+    end
 
     -- stop when nearly stationary
     if speed < MIN_SPEED then
@@ -469,6 +504,26 @@ function Token:_update_attract(dt)
 
     -- scale deflates from anticipation peak down to target as token travels
     self.scale = self.ant_peak_scale + (self.target_scale - self.ant_peak_scale) * t
+
+    -- trail particles (only reached in travel phase; anticipation/pause phases return early)
+    local gameSpeed = self.speed / SCALE_X
+    if gameSpeed > TRAIL_SPEED_THRESH then
+      local speedFrac   = math.min(gameSpeed / TRAIL_PEAK_SPEED, 1)
+      local fwdAngle    = math.atan2(dy, dx)
+      local trailPreset = self.token_type and (self.token_type .. "_trail") or "token_trail"
+      self.trailAccum   = (self.trailAccum or 0) + TRAIL_RATE * speedFrac * dt
+      local emitCount   = math.floor(self.trailAccum)
+      if emitCount > 0 then
+        self.trailAccum = self.trailAccum - emitCount
+        if TRAIL_INHERIT_VEL then
+          particles.emitDir(trailPreset, self.x, self.y, emitCount, fwdAngle,           TRAIL_SPREAD, self.speed * TRAIL_VEL_FACTOR)
+        else
+          particles.emitDir(trailPreset, self.x, self.y, emitCount, fwdAngle + math.pi, TRAIL_SPREAD, self.speed * TRAIL_BACK_FACTOR)
+        end
+      end
+    else
+      self.trailAccum = 0
+    end
 end
 
 function Token:draw()
@@ -502,26 +557,27 @@ function Token:draw()
   end
   love.graphics.pop()
 
-  if self.debug_dest_x then
-    local sz = 15 * SCALE_X
-    love.graphics.setColor(1, 0, 0, 1)
-    love.graphics.setLineWidth(3 * SCALE_X)
-    love.graphics.line(self.debug_dest_x - sz, self.debug_dest_y - sz, self.debug_dest_x + sz, self.debug_dest_y + sz)
-    love.graphics.line(self.debug_dest_x + sz, self.debug_dest_y - sz, self.debug_dest_x - sz, self.debug_dest_y + sz)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.setLineWidth(1)
-  end
+  -- if self.debug_dest_x then
+  --   local sz = 15 * SCALE_X
+  --   love.graphics.setColor(1, 0, 0, 1)
+  --   love.graphics.setLineWidth(3 * SCALE_X)
+  --   love.graphics.line(self.debug_dest_x - sz, self.debug_dest_y - sz, self.debug_dest_x + sz, self.debug_dest_y + sz)
+  --   love.graphics.line(self.debug_dest_x + sz, self.debug_dest_y - sz, self.debug_dest_x - sz, self.debug_dest_y + sz)
+  --   love.graphics.setColor(1, 1, 1, 1)
+  --   love.graphics.setLineWidth(1)
+  -- end
 end
 
-function Token:triggerPop(peakScale, duration)
+function Token:triggerPop(peakScale, duration, onComplete)
     self.rotation        = 0
     self.target_rotation = 0
     self.pop = {
-        active    = true,
-        time      = 0,
-        duration  = duration or 0.4,
-        restScale = self.scale,
-        peak      = peakScale or self.scale * 2,
+        active     = true,
+        time       = 0,
+        duration   = duration or 0.4,
+        restScale  = self.scale,
+        peak       = peakScale or self.scale * 2,
+        onComplete = onComplete,
     }
 end
 

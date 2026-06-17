@@ -16,7 +16,7 @@ local Camera       = require("core.camera")
 local Token        = require("core.token")
 local laser        = require("core.laser")
 local Dtor         = require("core.dtor")
-local barParticles = require("core.barParticles")
+local particles    = require("core.particles")
 local CardData     = require("data.cards")
 local AssetManifest = require("assets.manifest")
 
@@ -153,7 +153,7 @@ function love.load()
 
   Card.load(dissolveShader, tiltShader)
   areas.load()
-  barParticles.load()
+  particles.load()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
   sequences.setDeck(deck)
   print("ScaleX: " .. SCALE_X .. ", ScaleY: " .. SCALE_Y)
@@ -190,7 +190,7 @@ function love.draw()
     love.graphics.draw(boardAsset, 0, 0, 0, SCALE_X, SCALE_Y)
   end
 
-  barParticles.draw()
+  particles.draw()
   areas.drawStatic()
   Dtor.drawAll()
   if camera then camera:draw() end
@@ -222,13 +222,13 @@ function love.update(dt)
   overlayStats.update(dt)
   areas.updateMessage(realDt)
   areas.updateBars(realDt)
-  barParticles.update(realDt)
+  particles.update(realDt)
   if gameOver then return end
   local mx, my = love.mouse.getPosition()
   local mouseX, mouseY = toGame(mx, my)
 
   if camera then camera:update(realDt, mouseX, mouseY, areas.scanner) end
-  laser.update(realDt)
+  laser.update(gameDt)
   hand:update(mouseX, mouseY)
   Token.updateAll(realDt, gameDt)
   Dtor.update(realDt)

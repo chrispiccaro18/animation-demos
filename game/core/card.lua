@@ -4,7 +4,7 @@ local Token     = require("core.token")
 
 local stiffness = 80
 local damping   = 10
-local influence = 0.002
+local influence = 0.001
 local BUFFER    = 20
 
 local _assets  = {}
@@ -597,7 +597,8 @@ function Card:update()
   if not self.stationary then
     self.current.x          = animation.expDecay(self.current.x, self.target.x, 12, realDt)
     self.current.y          = animation.expDecay(self.current.y, self.target.y, 12, realDt)
-    self.horizontalVelocity = (self.current.x - self.target.x) / realDt
+    self.horizontalVelocity = (self.current.x - self.target.x) / (realDt * SCALE_X)
+    -- self.horizontalVelocity = (self.current.x - self.target.x) / realDt
   end
 
   local rForce = -self.current.r * stiffness - self.current.rVel * damping

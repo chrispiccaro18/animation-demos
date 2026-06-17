@@ -402,12 +402,12 @@ function areas.drawStatic()
     love.graphics.setFont(prevFont)
   end
 
-  love.graphics.setColor({ 0, 0, 1, 1})
-  love.graphics.rectangle("line", areas.playDeskArea.x, areas.playDeskArea.y, areas.playDeskArea.w, areas.playDeskArea.h)
-  love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.setColor({1, 0, 0, 1})
-  love.graphics.rectangle("line", areas.discardDeskArea.x, areas.discardDeskArea.y, areas.discardDeskArea.w, areas.discardDeskArea.h)
-  love.graphics.setColor(1, 1, 1, 1)
+  -- love.graphics.setColor({ 0, 0, 1, 1})
+  -- love.graphics.rectangle("line", areas.playDeskArea.x, areas.playDeskArea.y, areas.playDeskArea.w, areas.playDeskArea.h)
+  -- love.graphics.setColor(1, 1, 1, 1)
+  -- love.graphics.setColor({1, 0, 0, 1})
+  -- love.graphics.rectangle("line", areas.discardDeskArea.x, areas.discardDeskArea.y, areas.discardDeskArea.w, areas.discardDeskArea.h)
+  -- love.graphics.setColor(1, 1, 1, 1)
 
   -- love.graphics.setColor(p.color)
   -- love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
@@ -417,8 +417,8 @@ function areas.drawStatic()
   -- love.graphics.setColor(1, 1, 1, 1)
 
   local po = areas.pool
-  love.graphics.setColor(0.5, 0.5, 0.5, 1)
-  love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
+  -- love.graphics.setColor(0.5, 0.5, 0.5, 1)
+  -- love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
   love.graphics.setColor(1, 1, 1, 1)
   if ramTokenAsset then
     for _, chip in ipairs(po.chips) do

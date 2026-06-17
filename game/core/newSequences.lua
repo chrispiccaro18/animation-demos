@@ -1,11 +1,14 @@
 local events        = require("lib.events")
-local barParticles  = require("core.barParticles")
+local particles     = require("core.particles")
 local areas       = require("core.areas")
 local Token       = require("core.token")
 local Color = require("lib.color")
 local Camera = require("core.camera")
 local laser = require("core.laser")
 local Dtor  = require("core.dtor")
+
+local COUNT_MIN = 10
+local COUNT_MAX = 20
 
 local sequences = {}
 
@@ -47,22 +50,40 @@ local function terminalEvent(tokenType)
       fn = function()
         print("terminal event for token type", tokenType)
         if tokenType == "progress" then
-          token:triggerPop(token.scale * 2.5, 0.35)
           areas.progressBar.count = math.min(areas.progressBar.count + 1, 10)
           areas.triggerBarPop(areas.progressBar)
           local pb = areas.progressBar
           local pbCount = math.floor(8 + 12 * (pb.count / pb.max))
-          barParticles.emit(pb, "progress")
-          barParticles.emitAt(areas.progressDestination.x, areas.progressDestination.y, "progress", pbCount)
+          particles.emit("progress", areas.progressDestination.x, areas.progressDestination.y, pbCount, {
+            lifetimeMin   = 0.25,
+            lifetimeMax   = 0.5,
+            speed = 1000
+          })
+          token:triggerPop(token.scale * 2.5, 0.35, function()
+            particles.emit("progress", areas.progressDestination.x, areas.progressDestination.y, pbCount)
+          end)
+          local pbSegIdx   = pb.count - 1
+          local pbCx       = pb.x + pbSegIdx * pb.gapX + pb.w / 2
+          -- local pbBarCount = math.floor(COUNT_MIN + (COUNT_MAX - COUNT_MIN) * (pb.count / pb.max))
+          -- particles.emit("progress", pbCx, pb.y + pb.h / 2, pbBarCount)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "threat" then
-          token:triggerPop(token.scale * 2.5, 0.35)
           areas.threatBar.count = math.min(areas.threatBar.count + 1, 10)
           areas.triggerBarPop(areas.threatBar)
           local tb = areas.threatBar
           local tbCount = math.floor(8 + 12 * (tb.count / tb.max))
-          barParticles.emit(tb, "threat")
-          barParticles.emitAt(areas.threatDestination.x, areas.threatDestination.y, "threat", tbCount)
+          particles.emit("threat", areas.threatDestination.x, areas.threatDestination.y, tbCount, {
+            lifetimeMin   = 0.25,
+            lifetimeMax   = 0.5,
+            speed = 1000
+          })
+          token:triggerPop(token.scale * 2.5, 0.35, function()
+            particles.emit("threat", areas.threatDestination.x, areas.threatDestination.y, tbCount)
+          end)
+          local tbSegIdx   = tb.count - 1
+          local tbCx       = tb.x + tbSegIdx * tb.gapX + tb.w / 2
+          -- local tbBarCount = math.floor(COUNT_MIN + (COUNT_MAX - COUNT_MIN) * (tb.count / tb.max))
+          -- particles.emit("threat", tbCx, tb.y + tb.h / 2, tbBarCount)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "nullify" then
           token._remove = true
