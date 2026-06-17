@@ -56,10 +56,12 @@ end
 
 function Deck:shuffle()
   local n = #self.cards
+
   for i = n, 2, -1 do
     local j = math.random(1, i)
     self.cards[i], self.cards[j] = self.cards[j], self.cards[i]
   end
+
 end
 
 --- Draw the visual card-back pile.

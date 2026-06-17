@@ -379,7 +379,7 @@ function sequences.discard(card, camera, hand)
   })
   events.push({
     fn = function()
-      -- Token.removeDone()
+      table.remove(hand.discardQueue, 1)
       Camera:setIdle()
       hand:remove(card)
     end,

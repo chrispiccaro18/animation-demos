@@ -1,8 +1,8 @@
 local sequences = require("core.newSequences")
+local events = require("lib.events")
 local areas     = require("core.areas")
 local Color  = require("lib.color")
 local Camera = require("core.camera")
-local events = require("lib.events")
 local laser  = require("core.laser")
 
 local Hand      = {}
@@ -71,11 +71,13 @@ end
 
 function Hand:unlockHand()
   for _, card in ipairs(self.cards) do
-    card.hover.can    = true
-    card.hover.is     = false
-    card.target.scale = card.scales.idle
-    card.drag.can     = true
-    card.drag.is      = false
+    if not card._excluded then
+      card.hover.can    = true
+      card.hover.is     = false
+      card.target.scale = card.scales.idle
+      card.drag.can     = true
+      card.drag.is      = false
+    end
   end
 end
 
@@ -167,6 +169,9 @@ function Hand:update(mouseX, mouseY)
     if card.drag.is and not love.mouse.isDown(1) then
       card.drag.is   = false
       card.drag.can  = true
+      card.hover.is  = false
+      card.hover.can = false
+      card.target.scale = card.scales.idle
       card._excluded = true
       self:layout()
       if areas.mouseInPlay(mouseX, mouseY) then
@@ -185,7 +190,14 @@ function Hand:update(mouseX, mouseY)
           card.hover.can = false
           card.hover.is  = false
           card.drag.can  = false
-          sequences.play(card, Camera, self)
+          card.target.scale = card.scales.hover
+
+          events.push({
+            fn = function()
+            sequences.play(card, Camera, self)
+          end, blockable = true, blocking = true,
+          delay = 0.5, persistent = false, type = "after"
+        })
         end
       --   if #areas.pool.chips < 2 then
       --     screenshake.triggerH()
@@ -211,7 +223,17 @@ function Hand:update(mouseX, mouseY)
         card.hover.can = false
         card.hover.is  = false
         card.drag.can  = false
-        sequences.discard(card, Camera, self)
+        card.target.scale = self:discardQueueSize() > 1 and card.scales.idle or card.scales.hover
+        print("discard queue size: " .. self:discardQueueSize())
+
+        events.push({
+          fn = function()
+            sequences.discard(card, Camera, self)
+            -- table.remove(self.discardQueue, 1)
+          end, blockable = true, blocking = true,
+          delay = 1.0, persistent = false, type = "after"
+        })
+        -- sequences.discard(card, Camera, self)
         -- table.insert(self.discardQueue, card)
         -- -- c._excluded = true
         -- -- self:layout()

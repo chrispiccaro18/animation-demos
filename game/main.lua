@@ -86,43 +86,11 @@ local function resetGame()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
   sequences.setDeck(deck)
 
-  for _ = 1, 2 do
+  for _, cardData in pairs(CardData.cards) do
     local card = Card.new(
       love.graphics.getWidth() / 2,
       love.graphics.getHeight() / 2,
-      CardData.cards.card1
-    )
-    deck:add(card)
-  end
-  for _ = 1, 2 do
-    local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
-      CardData.cards.card2
-    )
-    deck:add(card)
-  end
-  for _ = 1, 2 do
-    local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
-      CardData.cards.card3
-    )
-    deck:add(card)
-  end
-  for _ = 1, 2 do
-    local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
-      CardData.cards.card4
-    )
-    deck:add(card)
-  end
-  for _ = 1, 2 do
-    local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
-      CardData.cards.card5
+      cardData
     )
     deck:add(card)
   end
@@ -137,6 +105,9 @@ end
 
 function love.load()
   https = runtimeLoader.loadHTTPS()
+  local seed = os.time()
+  math.randomseed(seed)
+
   AssetManifest.load()
 
   Token.load()
