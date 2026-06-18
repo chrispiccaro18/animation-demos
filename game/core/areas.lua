@@ -1,167 +1,164 @@
 local AssetManifest = require("assets.manifest")
-local animation         = require("lib.animation")
+local animation     = require("lib.animation")
 
-local W                 = SCALE_X * 3840
-local H                 = SCALE_Y * 2160
+local areas = {}
 
-local areas             = {}
+-- Scale-independent state; safe to initialize at module level
+areas.message = { text = "", subtitle = "", textColor = { 1, 1, 1, 1 }, subtitleColor = { 1, 1, 1, 0.7 }, current = { scale = 1 }, target = { scale = 1 } }
 
-local playDiscardGap = 250 * SCALE_X
-
-areas.play              = {
-  x = 1,
-  y = 1,
-  w = W / 2 - playDiscardGap,
-  h = H * 0.6,
-  color = { 0.5, 0.5, 0.5, 1 },
-  slotText = "",
-}
-
-areas.discard           = {
-  x        = W / 2 + playDiscardGap,
-  startY   = 1,
-  w        = W / 2 - playDiscardGap,
-  h        = H * 0.6,
-  color    = { 0.5, 0.5, 0.5, 1 },
-  slotText = "",
-  current  = { y = 1 },
-  target   = { y = 1 },
-}
-
-areas.progressDestination = {
-  x = 436 * SCALE_X,
-  y = 142 * SCALE_Y,
-}
-
-areas.threatDestination = {
-  x = 3333 * SCALE_X,
-  y = 142 * SCALE_Y,
-}
-
-areas.desk = {
-  x = 241 * SCALE_X,
-  y = 305 * SCALE_Y,
-  w = 3268 * SCALE_X,
-  h = 1684 * SCALE_Y,
-}
-
-areas.progressBar = {
-  x = 873 * SCALE_X,
-  y = 73 * SCALE_Y,
-  w = 38 * SCALE_X,
-  h = 138 * SCALE_Y,
-  gapX = 64 * SCALE_X,
-  asset = nil,
-  count = 9,
-  max = 10,
-  popScale = 1.0,
-  textArea = {
-    x = 522 * SCALE_X,
-    y = 120 * SCALE_Y,
-    w = 291 * SCALE_X,
-    h = 66 * SCALE_Y,
-    value = ""
-  },
-}
-
-areas.threatBar = {
-  x = 2320 * SCALE_X,
-  y = 73 * SCALE_Y,
-  w = 38 * SCALE_X,
-  h = 138 * SCALE_Y,
-  gapX = 64 * SCALE_X,
-  asset = nil,
-  count = 9,
-  max = 10,
-  popScale = 1.0,
-  textArea = {
-    x = 2997 * SCALE_X,
-    y = 110 * SCALE_Y,
-    w = 291 * SCALE_X,
-    h = 66 * SCALE_Y,
-    value = ""
-  },
-}
-
-
-areas.endTurn           = {
-  x = 3136 * SCALE_X,
-  y = 1732 * SCALE_Y,
-  w = 614 * SCALE_X,
-  h = 229 * SCALE_Y,
-  color = { 1, 0, 0, 1 },
-  baseAsset = nil,
-  hoverAsset = nil,
-  clickAsset = nil,
-  state = "idle", -- "idle", "hover", "click"
-  hover = {
-    can = true,
-    is = false,
-  },
-  click = {
-    can = false,
-    is = false,
-  },
-  frozen = false,
-}
-
-areas.pool              = {
-  x = 0,
-  y = 0,
-  w = playDiscardGap * 2,
-  h = 800 * SCALE_Y,
-  chips = {}
-}
-areas.message           = { text = "", subtitle = "", textColor = { 1, 1, 1, 1 }, subtitleColor = { 1, 1, 1, 0.7 }, current = { scale = 1 }, target = { scale = 1 } }
-
+-- Scale-dependent layout locals — computed in load() once SCALE_X/Y are final
+local W, H, playDiscardGap
 
 local endTurnAsset      = nil
 local endTurnHoverAsset = nil
 local endTurnClickAsset = nil
-
 local statFont          = nil
 local messageFont       = nil
-
-local ramTokenAsset        = nil
-
-local subtitleFont         = nil
+local ramTokenAsset     = nil
+local subtitleFont      = nil
 
 function areas.load()
+  W              = SCALE_X * 3840
+  H              = SCALE_Y * 2160
+  playDiscardGap = 250 * SCALE_X
+
+  areas.play = {
+    x        = 1,
+    y        = 1,
+    w        = W / 2 - playDiscardGap,
+    h        = H * 0.6,
+    color    = { 0.5, 0.5, 0.5, 1 },
+    slotText = "",
+  }
+
+  areas.discard = {
+    x        = W / 2 + playDiscardGap,
+    startY   = 1,
+    w        = W / 2 - playDiscardGap,
+    h        = H * 0.6,
+    color    = { 0.5, 0.5, 0.5, 1 },
+    slotText = "",
+    current  = { y = 1 },
+    target   = { y = 1 },
+  }
+
+  areas.progressDestination = {
+    x = 436 * SCALE_X,
+    y = 142 * SCALE_Y,
+  }
+
+  areas.threatDestination = {
+    x = 3333 * SCALE_X,
+    y = 142  * SCALE_Y,
+  }
+
+  areas.desk = {
+    x = 241  * SCALE_X,
+    y = 305  * SCALE_Y,
+    w = 3268 * SCALE_X,
+    h = 1684 * SCALE_Y,
+  }
+
+  areas.progressBar = {
+    x        = 873 * SCALE_X,
+    y        = 73  * SCALE_Y,
+    w        = 38  * SCALE_X,
+    h        = 138 * SCALE_Y,
+    gapX     = 64  * SCALE_X,
+    asset    = nil,
+    count    = 9,
+    max      = 10,
+    popScale = 1.0,
+    textArea = {
+      x     = 522 * SCALE_X,
+      y     = 120 * SCALE_Y,
+      w     = 291 * SCALE_X,
+      h     = 66  * SCALE_Y,
+      value = "",
+    },
+  }
+
+  areas.threatBar = {
+    x        = 2320 * SCALE_X,
+    y        = 73   * SCALE_Y,
+    w        = 38   * SCALE_X,
+    h        = 138  * SCALE_Y,
+    gapX     = 64   * SCALE_X,
+    asset    = nil,
+    count    = 9,
+    max      = 10,
+    popScale = 1.0,
+    textArea = {
+      x     = 2997 * SCALE_X,
+      y     = 110  * SCALE_Y,
+      w     = 291  * SCALE_X,
+      h     = 66   * SCALE_Y,
+      value = "",
+    },
+  }
+
+  areas.endTurn = {
+    x          = 3136 * SCALE_X,
+    y          = 1732 * SCALE_Y,
+    w          = 614  * SCALE_X,
+    h          = 229  * SCALE_Y,
+    color      = { 1, 0, 0, 1 },
+    baseAsset  = nil,
+    hoverAsset = nil,
+    clickAsset = nil,
+    state      = "idle",
+    hover      = { can = true,  is = false },
+    click      = { can = false, is = false },
+    frozen     = false,
+  }
+
+  areas.pool = {
+    x     = 0,
+    y     = 0,
+    w     = playDiscardGap * 2,
+    h     = 800 * SCALE_Y,
+    chips = {},
+  }
+
   endTurnAsset             = AssetManifest.get("endTurn", "idle")
   endTurnHoverAsset        = AssetManifest.get("endTurn", "hover")
   endTurnClickAsset        = AssetManifest.get("endTurn", "down")
 
-  areas.progressBar.asset = AssetManifest.get("ticks", "progress")
-  areas.threatBar.asset = AssetManifest.get("ticks", "threat")
-  ramTokenAsset              = AssetManifest.get("tokens", "ram")
+  areas.progressBar.asset  = AssetManifest.get("ticks", "progress")
+  areas.threatBar.asset    = AssetManifest.get("ticks", "threat")
+  ramTokenAsset            = AssetManifest.get("tokens", "ram")
 
   areas.endTurn.baseAsset  = endTurnAsset
   areas.endTurn.hoverAsset = endTurnHoverAsset
   areas.endTurn.clickAsset = endTurnClickAsset
 
-  statFont                 = AssetManifest.getFont(72)
-  messageFont              = AssetManifest.getFont(240)
-  subtitleFont             = AssetManifest.getFont(120)
+  statFont     = AssetManifest.getFont(72)
+  messageFont  = AssetManifest.getFont(240)
+  subtitleFont = AssetManifest.getFont(120)
 
   local dk = areas.desk
   areas.scanner = {
     left = {
-      x1 = dk.x, x2 = dk.x + dk.w / 2,
-      y = dk.y, direction = 1,
-      speed = 3000 * SCALE_Y,
-      active = false,
-      color = { 0, 1, 0.4 },
+      x1          = dk.x,
+      x2          = dk.x + dk.w / 2,
+      y           = dk.y,
+      direction   = 1,
+      speed       = 3000 * SCALE_Y,
+      active      = false,
+      color       = { 0, 1, 0.4 },
       trailLength = 1000 * SCALE_Y,
-      segments = 48,
+      segments    = 48,
     },
     right = {
-      x1 = dk.x + dk.w / 2, x2 = dk.x + dk.w,
-      y = dk.y, direction = 1,
-      speed = 3000 * SCALE_Y,
-      active = false,
-      color = { 1, 0.2, 0.2 },
+      x1          = dk.x + dk.w / 2,
+      x2          = dk.x + dk.w,
+      y           = dk.y,
+      direction   = 1,
+      speed       = 3000 * SCALE_Y,
+      active      = false,
+      color       = { 1, 0.2, 0.2 },
       trailLength = 1000 * SCALE_Y,
-      segments = 48,
+      segments    = 48,
     },
   }
 
@@ -179,8 +176,8 @@ function areas.load()
     h = areas.desk.h * 0.4,
   }
 
-  areas.pool.x       = (W - areas.pool.w) / 2
-  areas.pool.y       = 500 * SCALE_Y
+  areas.pool.x = (W - areas.pool.w) / 2
+  areas.pool.y = 500 * SCALE_Y
 end
 
 function areas.addPoolChip(x, y)
@@ -262,7 +259,6 @@ function areas.updateEndTurn(dt, mouseX, mouseY)
       et.hover.can = true
       et.frozen = true
       return true
-      -- sequences.endTurn()
     elseif not love.mouse.isDown(1) and et.hover.can then
       et.state = "hover"
       et.hover.is = true
@@ -329,8 +325,6 @@ end
 
 -- Draw helpers
 function areas.drawStatic()
-  local p = areas.play
-  local d = areas.discard
   local et = areas.endTurn
 
   love.graphics.setColor(1, 1, 1, 1)
@@ -402,23 +396,7 @@ function areas.drawStatic()
     love.graphics.setFont(prevFont)
   end
 
-  -- love.graphics.setColor({ 0, 0, 1, 1})
-  -- love.graphics.rectangle("line", areas.playDeskArea.x, areas.playDeskArea.y, areas.playDeskArea.w, areas.playDeskArea.h)
-  -- love.graphics.setColor(1, 1, 1, 1)
-  -- love.graphics.setColor({1, 0, 0, 1})
-  -- love.graphics.rectangle("line", areas.discardDeskArea.x, areas.discardDeskArea.y, areas.discardDeskArea.w, areas.discardDeskArea.h)
-  -- love.graphics.setColor(1, 1, 1, 1)
-
-  -- love.graphics.setColor(p.color)
-  -- love.graphics.rectangle("line", p.x, p.y, p.w, p.h)
-  -- love.graphics.setColor(1, 1, 1, 1)
-  -- love.graphics.setColor(d.color)
-  -- love.graphics.rectangle("line", d.x, d.startY, d.w, d.h)
-  -- love.graphics.setColor(1, 1, 1, 1)
-
   local po = areas.pool
-  -- love.graphics.setColor(0.5, 0.5, 0.5, 1)
-  -- love.graphics.rectangle("line", po.x, po.y, po.w, po.h)
   love.graphics.setColor(1, 1, 1, 1)
   if ramTokenAsset then
     for _, chip in ipairs(po.chips) do
@@ -435,8 +413,6 @@ function areas.drawStatic()
     end
   end
   love.graphics.setColor(1, 1, 1, 1)
-
-  -- love.graphics.rectangle("line", areas.desk.x, areas.desk.y, areas.desk.w, areas.desk.h)
 
   if messageFont and areas.message.text ~= "" then
     local msg      = areas.message

@@ -27,7 +27,7 @@ local TRAIL_PEAK_SPEED   = 1500  -- game px/s at which trail rate reaches full i
 
 local SPEED = 4000
 local TOP_SPEED = 20000
-local PULL_SPEED = 5000
+local PULL_SPEED = 10000
 local ACCEL = 5000
 
 local DEFAULT_DELAY = 0.2
@@ -465,7 +465,7 @@ function Token:_update_attract(dt)
     local ant_pause = self.ant_pause or 0
     if self.elapsed < ant_dur then
         local phase = self.elapsed / ant_dur
-        local pull_speed = PULL_SPEED * 0.15 * (1 - phase * phase)
+        local pull_speed = (PULL_SPEED * SCALE_X) * 0.15 * (1 - phase * phase)
         local nx = dx / dist
         local ny = dy / dist
         self.x = self.x - nx * pull_speed * dt

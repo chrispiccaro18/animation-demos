@@ -1,6 +1,6 @@
 https = nil
-SCALE_X = love.graphics.getWidth() / 3840
-SCALE_Y = love.graphics.getHeight() / 2160
+SCALE_X = 0
+SCALE_Y = 0
 local overlayStats   = require("lib.overlayStats")
 local speedControl   = require("lib.speedControl")
 local runtimeLoader = require("runtime.loader")
@@ -50,6 +50,8 @@ local function updateViewport()
   viewScale = math.min(sw / canvasW, sh / canvasH)
   viewX = math.floor((sw - canvasW * viewScale) / 2)
   viewY = math.floor((sh - canvasH * viewScale) / 2)
+  print("Viewport updated: viewX=" .. viewX .. ", viewY=" .. viewY .. ", viewScale=" .. viewScale)
+  print("Window size: width=" .. love.graphics.getWidth() .. ", height=" .. love.graphics.getHeight())
 end
 
 local function toGame(x, y)
@@ -88,8 +90,8 @@ local function resetGame()
 
   for _, cardData in pairs(CardData.cards) do
     local card = Card.new(
-      love.graphics.getWidth() / 2,
-      love.graphics.getHeight() / 2,
+      canvasW / 2,
+      canvasH / 2,
       cardData
     )
     deck:add(card)
@@ -104,6 +106,15 @@ local function resetGame()
 end
 
 function love.load()
+  local s = math.min(love.graphics.getWidth() / 1920, love.graphics.getHeight() / 1080, 1.0)
+  canvasW = math.floor(1920 * s / 2) * 2
+  canvasH = math.floor(1080 * s / 2) * 2
+  SCALE_X = canvasW / 3840
+  SCALE_Y = canvasH / 2160
+  print(string.format("Canvas: %dx%d  SCALE: %.4f,%.4f  Window: %dx%d",
+    canvasW, canvasH, SCALE_X, SCALE_Y,
+    love.graphics.getWidth(), love.graphics.getHeight()))
+
   https = runtimeLoader.loadHTTPS()
   local seed = os.time()
   math.randomseed(seed)
@@ -122,6 +133,10 @@ function love.load()
   dissolveShader = love.graphics.newShader("assets/dissolve.fs")
   tiltShader = love.graphics.newShader("assets/tilt.fs")
 
+  if love.system.getOS() == "Web" and canvasW < 720 then
+   tiltShader = nil
+  end
+
   Card.load(dissolveShader, tiltShader)
   areas.load()
   particles.load()
@@ -132,9 +147,9 @@ function love.load()
   events.loadAll()
   overlayStats.load()
   speedControl.load()
-  canvasW    = love.graphics.getWidth()
-  canvasH    = love.graphics.getHeight()
+
   gameCanvas = love.graphics.newCanvas(canvasW, canvasH)
+  overlayStats.setGameCanvas(gameCanvas)
   updateViewport()
   resetGame()
 end
@@ -215,8 +230,8 @@ function love.update(dt)
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
-  if speedControl.mousepressed(x, y, button) then return end
   local gx, gy = toGame(x, y)
+  if speedControl.mousepressed(gx, gy, button) then return end
   hand:mousepressed(gx, gy, button)
 end
 

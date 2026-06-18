@@ -6,6 +6,7 @@
 local name, version, vendor, device = love.graphics.getRendererInfo()
 local overlayStats = {
   isActive = false,
+  gameCanvas = nil,
   sampleSize = 60,
   vsyncEnabled = nil,
   lastControllerCheck = 0,
@@ -166,9 +167,17 @@ end
 
 -- Public API
 
+-- Font and scale set in load() once canvas size is known
+local _font = nil
+local _s    = 1  -- overlay scale: canvasH / 1080
+
 ---Initializes the overlay stats module
 ---@return nil
 function overlayStats.load()
+  -- Scale overlay to canvas height so it's readable at any resolution
+  _s    = math.max(SCALE_Y * 2, 0.5)   -- SCALE_Y*2 = canvasH/1080; floor at 50%
+  _font = love.graphics.newFont(math.max(math.floor(16 * _s), 8))
+
   -- Initialize moving averages
   for k, _ in pairs(overlayStats.metrics) do
     overlayStats.metrics[k] = {}
@@ -191,119 +200,76 @@ function overlayStats.draw()
 
   local averages = getAverages()
 
-  -- Set up overlay drawing
   love.graphics.push("all")
-  local font = love.graphics.setNewFont(16)
+  love.graphics.setFont(_font)
 
-  -- Calculate dynamic width based on renderer version and other content
-  local padding = 20    -- 10px padding on each side
-  local baseWidth = 280 -- Minimum width
+  local lh  = math.floor(20 * _s)   -- normal line height
+  local lhL = math.floor(30 * _s)   -- large gap (section breaks)
+  local ox  = math.floor(10 * _s)   -- left/top margin of box
+  local tx  = math.floor(20 * _s)   -- text x
+  local padding = math.floor(20 * _s)
+  local baseWidth = math.floor(280 * _s)
 
-  -- Check width needed for the renderer version text
-  local versionTextWidth = font:getWidth(string.format("%s", overlayStats.renderInfo.version))
-  local rendererInfoWidth = font:getWidth(
+  -- Calculate dynamic width
+  local versionTextWidth  = _font:getWidth(string.format("%s", overlayStats.renderInfo.version))
+  local rendererInfoWidth = _font:getWidth(
     string.format("Renderer: %s (%s)", overlayStats.renderInfo.name, overlayStats.renderInfo.vendor)
   )
-  local systemInfoWidth = font:getWidth(
+  local systemInfoWidth = _font:getWidth(
     overlayStats.sysInfo.os .. " " .. overlayStats.sysInfo.arch .. ": " .. overlayStats.sysInfo.cpuCount .. "x CPU"
   )
+  local rectW = math.max(versionTextWidth, rendererInfoWidth, systemInfoWidth, baseWidth) + padding
 
-  -- Calculate rectangle width based on the widest content
-  local contentWidth = math.max(versionTextWidth, rendererInfoWidth, systemInfoWidth, baseWidth)
-  local rectangleWidth = contentWidth + padding
+  -- First pass: count total height so the background rect is sized correctly
+  local totalLines = 18  -- number of print() calls below
+  local totalH = lh * totalLines + lhL * 3 + lh  -- approximate; +padding
+  totalH = totalH + math.floor(20 * _s)
 
-  -- Update the overlay area dimensions for touch detection
-  overlayStats.touch.overlayArea = {
-    x = 10,
-    y = 10,
-    width = rectangleWidth,
-    height = 340
-  }
-
-  -- Draw background rectangle with dynamic width
+  overlayStats.touch.overlayArea = { x = ox, y = ox, width = rectW, height = totalH }
   love.graphics.setColor(0, 0, 0, 0.8)
-  love.graphics.rectangle("fill", 10, 10, rectangleWidth, 340)
+  love.graphics.rectangle("fill", ox, ox, rectW, totalH)
+
+  local y = math.floor(20 * _s)
+
+  -- Display / viewport info
+  local winW, winH = love.graphics.getDimensions()
+  local dpiScale = love.window.getDPIScale()
+  love.graphics.setColor(1, 1, 0.4, 1)
+  love.graphics.print(string.format("Window: %dx%d", winW, winH), tx, y);                                                               y = y + lh
+  love.graphics.print(string.format("Physical: %dx%d  DPI: %.2f", math.floor(winW * dpiScale), math.floor(winH * dpiScale), dpiScale), tx, y); y = y + lh
+  local gc = overlayStats.gameCanvas
+  love.graphics.print(gc and string.format("Canvas: %dx%d", gc:getWidth(), gc:getHeight()) or "Canvas: none", tx, y)
+  y = y + lhL
+
+  -- System info
   love.graphics.setColor(0.678, 0.847, 0.902, 1)
-
-  -- System Info
-  local y = 20
-  love.graphics.print(
-    overlayStats.sysInfo.os .. " " .. overlayStats.sysInfo.arch .. ": " .. overlayStats.sysInfo.cpuCount .. "x CPU",
-    20,
-    y
-  )
-  y = y + 30
-
+  love.graphics.print(overlayStats.sysInfo.os .. " " .. overlayStats.sysInfo.arch .. ": " .. overlayStats.sysInfo.cpuCount .. "x CPU", tx, y); y = y + lhL
   love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.print(
-    string.format("Renderer: %s (%s)", overlayStats.renderInfo.name, overlayStats.renderInfo.vendor),
-    20,
-    y
-  )
-  y = y + 20
+  love.graphics.print(string.format("Renderer: %s (%s)", overlayStats.renderInfo.name, overlayStats.renderInfo.vendor), tx, y); y = y + lh
+  love.graphics.print(string.format("%s", overlayStats.renderInfo.version), tx, y);                                                      y = y + lhL
 
-  love.graphics.print(string.format("%s", overlayStats.renderInfo.version), 20, y)
-  y = y + 30
-
-  -- Safely handle frameTime with nil/zero checks
-  love.graphics.setColor(0, 1, 0, 1)
+  -- Performance
+  local stats = love.graphics.getStats()
   local frameTime = averages.frameTime or 0
   local fps = frameTime > 0 and (1 / frameTime) or 0
-  love.graphics.print(string.format("FPS: %.1f (%.1fms)", fps, frameTime * 1000), 20, y)
-  y = y + 20
+  love.graphics.setColor(0, 1, 0, 1)
+  love.graphics.print(string.format("FPS: %.1f (%.1fms)", fps, frameTime * 1000), tx, y);                                               y = y + lh
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.print(string.format("Draw Calls: %d (%d batched)", stats.drawcalls, stats.drawcallsbatched), tx, y);                    y = y + lh
+  love.graphics.print(string.format("Shader Switches: %d", stats.shaderswitches), tx, y);                                               y = y + lh
+  love.graphics.print(string.format("Canvas Switches: %d", stats.canvasswitches), tx, y);                                               y = y + lh
+  love.graphics.print(string.format("Canvases: %d", stats.canvases), tx, y);                                                            y = y + lh
+  love.graphics.print(string.format("RAM: %.1f MB", averages.memoryUsage / 1024), tx, y);                                               y = y + lh
+  love.graphics.print(string.format("VRAM: %.1f MB", stats.texturememory / (1024 * 1024)), tx, y);                                      y = y + lh
+  love.graphics.print(string.format("Images: %d", stats.images), tx, y);                                                                y = y + lh
+  love.graphics.print(string.format("Particles: %d", math.floor(averages.particleCount or 0)), tx, y);                                  y = y + lh
 
-  -- Reset canvases each frame
-  local currentCanvases = love.graphics.getStats().canvases
-  love.graphics.print(string.format("Canvases: %d", currentCanvases), 20, y)
-  y = y + 20
-
-  -- Reset canvas switches each frame
-  local currentCanvasSwitches = love.graphics.getStats().canvasswitches
-  love.graphics.print(string.format("Canvas Switches: %d", currentCanvasSwitches), 20, y)
-  y = y + 20
-
-  -- Reset shader switches each frame
-  local currentShaderSwitches = love.graphics.getStats().shaderswitches
-  love.graphics.print(string.format("Shader Switches: %d", currentShaderSwitches), 20, y)
-  y = y + 20
-
-  -- Reset draw calls each frame
-  local currentDrawCalls = love.graphics.getStats().drawcalls
-  local currentDrawCallsBatched = love.graphics.getStats().drawcallsbatched
-  love.graphics.print(string.format("Draw Calls: %d (%d batched)", currentDrawCalls, currentDrawCallsBatched), 20, y)
-  y = y + 20
-
-  love.graphics.print(string.format("RAM: %.1f MB", averages.memoryUsage / 1024), 20, y)
-  y = y + 20
-
-  -- Reset texture memory usage  each frame
-  local currentTextureMemory = love.graphics.getStats().texturememory / (1024 * 1024)
-  love.graphics.print(string.format("VRAM: %.1f MB", currentTextureMemory), 20, y)
-  y = y + 20
-
-  -- Reset images each frame
-  local currentImages = love.graphics.getStats().images
-  love.graphics.print(string.format("Images: %d", currentImages), 20, y)
-  y = y + 20
-
-  -- Display particle count
-  local currentParticleCount = averages.particleCount or 0
-  love.graphics.print(string.format("Particles: %d", math.floor(currentParticleCount)), 20, y)
-  y = y + 20
-
-  -- Add GLSL 3 support indicator
-  love.graphics.setColor(overlayStats.supportedFeatures.glsl3 and { 0, 1, 0, 1 } or { 1, 0, 0, 1 })
-  love.graphics.print(string.format("GLSL 3: %s", overlayStats.supportedFeatures.glsl3 and "Yes" or "No"), 20, y)
-  y = y + 20
-
-  -- Add pixel shader highp support indicator
-  love.graphics.setColor(overlayStats.supportedFeatures.pixelShaderHighp and { 0, 1, 0, 1 } or { 1, 0, 0, 1 })
-  love.graphics.print(string.format("Pixel Shader highp: %s", overlayStats.supportedFeatures.pixelShaderHighp and "Yes" or "No"), 20, y)
-  y = y + 20
-
-  -- Add VSync status with color indication
-  love.graphics.setColor(overlayStats.vsyncEnabled and { 0, 1, 0, 1 } or { 1, 0, 0, 1 })
-  love.graphics.print(string.format("VSync: %s", overlayStats.vsyncEnabled and "ON" or "OFF"), 20, y)
+  love.graphics.setColor(overlayStats.supportedFeatures.glsl3 and {0,1,0,1} or {1,0,0,1})
+  love.graphics.print(string.format("GLSL 3: %s", overlayStats.supportedFeatures.glsl3 and "Yes" or "No"), tx, y);                     y = y + lh
+  love.graphics.setColor(overlayStats.supportedFeatures.pixelShaderHighp and {0,1,0,1} or {1,0,0,1})
+  love.graphics.print(string.format("Pixel Shader highp: %s", overlayStats.supportedFeatures.pixelShaderHighp and "Yes" or "No"), tx, y); y = y + lh
+  love.graphics.setColor(overlayStats.vsyncEnabled and {0,1,0,1} or {1,0,0,1})
+  love.graphics.print(string.format("VSync: %s", overlayStats.vsyncEnabled and "ON" or "OFF"), tx, y)
 
   love.graphics.pop()
 end
@@ -379,6 +345,13 @@ end
 ---@return nil
 function overlayStats.unregisterParticleSystem(particleSystem)
   overlayStats.particleSystems[particleSystem] = nil
+end
+
+---Set the main game canvas to display its dimensions in the overlay
+---@param canvas love.Canvas The game canvas
+---@return nil
+function overlayStats.setGameCanvas(canvas)
+  overlayStats.gameCanvas = canvas
 end
 
 return overlayStats

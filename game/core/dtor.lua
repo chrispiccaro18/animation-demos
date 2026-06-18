@@ -3,20 +3,10 @@ local Token     = require("core.token")
 local animation = require("lib.animation")
 local Color = require("lib.color")
 
-local W = SCALE_X * 3840
-local H = SCALE_Y * 2160
-
 local Dtor = {}
 
--- Public: position + slot state (replaces areas.dtorQueue)
-Dtor.area = {
-  x        = 3194 * W / 3840,
-  y        = 639  * H / 2160,
-  w        = 494  * W / 3840,
-  h        = 1088 * H / 2160,
-  maxSlots = 6,
-  slots    = {},
-}
+-- Public: position + slot state — initialized in Dtor.load()
+Dtor.area = {}
 
 local _queue            = {}
 local _transitCard      = nil
@@ -25,15 +15,8 @@ local _emptyNullifySlot = nil
 local _tokenAssets      = {}
 local _font             = nil
 
-local _text = {
-  x           = 2176 * W / 3840,
-  y           = 448  * H / 2160,
-  w           = 1095 * W / 3840,
-  h           = 80   * H / 2160,
-  content     = "",
-  alpha       = 0,
-  targetAlpha = 0,
-}
+-- Layout initialized in Dtor.load()
+local _text = {}
 
 ------------------------------------------------------------------------
 -- Private: rebuild text from the current top queue entry
@@ -72,6 +55,23 @@ end
 ------------------------------------------------------------------------
 
 function Dtor.load()
+  Dtor.area = {
+    x        = 3194 * SCALE_X,
+    y        = 639  * SCALE_Y,
+    w        = 494  * SCALE_X,
+    h        = 1088 * SCALE_Y,
+    maxSlots = 6,
+    slots    = {},
+  }
+  _text = {
+    x           = 2176 * SCALE_X,
+    y           = 448  * SCALE_Y,
+    w           = 1095 * SCALE_X,
+    h           = 80   * SCALE_Y,
+    content     = "",
+    alpha       = 0,
+    targetAlpha = 0,
+  }
   for i = 1, Dtor.area.maxSlots do
     Dtor.area.slots[i] = { occupied = false, reserved = false, nullified = false }
   end

@@ -15,7 +15,6 @@ local sequences = {}
 local _deck = nil
 function sequences.setDeck(d) _deck = d end
 
-local deskFullRect = areas.desk
 
 local function discardFlingOptions()
   return {
@@ -310,9 +309,9 @@ function sequences.discard(card, camera, hand)
       camera:setColor(Color("#D56E6E"))
       laser.hide()
       card:startDissolve()
-      card:flingZone("bottomEnergy", deskFullRect, discardFlingOptions())
-      card:flingZone("discardEffect",  deskFullRect, discardFlingOptions())
-      card:flingZone("dtorEffect",     deskFullRect, discardFlingOptions())
+      card:flingZone("bottomEnergy", areas.desk, discardFlingOptions())
+      card:flingZone("discardEffect",  areas.desk, discardFlingOptions())
+      card:flingZone("dtorEffect",     areas.desk, discardFlingOptions())
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"
@@ -509,7 +508,7 @@ function sequences.play(card, camera, hand)
   events.push({
     fn = function()
       card:clearZone("topEnergyHoles")
-      card:flingZone("playEffect", deskFullRect, playFlingOptions())
+      card:flingZone("playEffect", areas.desk, playFlingOptions())
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "after"
@@ -639,7 +638,7 @@ function sequences.endTurn(hand)
       else
         local sx, sy = Dtor.getTextCenter()
         for _, effect in ipairs(card.data.dtor or {}) do
-          Token.new_fling(sx, sy, deskFullRect, endTurnFlingOptions(effect.type))
+          Token.new_fling(sx, sy, areas.desk, endTurnFlingOptions(effect.type))
         end
         Dtor.popEntry()
         local idx   = slotIndices[1]
