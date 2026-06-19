@@ -10,6 +10,7 @@ local Card   = require("core.card")
 -- local Hand   = require("core.hand")
 local NewHand   = require("core.newHand")
 local config       = require("lib.config")
+local message      = require("core.message")
 local sequences    = require("core.newSequences")
 local actionQueue  = require("core.actionQueue")
 local Deck         = require("core.deck")
@@ -81,9 +82,11 @@ local function resetGame()
   areas.scanner.right.active = false
   areas.scanner.right.y = areas.desk.y
   areas.pool.chips = {}
-  areas.message.text = ""
-  areas.message.subtitle = ""
-  areas.message.textColor = { 1, 1, 1, 1 }
+  message.text         = ""
+  message.subtitle     = ""
+  message.textColor    = { 1, 1, 1, 1 }
+  message.current      = { scale = 1 }
+  message.target       = { scale = 1 }
   gameOver = nil
 
   hand = NewHand.new()
@@ -141,6 +144,7 @@ function love.load()
 
   Card.load(dissolveShader, tiltShader)
   areas.load()
+  message.load()
   particles.load()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
   sequences.setDeck(deck)
@@ -187,6 +191,7 @@ function love.draw()
   hand:draw()
   Token.drawAll()
   areas.drawScanners()
+  message.draw()
   love.graphics.pop()
 
   overlayStats.draw()
@@ -208,7 +213,7 @@ function love.update(dt)
   end
   screenshake.update(realDt)
   overlayStats.update(dt)
-  areas.updateMessage(realDt)
+  message.update(realDt)
   areas.updateBars(realDt)
   particles.update(realDt)
   if gameOver then return end

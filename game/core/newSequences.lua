@@ -1,7 +1,8 @@
 local events        = require("lib.events")
 local particles     = require("core.particles")
-local areas       = require("core.areas")
-local Token       = require("core.token")
+local areas         = require("core.areas")
+local message       = require("core.message")
+local Token         = require("core.token")
 local Color = require("lib.color")
 local Camera = require("core.camera")
 local laser = require("core.laser")
@@ -91,16 +92,16 @@ local function terminalEvent(tokenType)
         end
         if areas.progressBar.count >= areas.progressBar.max then
           gameOver = "win"
-          areas.message.text = "SUCCESS"
-          areas.message.subtitle = "Press R to reset"
-          areas.message.textColor = { 0.4, 1, 0.6, 1 }
-          areas.message.current.scale = 6
+          message.text          = "SUCCESS"
+          message.subtitle      = "Press R to reset"
+          message.textColor     = { 0.4, 1, 0.6, 1 }
+          message.current.scale = 6
         elseif areas.threatBar.count >= areas.threatBar.max then
           gameOver = "loss"
-          areas.message.text = "FAILURE"
-          areas.message.subtitle = "Press R to reset"
-          areas.message.current.scale = 6
-          areas.message.textColor = { 1, 0.3, 0.3, 1 }
+          message.text          = "FAILURE"
+          message.subtitle      = "Press R to reset"
+          message.current.scale = 6
+          message.textColor     = { 1, 0.3, 0.3, 1 }
         end
       end,
       blocking = true, blockable = true, persistent = false,

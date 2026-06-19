@@ -3,9 +3,6 @@ local animation     = require("lib.animation")
 
 local areas = {}
 
--- Scale-independent state; safe to initialize at module level
-areas.message = { text = "", subtitle = "", textColor = { 1, 1, 1, 1 }, subtitleColor = { 1, 1, 1, 0.7 }, current = { scale = 1 }, target = { scale = 1 } }
-
 -- Scale-dependent layout locals — computed in load() once SCALE_X/Y are final
 local W, H, playDiscardGap
 
@@ -13,9 +10,7 @@ local endTurnAsset      = nil
 local endTurnHoverAsset = nil
 local endTurnClickAsset = nil
 local statFont          = nil
-local messageFont       = nil
 local ramTokenAsset     = nil
-local subtitleFont      = nil
 
 function areas.load()
   W              = SCALE_X * 3840
@@ -133,8 +128,6 @@ function areas.load()
   areas.endTurn.clickAsset = endTurnClickAsset
 
   statFont     = AssetManifest.getFont(72)
-  messageFont  = AssetManifest.getFont(240)
-  subtitleFont = AssetManifest.getFont(120)
 
   local dk = areas.desk
   areas.scanner = {
@@ -276,11 +269,6 @@ function areas.updateEndTurn(dt, mouseX, mouseY)
   end
 end
 
-function areas.updateMessage(dt)
-  local msg = areas.message
-  msg.current.scale = animation.expDecay(msg.current.scale, msg.target.scale, 18, dt)
-end
-
 function areas.triggerBarPop(bar)
   local peak = 1.0 + 0.6 * (bar.count / bar.max)
   bar.popScale = peak
@@ -413,29 +401,6 @@ function areas.drawStatic()
     end
   end
   love.graphics.setColor(1, 1, 1, 1)
-
-  if messageFont and areas.message.text ~= "" then
-    local msg      = areas.message
-    local s        = msg.current.scale
-    local prevFont = love.graphics.getFont()
-    love.graphics.setFont(messageFont)
-    local textW = messageFont:getWidth(msg.text)
-    local textH = messageFont:getHeight()
-    love.graphics.push()
-    love.graphics.translate(W / 2, H / 2)
-    love.graphics.scale(s, s)
-    love.graphics.setColor(msg.textColor)
-    love.graphics.print(msg.text, -textW / 2, -textH / 2)
-    if subtitleFont and msg.subtitle ~= "" then
-      love.graphics.setFont(subtitleFont)
-      local subW = subtitleFont:getWidth(msg.subtitle)
-      love.graphics.setColor(msg.subtitleColor)
-      love.graphics.print(msg.subtitle, -subW / 2, textH / 2 + 20)
-    end
-    love.graphics.pop()
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.setFont(prevFont)
-  end
 end
 
 
