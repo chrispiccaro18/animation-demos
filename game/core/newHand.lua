@@ -1,15 +1,16 @@
-local sequences = require("core.newSequences")
-local events = require("lib.events")
-local areas     = require("core.areas")
-local Color  = require("lib.color")
-local Camera = require("core.camera")
-local laser  = require("core.laser")
+local sequences   = require("core.newSequences")
+local events      = require("lib.events")
+local areas       = require("core.areas")
+local Color       = require("lib.color")
+local Camera      = require("core.camera")
+local laser       = require("core.laser")
+local actionQueue = require("core.actionQueue")
 
 local Hand      = {}
 Hand.__index    = Hand
 
 function Hand.new()
-  return setmetatable({ cards = {}, discardQueue = {}, playQueue = {} }, Hand)
+  return setmetatable({ cards = {} }, Hand)
 end
 
 function Hand:layout()
@@ -36,7 +37,6 @@ function Hand:add(card, snap, layout)
   if layout == nil then layout = true end
   if layout then self:layout() end
 
-  -- self:layout()
   if snap then
     card.current.x = card._startX
     card.current.y = card._startY
@@ -61,26 +61,6 @@ function Hand:isDragging()
   return false
 end
 
-function Hand:discardQueueSize()
-  return #self.discardQueue
-end
-
-function Hand:playQueueSize()
-  return #self.playQueue
-end
-
-function Hand:removeFromPlayQueue(card)
-  for i, c in ipairs(self.playQueue) do
-    if c == card then table.remove(self.playQueue, i); return end
-  end
-end
-
-function Hand:removeFromDiscardQueue(card)
-  for i, c in ipairs(self.discardQueue) do
-    if c == card then table.remove(self.discardQueue, i); return end
-  end
-end
-
 function Hand:handSize()
   return #self.cards
 end
@@ -97,26 +77,12 @@ function Hand:unlockHand()
   end
 end
 
-function Hand:returnCardToHand(card)
-  self:removeFromPlayQueue(card)
-  card._excluded = false
-  self:layout()
-  card.hover.can = true
-  card.drag.can  = true
+local function returnCardToHand(card, hand)
+  card._excluded    = false
+  card.hover.can    = true
+  card.drag.can     = true
   card:setZoneState("idle")
-  screenshake.triggerH()
-end
-
-function Hand:returnRemainingPlayQueueToHand()
-  local queue = self.playQueue
-  self.playQueue = {}
-  for _, card in ipairs(queue) do
-    card._excluded = false
-    card.hover.can = true
-    card.drag.can  = true
-    card:setZoneState("idle")
-  end
-  self:layout()
+  hand:layout()
   screenshake.triggerH()
 end
 
@@ -147,10 +113,8 @@ function Hand:update(mouseX, mouseY)
     draggingCard:setZoneState("play")
   elseif draggingCard and areas.cardInPlay(draggingCard) then
     areas.play.color = { 0.5, 0.5, 0.5, 1 }
-    -- areas.play.color = {1, 1, 1, 1}
   elseif areas.mouseInPlay(mouseX, mouseY) then
     areas.play.color = { 0.5, 0.5, 0.5, 1 }
-    -- areas.play.color = {0.5, 1, 0.5, 1}
   else
     areas.play.color = { 0.5, 0.5, 0.5, 1 }
   end
@@ -161,10 +125,8 @@ function Hand:update(mouseX, mouseY)
     draggingCard:setZoneState("discard")
   elseif draggingCard and areas.cardInDiscard(draggingCard) then
     areas.discard.color = { 0.5, 0.5, 0.5, 1 }
-    -- areas.discard.color = {1, 1, 1, 1}
   elseif areas.mouseInDiscard(mouseX, mouseY) then
     areas.discard.color = { 0.5, 0.5, 0.5, 1 }
-    -- areas.discard.color = {0.5, 1, 0.5, 1}
   else
     areas.discard.color = { 0.5, 0.5, 0.5, 1 }
   end
@@ -213,8 +175,12 @@ function Hand:update(mouseX, mouseY)
       card.target.scale = card.scales.idle
       card._excluded = true
       self:layout()
+
       if areas.mouseInPlay(mouseX, mouseY) then
-        if #areas.pool.chips < card.energy then
+        if actionQueue.isTerminal() then
+          -- end turn already queued — return card immediately
+          returnCardToHand(card, self)
+        elseif #areas.pool.chips < card.energy then
           card:setZoneState("idle")
           Camera:setColor(Color("#88EDFF"))
           Camera:setIdle()
@@ -224,78 +190,59 @@ function Hand:update(mouseX, mouseY)
           card.target.x = card._startX
           card.target.y = card._startY
         else
-          print("enough ram", #areas.pool.chips)
-          table.insert(self.playQueue, card)
-          card._excluded = true
-          card.hover.can = false
-          card.hover.is  = false
-          card.drag.can  = false
-          card.target.scale = self:playQueueSize() > 1 and card.scales.idle or card.scales.hover
-          print("play queue size: " .. self:playQueueSize())
-
-          if self:playQueueSize() == 1 then
-            events.push({
-              fn = function()
-                print(string.format("[play queue event] firing — pool.chips=%d card.energy=%d", #areas.pool.chips, card.energy))
-                if #areas.pool.chips < card.energy then
-                  print("[play queue event] not enough RAM, returning card to hand")
-                  self:returnRemainingPlayQueueToHand()
-                else
-                  print("[play queue event] enough RAM, calling sequences.play")
-                  sequences.play(card, Camera, self)
-                end
-              end, blockable = true, blocking = true,
-              delay = 0.1, persistent = false, type = "after"
-            })
+          local hand = self
+          local pushed = actionQueue.push({
+            card     = card,
+            terminal = false,
+            check    = function()
+              if #areas.pool.chips < card.energy then return "rejectAll" end
+              return "ok"
+            end,
+            onReject = function(item)
+              returnCardToHand(item.card, hand)
+            end,
+            fn = function()
+              sequences.play(card, Camera, hand)
+            end,
+          })
+          if pushed then
+            card._excluded = true
+            card.hover.can = false
+            card.hover.is  = false
+            card.drag.can  = false
+            local pending = actionQueue.pendingCards()
+            local isNext  = #pending == 1 and actionQueue.activeCard() == nil
+            card.target.scale = isNext and card.scales.hover or card.scales.idle
           end
         end
-      --   if #areas.pool.chips < 2 then
-      --     screenshake.triggerH()
-      --     card._excluded = false
-      --     self:layout()
-      --     card.target.x = card._startX
-      --     card.target.y = card._startY
-      --   else
-      --     sequences.play(card, areas, self.deck,
-      --       function()
-      --         self:unlockHand()
-      --       end,
-      --       function()
-      --         self:remove(card)
-      --         if self.deck then self.deck:add(card) end
-      --         self:unlockHand()
-      --       end
-      --     )
-      --   end
-      elseif areas.mouseInDiscard(mouseX, mouseY) then
-        table.insert(self.discardQueue, card)
-        card._excluded = true
-        card.hover.can = false
-        card.hover.is  = false
-        card.drag.can  = false
-        card.target.scale = self:discardQueueSize() > 1 and card.scales.idle or card.scales.hover
-        print("discard queue size: " .. self:discardQueueSize())
 
-        if self:discardQueueSize() == 1 then
-          events.push({
+      elseif areas.mouseInDiscard(mouseX, mouseY) then
+        if actionQueue.isTerminal() then
+          -- end turn already queued — return card immediately
+          returnCardToHand(card, self)
+        else
+          local hand = self
+          local pushed = actionQueue.push({
+            card     = card,
+            terminal = false,
+            onReject = function(item)
+              returnCardToHand(item.card, hand)
+            end,
             fn = function()
-              sequences.discard(card, Camera, self)
-            end, blockable = true, blocking = true,
-            delay = 0.1, persistent = false, type = "after"
+              sequences.discard(card, Camera, hand)
+            end,
           })
+          if pushed then
+            card._excluded = true
+            card.hover.can = false
+            card.hover.is  = false
+            card.drag.can  = false
+            local pending = actionQueue.pendingCards()
+            local isNext  = #pending == 1 and actionQueue.activeCard() == nil
+            card.target.scale = isNext and card.scales.hover or card.scales.idle
+          end
         end
-        -- sequences.discard(card, Camera, self)
-        -- table.insert(self.discardQueue, card)
-        -- -- c._excluded = true
-        -- -- self:layout()
-        -- sequences.discard(card, areas,
-        --   function()
-        --     self:unlockHand()
-        --   end,
-        --   function()
-        --     self:remove(card)
-        --   end
-        -- )
+
       else
         card.target.x = card._startX
         card.target.y = card._startY
@@ -320,7 +267,6 @@ function Hand:update(mouseX, mouseY)
       card.mouseX       = mouseX
       card.mouseY       = mouseY
       card.current.r =  math.rad(10)
-      -- card:shake(8, 0.25)
     elseif card:containsPoint(mouseX, mouseY) and card.drag.is then
       card.target.scale = card.scales.drag
     elseif not card:containsPoint(mouseX, mouseY) and not card.drag.is and card.hover.can then
@@ -352,9 +298,11 @@ function Hand:update(mouseX, mouseY)
 end
 
 function Hand:draw()
+  local activeCard    = actionQueue.activeCard()
+  local pendingCards  = actionQueue.pendingCards()
   local queued = {}
-  for _, card in ipairs(self.discardQueue) do queued[card] = true end
-  for _, card in ipairs(self.playQueue)    do queued[card] = true end
+  if activeCard then queued[activeCard] = true end
+  for _, card in ipairs(pendingCards) do queued[card] = true end
 
   for _, card in ipairs(self.cards) do
     if not card.drag.is and card.stationary and not queued[card] then card:draw() end
@@ -362,9 +310,9 @@ function Hand:draw()
   for _, card in ipairs(self.cards) do
     if not card.drag.is and not card.stationary and not queued[card] then card:draw() end
   end
-  -- reverse order so queue[1] (top of pile, next to process) is drawn on top
-  for i = #self.discardQueue, 1, -1 do self.discardQueue[i]:draw() end
-  for i = #self.playQueue,    1, -1 do self.playQueue[i]:draw()    end
+  -- reverse order so queue[1] (next to process) is drawn on top
+  for i = #pendingCards, 1, -1 do pendingCards[i]:draw() end
+  if activeCard then activeCard:draw() end
   for _, card in ipairs(self.cards) do
     if not card.drag.is and card.hover.is and not queued[card] then card:draw() end
   end

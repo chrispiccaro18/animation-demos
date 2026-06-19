@@ -11,6 +11,7 @@ local Card   = require("core.card")
 local NewHand   = require("core.newHand")
 local config       = require("lib.config")
 local sequences    = require("core.newSequences")
+local actionQueue  = require("core.actionQueue")
 local Deck         = require("core.deck")
 local Camera       = require("core.camera")
 local Token        = require("core.token")
@@ -60,6 +61,7 @@ end
 
 local function resetGame()
   events.loadAll()
+  actionQueue.reset()
   Token.clearAll()
   Dtor.reset()
   laser.hide()
@@ -221,12 +223,23 @@ function love.update(dt)
   areas.updateScanners(gameDt)
   if not hand:isDragging() and not areas.endTurn.frozen then
     if areas.updateEndTurn(realDt, mouseX, mouseY) then
-      sequences.endTurn(hand)
+      actionQueue.push({
+        card     = nil,
+        terminal = true,
+        fn       = function() sequences.endTurn(hand) end,
+        onReject = function(_item)
+          areas.endTurn.frozen    = false
+          areas.endTurn.state     = "idle"
+          areas.endTurn.hover.can = true
+          areas.endTurn.click.can = false
+        end,
+      })
     end
   end
   if areas.scanner.left.active  then Token.triggerQuiverNear(areas.scanner.left.y)  end
   if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y) end
   events.updateAll()
+  actionQueue.update()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)

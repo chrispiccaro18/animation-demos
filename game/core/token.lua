@@ -25,7 +25,7 @@ local TRAIL_RATE         = 120    -- particles per second at peak speed
 local TRAIL_SPEED_THRESH = 150   -- game px/s below which trail is suppressed
 local TRAIL_PEAK_SPEED   = 1500  -- game px/s at which trail rate reaches full intensity
 
-local SPEED = 4000
+local SPEED = 6000
 local TOP_SPEED = 20000
 local PULL_SPEED = 10000
 local ACCEL = 5000

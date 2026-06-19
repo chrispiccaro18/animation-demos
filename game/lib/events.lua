@@ -176,6 +176,7 @@ local _queues = {
   default = _default,
   terminalArrive = _terminalArrive,
 }
+local _externalRunning = {}
 
 local manager = {}
 
@@ -211,9 +212,16 @@ function manager.updateAll()
   end
 end
 
+function manager.registerRunning(fn)
+  _externalRunning[#_externalRunning + 1] = fn
+end
+
 function manager.anyRunning()
   for _, q in pairs(_queues) do
     if q.isRunning() then return true end
+  end
+  for _, fn in ipairs(_externalRunning) do
+    if fn() then return true end
   end
   return false
 end

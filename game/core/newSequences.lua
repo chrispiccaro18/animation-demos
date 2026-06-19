@@ -120,13 +120,10 @@ local function startTerminalAttract(tokenType, target, acc)
 end
 
 local function terminalAttract()
-  print("[terminalAttract] firing")
-  Token.debugDump("before terminalAttract")
   local acc = Token.makeCascadeAccumulator()
   startTerminalAttract("progress", areas.progressDestination, acc)
   startTerminalAttract("threat", areas.threatDestination, acc)
   startTerminalAttract("nullify", Dtor.nextUnnullifiedSlot(), acc)
-  Token.debugDump("after terminalAttract")
 end
 
 function sequences.dealCardToHand(hand)
@@ -146,15 +143,9 @@ function sequences.dealCardToHand(hand)
   })
 end
 
-local _scanCount = 0
 function sequences.scan(scanner)
-  _scanCount = _scanCount + 1
-  local scanId = _scanCount
-  print(string.format("[sequences.scan #%d] called — Token.count=%d", scanId, Token.count()))
-  Token.debugDump("scan entry")
   events.push({
     fn = function()
-      print(string.format("[sequences.scan #%d] poll: waiting for isActive=false", scanId))
       return not Token.isActive()
     end,
     blocking = true, blockable = true, persistent = false,
@@ -162,7 +153,6 @@ function sequences.scan(scanner)
   })
   events.push({
     fn = function()
-      print(string.format("[sequences.scan #%d] activating scanner", scanId))
       scanner.active = true
     end,
     blocking = true, blockable = true, persistent = false,
@@ -177,7 +167,6 @@ function sequences.scan(scanner)
   })
   events.push({
     fn = function()
-      print(string.format("[sequences.scan #%d] scanner done, firing terminalAttract", scanId))
       terminalAttract()
     end,
     blocking = true, blockable = true, persistent = false,
@@ -373,12 +362,8 @@ function sequences.discard(card, camera, hand)
 
   events.push({
     fn = function()
-      print("[discard scan-check] Token.count=" .. Token.count())
-      Token.debugDump("discard scan-check")
       if Token.count() > 0 then
         sequences.scan(areas.scanner.right)
-      else
-        print("[discard scan-check] skipping scan, no tokens")
       end
       events.push({
         fn = function()
@@ -389,12 +374,8 @@ function sequences.discard(card, camera, hand)
       })
       events.push({
         fn = function()
-          hand:removeFromDiscardQueue(card)
           Camera:setIdle()
           hand:remove(card)
-          if #hand.discardQueue > 0 then
-            sequences.discard(hand.discardQueue[1], Camera, hand)
-          end
         end,
         blocking = true, blockable = true, persistent = false,
         delay = 0, type = "immediate"
@@ -432,37 +413,23 @@ function sequences.play(card, camera, hand)
   })
   events.push({
     fn = function()
-      -- camera:setColor(Color("#9C2B2B"))
-      -- local lensX, lensY = camera:getLensPosition()
-      -- laser.show(lensX, lensY, card.current.x, card.current.y)
-      -- screenshake.trigger(10, 0.25)
       local ramChips = areas.consumePoolChips(card.energy)
-      if #ramChips < card.energy then
-        print("not enough ram to play card, returning to hand", #ramChips, "needed", card.energy)
-        for _, chip in ipairs(ramChips) do
-          areas.addPoolChip(chip.x, chip.y)
-        end
-        card:setZoneState("idle")
-        Camera:setIdle()
-      else
-        print("enough ram to play card", #ramChips)
-        local acc = Token.makeCascadeAccumulator()
-        for i, chip in ipairs(ramChips) do
-          local slotPos = card:getTargetSlotPosition("topEnergyHoles", i)
-          local slotIndex = i
-          Token.new_attract(
-            chip.x, chip.y,
-            slotPos.x, slotPos.y,
-            acc:next({
-              type = "ram",
-              target_scale = 1,
-              onArrive = function(t)
-                t:attachToSlot(card, "topEnergyHoles", slotIndex)
-                screenshake.triggerH(4)
-              end
-            })
-          )
-        end
+      local acc = Token.makeCascadeAccumulator()
+      for i, chip in ipairs(ramChips) do
+        local slotPos   = card:getTargetSlotPosition("topEnergyHoles", i)
+        local slotIndex = i
+        Token.new_attract(
+          chip.x, chip.y,
+          slotPos.x, slotPos.y,
+          acc:next({
+            type = "ram",
+            target_scale = 1,
+            onArrive = function(t)
+              t:attachToSlot(card, "topEnergyHoles", slotIndex)
+              screenshake.triggerH(4)
+            end
+          })
+        )
       end
     end,
     blocking = true, blockable = true, persistent = false,
@@ -540,14 +507,10 @@ function sequences.play(card, camera, hand)
     delay = 0, type = "immediate"
   })
 
-    events.push({
+  events.push({
     fn = function()
-      print("[play scan-check] Token.count=" .. Token.count())
-      Token.debugDump("play scan-check")
       if Token.count() > 0 then
         sequences.scan(areas.scanner.left)
-      else
-        print("[play scan-check] skipping scan, no tokens")
       end
       events.push({
         fn = function()
@@ -558,20 +521,9 @@ function sequences.play(card, camera, hand)
       })
       events.push({
         fn = function()
-          hand:removeFromPlayQueue(card)
           Camera:setIdle()
           hand:remove(card)
           _deck:add(card)
-          if #hand.playQueue > 0 then
-            local nextCard = hand.playQueue[1]
-            if #areas.pool.chips < nextCard.energy then
-              print("[play chain] not enough RAM, flushing remaining play queue")
-              hand:returnRemainingPlayQueueToHand()
-            else
-              print("[play chain] chaining to next queued card")
-              sequences.play(nextCard, Camera, hand)
-            end
-          end
         end,
         blocking = true, blockable = true, persistent = false,
         delay = 0, type = "immediate"
