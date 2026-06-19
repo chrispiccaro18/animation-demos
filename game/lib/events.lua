@@ -218,6 +218,11 @@ function manager.anyRunning()
   return false
 end
 
+function manager.isRunning(queueName)
+  local q = queueName and _queues[queueName] or _default
+  return q and q.isRunning() or false
+end
+
 ---@type EventsModule
 return setmetatable(manager, {
   __index = function(_, k)

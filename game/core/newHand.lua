@@ -245,7 +245,7 @@ function Hand:update(mouseX, mouseY)
                   sequences.play(card, Camera, self)
                 end
               end, blockable = true, blocking = true,
-              delay = 0.5, persistent = false, type = "after"
+              delay = 0.1, persistent = false, type = "after"
             })
           end
         end
@@ -281,7 +281,7 @@ function Hand:update(mouseX, mouseY)
             fn = function()
               sequences.discard(card, Camera, self)
             end, blockable = true, blocking = true,
-            delay = 1.0, persistent = false, type = "after"
+            delay = 0.1, persistent = false, type = "after"
           })
         end
         -- sequences.discard(card, Camera, self)

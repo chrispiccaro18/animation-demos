@@ -262,6 +262,8 @@ function love.keypressed(key)
     config.speed = 3.0
     speedControl.setSpaceHeld(true)
     print("Speed: " .. config.speed .. "x")
+  elseif key == "o" then
+    print(events.isRunning())
   else
     overlayStats.handleKeyboard(key)
   end
