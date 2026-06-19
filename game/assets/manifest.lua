@@ -10,7 +10,7 @@ Manifest.board = {
 
 Manifest.card = {
   back = {
-    path = basePath .. "kilo-card-back.png"
+    path = basePath .. "proto/kilo-card-back.png"
   },
   base = {
     path = basePath .. "proto/card-base.png"
@@ -89,7 +89,7 @@ Manifest.camera = {
   }
 }
 
-local fontPath = basePath .. "NotoSans-Medium.ttf"
+local fontPath = basePath .. "proto/NotoSans-Medium.ttf"
 local fontDesignSizes = { 24, 32, 48, 72, 120, 240 }
 
 function Manifest.load()
