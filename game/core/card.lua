@@ -1,6 +1,7 @@
 local AssetManifest = require("assets.manifest")
 local animation = require("lib.animation")
 local Token     = require("core.token")
+local Color      = require("lib.color")
 
 local stiffness = 80
 local damping   = 10
@@ -637,7 +638,9 @@ function Card:_applyDissolveUniforms(asset)
   self.shader:send("texture_details",  { 0, 0, iw, ih })
   self.shader:send("image_details",    { iw, ih })
   self.shader:send("shadow",           false)
-  self.shader:send("burn_colour_1",    { 1.0, 0.5, 0.0, 1.0 })
+  -- self.shader:send("burn_colour_2",    Color("#556998", 1))
+  -- self.shader:send("burn_colour_1",    Color("#c9736f", 0.5))
+  self.shader:send("burn_colour_1",    { 1.0, 0.5, 0.0, 0.5 })
   self.shader:send("burn_colour_2",    { 0.5, 0.5, 1.0, 0.5 })
   self.shader:send("mouse_screen_pos", { 0, 0 })
   self.shader:send("hovering",         0.0)

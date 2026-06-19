@@ -21,7 +21,8 @@ local function discardFlingOptions()
   return {
     bounces = math.random(1, 3),
     target_rect = areas.discardDeskArea,
-    base_scale = 1.25
+    base_scale = 1.25,
+    delay = 1.0,
   }
 end
 local function playFlingOptions()

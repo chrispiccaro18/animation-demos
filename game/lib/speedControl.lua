@@ -117,7 +117,7 @@ function speedControl.draw()
 
     love.graphics.setFont(hintFont)
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print("TAB cycles\nHold SPACE for 3x", x0, hintY)
+    love.graphics.print("TAB cycles SPEED\nHold SPACE for 3x", x0, hintY)
   end
 
   love.graphics.pop()
