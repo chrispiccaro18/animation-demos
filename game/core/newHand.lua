@@ -173,22 +173,24 @@ function Hand:update(mouseX, mouseY)
       card.hover.is  = false
       card.hover.can = false
       card.target.scale = card.scales.idle
-      card._excluded = true
-      self:layout()
+      -- card._excluded = true
+      -- self:layout()
 
       if areas.mouseInPlay(mouseX, mouseY) then
         if actionQueue.isTerminal() then
           -- end turn already queued — return card immediately
           returnCardToHand(card, self)
-        elseif #areas.pool.chips < card.energy then
-          card:setZoneState("idle")
-          Camera:setColor(Color("#88EDFF"))
-          Camera:setIdle()
-          screenshake.triggerH()
-          card._excluded = false
-          self:layout()
-          card.target.x = card._startX
-          card.target.y = card._startY
+        elseif not actionQueue.isRunning() and
+          #areas.pool.chips < card.energy then
+          returnCardToHand(card, self)
+        --   card:setZoneState("idle")
+        --   Camera:setColor(Color("#88EDFF"))
+        --   Camera:setIdle()
+        --   screenshake.triggerH()
+        --   card._excluded = false
+        --   self:layout()
+        --   card.target.x = card._startX
+        --   card.target.y = card._startY
         else
           local hand = self
           local pushed = actionQueue.push({
@@ -207,6 +209,7 @@ function Hand:update(mouseX, mouseY)
           })
           if pushed then
             card._excluded = true
+            self:layout()
             card.hover.can = false
             card.hover.is  = false
             card.drag.can  = false
@@ -234,6 +237,7 @@ function Hand:update(mouseX, mouseY)
           })
           if pushed then
             card._excluded = true
+            self:layout()
             card.hover.can = false
             card.hover.is  = false
             card.drag.can  = false
