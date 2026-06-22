@@ -1,4 +1,5 @@
 local AssetManifest = require("assets.manifest")
+local Audio = require("assets.audio")
 local particles     = require("core.particles")
 
 -- Two modes: fling (derived or targeted) and attract (homing)
@@ -398,7 +399,10 @@ function Token:_update_fling(dt)
     end
 
     local speed = math.sqrt(self.vx*self.vx + self.vy*self.vy)
-    if bounced then self.v0 = speed end
+    if bounced then
+      self.v0 = speed
+      Audio.playClink()
+    end
 
     -- drag (frame-rate independent: same decay per second regardless of fps)
     local frame_drag = drag ^ (dt * 60)
@@ -579,6 +583,7 @@ function Token:triggerPop(peakScale, duration, onComplete)
         peak       = peakScale or self.scale * 2,
         onComplete = onComplete,
     }
+    -- Audio.playImpactIn()
 end
 
 ------------------------------------------------------------------------

@@ -184,6 +184,7 @@ function Card:_initState(x, y, data)
   self.reverseDissolving = false
   self.data       = data
   self.energy     = data.topEnergy or 0
+  self.decay      = data.decay or 12
 
   self:_setParts(buildParts(data))
 
@@ -495,6 +496,11 @@ function Card:isAtTarget(threshold)
      and math.abs(self.current.y - self.target.y) < threshold
 end
 
+function Card:isAtTargetHeight(threshold)
+  threshold = threshold or 1
+  return math.abs(self.current.y - self.target.y) < threshold
+end
+
 function Card:getEffects(zone)
   return self.data[zone]
 end
@@ -596,8 +602,8 @@ function Card:update()
   end
 
   if not self.stationary then
-    self.current.x          = animation.expDecay(self.current.x, self.target.x, 12, realDt)
-    self.current.y          = animation.expDecay(self.current.y, self.target.y, 12, realDt)
+    self.current.x          = animation.expDecay(self.current.x, self.target.x, self.decay, realDt)
+    self.current.y          = animation.expDecay(self.current.y, self.target.y, self.decay, realDt)
     self.horizontalVelocity = (self.current.x - self.target.x) / (realDt * SCALE_X)
     -- self.horizontalVelocity = (self.current.x - self.target.x) / realDt
   end

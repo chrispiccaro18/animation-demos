@@ -7,6 +7,7 @@ local Color = require("lib.color")
 local Camera = require("core.camera")
 local laser = require("core.laser")
 local Dtor  = require("core.dtor")
+local Audio = require("assets.audio")
 
 local COUNT_MIN = 10
 local COUNT_MAX = 20
@@ -60,8 +61,10 @@ local function terminalEvent(tokenType)
             lifetimeMax   = 0.5,
             speed = 1000
           })
+          Audio.playImpactOut("progress")
           token:triggerPop(token.scale * 2.5, 0.35, function()
             particles.emit("progress", areas.progressDestination.x, areas.progressDestination.y, pbCount)
+            Audio.playImpactIn()
           end)
           local pbSegIdx   = pb.count - 1
           local pbCx       = pb.x + pbSegIdx * pb.gapX + pb.w / 2
@@ -78,8 +81,10 @@ local function terminalEvent(tokenType)
             lifetimeMax   = 0.5,
             speed = 1000
           })
+          Audio.playImpactOut("threat")
           token:triggerPop(token.scale * 2.5, 0.35, function()
             particles.emit("threat", areas.threatDestination.x, areas.threatDestination.y, tbCount)
+            Audio.playImpactIn()
           end)
           local tbSegIdx   = tb.count - 1
           local tbCx       = tb.x + tbSegIdx * tb.gapX + tb.w / 2
@@ -90,6 +95,7 @@ local function terminalEvent(tokenType)
           token._remove = true
           Dtor.nullifyNextSlot()
           screenshake.triggerH(2)
+          Audio.playImpactIn()
         end
         if areas.progressBar.count >= areas.progressBar.max then
           gameOver = "win"
@@ -136,6 +142,7 @@ function sequences.dealCardToHand(hand)
         card:resetToInitial(_deck.x, _deck.y)
         card.current.scale = 0.05
         hand:add(card, false, true)
+        Audio.playDeal()
       else
         print("no card to deal to hand")
       end
@@ -156,6 +163,7 @@ function sequences.scan(scanner)
   events.push({
     fn = function()
       scanner.active = true
+      Audio.playScannerLoop()
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.1, type = "after"
@@ -169,6 +177,7 @@ function sequences.scan(scanner)
   })
   events.push({
     fn = function()
+      Audio.stopScanner()
       terminalAttract()
     end,
     blocking = true, blockable = true, persistent = false,
@@ -283,6 +292,7 @@ function sequences.discard(card, camera, hand)
       camera:setColor(Color("#9C2B2B"))
       local lensX, lensY = camera:getLensPosition()
       laser.show(lensX, lensY, card.current.x, card.current.y)
+      Audio.playLaserStart()
       screenshake.trigger(10, 0.25)
     end,
     blocking = true, blockable = true, persistent = false,
@@ -297,6 +307,7 @@ function sequences.discard(card, camera, hand)
   })
   events.push({
     fn = function()
+      Audio.playImpactIn()
       camera:setColor(Color("#D56E6E"))
       laser.hide()
       card:startDissolve()
@@ -316,7 +327,11 @@ function sequences.discard(card, camera, hand)
   })
   events.push({
     fn = function()
-      Token.attractDone("ram", areas.pool)
+      Token.attractDone("ram", areas.pool, {
+        onArrive = function()
+          Audio.playImpactIn()
+        end
+      })
       Token.attractDone(
         "dtor",
         function(_token)
@@ -326,6 +341,9 @@ function sequences.discard(card, camera, hand)
           target_rotation = 0,
           target_scale = 1.5,
           initial_speed = 700,
+          onArrive = function()
+            Audio.playImpactIn()
+          end
         }
       )
     end,
@@ -429,6 +447,7 @@ function sequences.play(card, camera, hand)
             onArrive = function(t)
               t:attachToSlot(card, "topEnergyHoles", slotIndex)
               screenshake.triggerH(4)
+              Audio.playRamImpact()
             end
           })
         )
@@ -446,21 +465,9 @@ function sequences.play(card, camera, hand)
   })
   events.push({
     fn = function()
+      card.decay = 8
       card:enterSlot(471 * SCALE_Y)
       card.target.y = 440 * SCALE_Y + (card.h / 2) * SCALE_Y
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "before"
-  })
-  events.push({
-    fn = function()
-      return card:isAtTarget()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll"
-  })
-  events.push({
-    fn = function()
       card.target.x = card.current.x + 50 * SCALE_X
       card.target.y = 471 * SCALE_Y
     end,
@@ -474,8 +481,24 @@ function sequences.play(card, camera, hand)
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "poll"
   })
+  -- events.push({
+  --   fn = function()
+  --     card.target.x = card.current.x + 50 * SCALE_X
+  --     card.target.y = 471 * SCALE_Y
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.5, type = "before"
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     return card:isAtTarget()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "poll"
+  -- })
   events.push({
     fn = function()
+      card.decay = 12
       card:clearZone("topEnergyHoles")
       card:flingZone("playEffect", areas.desk, playFlingOptions())
     end,

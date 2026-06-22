@@ -21,6 +21,7 @@ local Dtor         = require("core.dtor")
 local particles    = require("core.particles")
 local CardData     = require("data.cards")
 local AssetManifest = require("assets.manifest")
+local Audio = require("assets.audio")
 
 local Color = require("lib.color")
 
@@ -108,6 +109,11 @@ local function resetGame()
   end
 
   camera:setIdle()
+
+  -- local ram1X, ram1Y = areas.randomPoolPosition()
+  -- areas.addPoolChip(ram1X, ram1Y)
+  -- local ram2X, ram2Y = areas.randomPoolPosition()
+  -- areas.addPoolChip(ram2X, ram2Y)
 end
 
 function love.load()
@@ -125,6 +131,7 @@ function love.load()
   math.randomseed(seed)
 
   AssetManifest.load()
+  Audio.load()
 
   Token.load()
   Dtor.load()

@@ -5,6 +5,7 @@ local Color       = require("lib.color")
 local Camera      = require("core.camera")
 local laser       = require("core.laser")
 local actionQueue = require("core.actionQueue")
+local Audio       = require("assets.audio")
 
 local Hand      = {}
 Hand.__index    = Hand
@@ -79,11 +80,12 @@ end
 
 local function returnCardToHand(card, hand)
   card._excluded    = false
-  card.hover.can    = true
+  -- card.hover.can    = true
   card.drag.can     = true
   card:setZoneState("idle")
   hand:layout()
   screenshake.triggerH()
+  Audio.playError()
 end
 
 function Hand:update(mouseX, mouseY)
@@ -265,12 +267,13 @@ function Hand:update(mouseX, mouseY)
     end
 
     -- Hover scale
-    if card.hover.can and not card.hover.is and not card.drag.is and card:containsPoint(mouseX, mouseY) then
+    if card.hover.can and not card.hover.is and not card.drag.is and card:containsPoint(mouseX, mouseY) and card:isAtTargetHeight() then
       card.hover.is     = true
       card.target.scale = card.scales.hover
       card.mouseX       = mouseX
       card.mouseY       = mouseY
       card.current.r =  math.rad(10)
+      Audio.playHover()
     elseif card:containsPoint(mouseX, mouseY) and card.drag.is then
       card.target.scale = card.scales.drag
     elseif not card:containsPoint(mouseX, mouseY) and not card.drag.is and card.hover.can then
@@ -336,6 +339,7 @@ function Hand:mousepressed(x, y, button)
       card.drag.offsetX = x - card.current.x
       card.drag.offsetY = y - card.current.y
       Camera:followMouse()
+      Audio.playDrag()
       return
     end
   end

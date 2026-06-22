@@ -22,7 +22,7 @@ Manifest.card = {
     path = basePath .. "proto/token-hole.png"
   },
   dtorSlot = {
-    path = basePath .. "proto/dtor-slot.png"
+    path = basePath .. "proto/dtor-slot-alt.png"
   },
   line = {
     path = basePath .. "proto/card-line2.png"
