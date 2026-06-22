@@ -447,7 +447,7 @@ function sequences.play(card, camera, hand)
             onArrive = function(t)
               t:attachToSlot(card, "topEnergyHoles", slotIndex)
               screenshake.triggerH(4)
-              Audio.playRamImpact()
+              Audio.playImpactIn()
             end
           })
         )

@@ -219,6 +219,7 @@ function love.update(dt)
     resetGame()
   end
   screenshake.update(realDt)
+  Audio.update()
   overlayStats.update(dt)
   message.update(realDt)
   areas.updateBars(realDt)

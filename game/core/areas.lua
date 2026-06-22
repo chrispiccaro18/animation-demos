@@ -1,4 +1,5 @@
 local AssetManifest = require("assets.manifest")
+local Audio          = require("assets.audio")
 local animation     = require("lib.animation")
 
 local areas = {}
@@ -251,15 +252,20 @@ function areas.updateEndTurn(dt, mouseX, mouseY)
       et.hover.is = false
       et.hover.can = true
       et.frozen = true
+      Audio.playClickIn()
       return true
     elseif not love.mouse.isDown(1) and et.hover.can then
       et.state = "hover"
       et.hover.is = true
       et.hover.can = false
       et.click.can = true
+      Audio.playPress()
       return false
     end
   else
+    if et.state == "click" then
+      Audio.playClickOut()
+    end
     et.state = "idle"
     et.hover.is = false
     et.hover.can = true

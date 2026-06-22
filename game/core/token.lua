@@ -488,6 +488,7 @@ function Token:_update_attract(dt)
     if (self.elapsed - dt) < (ant_dur + ant_pause) then
         self.attract_dist = math.max(dist, 1)
         self.speed = self.initial_speed
+        Audio.playZip()
     end
 
     local t = 1 - math.min(dist / self.attract_dist, 1)
