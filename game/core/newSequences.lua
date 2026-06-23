@@ -95,7 +95,7 @@ local function terminalEvent(tokenType)
           token._remove = true
           Dtor.nullifyNextSlot()
           screenshake.triggerH(2)
-          Audio.playImpactIn()
+          Audio.playNullify()
         end
         if areas.progressBar.count >= areas.progressBar.max then
           gameOver = "win"
@@ -103,12 +103,14 @@ local function terminalEvent(tokenType)
           message.subtitle      = "Press R to reset"
           message.textColor     = { 0.4, 1, 0.6, 1 }
           message.current.scale = 6
+          Audio.playSuccess()
         elseif areas.threatBar.count >= areas.threatBar.max then
           gameOver = "loss"
           message.text          = "FAILURE"
           message.subtitle      = "Press R to reset"
           message.current.scale = 6
           message.textColor     = { 1, 0.3, 0.3, 1 }
+          Audio.playFailure()
         end
       end,
       blocking = true, blockable = true, persistent = false,
@@ -188,6 +190,7 @@ end
 function sequences.restoreCard(card, hand)
   events.push({
     fn = function()
+      Audio.playRecombineCard()
       card:restoreAllSlots()
       card:startReverseDissolve()
     end,
@@ -329,7 +332,7 @@ function sequences.discard(card, camera, hand)
     fn = function()
       Token.attractDone("ram", areas.pool, {
         onArrive = function()
-          Audio.playImpactIn()
+          Audio.playRamImpact()
         end
       })
       Token.attractDone(
@@ -447,7 +450,7 @@ function sequences.play(card, camera, hand)
             onArrive = function(t)
               t:attachToSlot(card, "topEnergyHoles", slotIndex)
               screenshake.triggerH(4)
-              Audio.playImpactIn()
+              Audio.playRamImpact()
             end
           })
         )
@@ -608,6 +611,7 @@ function sequences.endTurn(hand)
     fn = function()
       if Dtor.isEntryNullified() then
         screenshake.trigger(5, 0.15)
+        Audio.playNullify()
         Dtor.popEntry()
         local idx   = slotIndices[1]
         Dtor.releaseSlot(idx)

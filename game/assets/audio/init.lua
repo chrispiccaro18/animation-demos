@@ -5,6 +5,7 @@ local zipRamp  = PitchRamp.new()
 local dealRamp = PitchRamp.new()
 local impactOutThreatRamp = PitchRamp.new()
 local impactOutProgressRamp = PitchRamp.new()
+local ramImpactRamp = PitchRamp.new()
 
 local MIN_CLINK_GAP = 0.02  -- seconds between staggered clinks
 local clinkQueue    = {}
@@ -54,6 +55,10 @@ function Audio.load()
     clickIn = love.audio.newSource("assets/audio/sfx/click-in-w-thump.wav", "static"),
     clickOut = love.audio.newSource("assets/audio/sfx/click-out-w-thump.wav", "static"),
     zip = love.audio.newSource("assets/audio/sfx/zip.wav", "static"),
+    nullify = love.audio.newSource("assets/audio/sfx/nullify.wav", "static"),
+    recombineCard = love.audio.newSource("assets/audio/sfx/recombineCard.wav", "static"),
+    failure = love.audio.newSource("assets/audio/sfx/failure.wav", "static"),
+    success = love.audio.newSource("assets/audio/sfx/success.wav", "static"),
   }
 end
 
@@ -108,7 +113,7 @@ end
 function Audio.playRamImpact()
   if Audio.sfx and Audio.sfx.ramImpact then
     local ramImpactClone = Audio.sfx.ramImpact:clone()
-    ramImpactClone:setPitch(1 + (math.random() - 0.5) * 0.2)
+    ramImpactClone:setPitch(ramImpactRamp:getPitch())
     ramImpactClone:setVolume(2 + (math.random() - 0.5) * 0.2)
     ramImpactClone:play()
   end
@@ -150,6 +155,7 @@ end
 function Audio.playScannerLoop()
   if Audio.sfx and Audio.sfx.scanner then
     Audio.sfx.scanner:setLooping(true)
+    Audio.sfx.scanner:setVolume(0.5)
     Audio.sfx.scanner:play()
   end
 end
@@ -191,8 +197,44 @@ function Audio.playZip()
   if Audio.sfx and Audio.sfx.zip then
     local zipClone = Audio.sfx.zip:clone()
     zipClone:setPitch(zipRamp:getPitch())
-    zipClone:setVolume(0.1)
+    zipClone:setVolume(0.05)
     zipClone:play()
+  end
+end
+
+function Audio.playNullify()
+  if Audio.sfx and Audio.sfx.nullify then
+    local nullifyClone = Audio.sfx.nullify:clone()
+    nullifyClone:setPitch(1 + (math.random() - 0.5) * 0.2)
+    nullifyClone:setVolume(0.8 + (math.random() - 0.5) * 0.2)
+    nullifyClone:play()
+  end
+end
+
+function Audio.playRecombineCard()
+  if Audio.sfx and Audio.sfx.recombineCard then
+    local recombineClone = Audio.sfx.recombineCard:clone()
+    recombineClone:setPitch(1 + (math.random() - 0.5) * 0.2)
+    recombineClone:setVolume(0.8 + (math.random() - 0.5) * 0.2)
+    recombineClone:play()
+  end
+end
+
+function Audio.playFailure()
+  if Audio.sfx and Audio.sfx.failure then
+    local failureClone = Audio.sfx.failure:clone()
+    failureClone:setPitch(1 + (math.random() - 0.5) * 0.2)
+    failureClone:setVolume(0.8 + (math.random() - 0.5) * 0.2)
+    failureClone:play()
+  end
+end
+
+function Audio.playSuccess()
+  if Audio.sfx and Audio.sfx.success then
+    local successClone = Audio.sfx.success:clone()
+    successClone:setPitch(1 + (math.random() - 0.5) * 0.2)
+    successClone:setVolume(0.8 + (math.random() - 0.5) * 0.2)
+    successClone:play()
   end
 end
 
