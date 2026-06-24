@@ -1,6 +1,7 @@
 local AssetManifest = require("assets.manifest")
 local Audio = require("assets.audio")
 local particles     = require("core.particles")
+local animation     = require("lib.animation")
 
 -- Two modes: fling (derived or targeted) and attract (homing)
 local Token = {}
@@ -18,6 +19,12 @@ local ANT_DUR        = 0.15
 local ANT_PAUSE      = 0.15
 local ANT_PEAK_SCALE = 1.5
 
+local QUIVER_TWEEN_DUR = 0.15  -- time to rotate from current angle to upright before jiggling
+local QUIVER_AMP       = math.rad(2)
+local QUIVER_FREQ      = 60
+local QUIVER_SCALE_FREQ = 4
+local QUIVER_SCALE_AMP  = 0.5
+
 local TRAIL_INHERIT_VEL  = false  -- true: comet tail (particles hang in world space), false: jet exhaust (particles fire backward)
 local TRAIL_VEL_FACTOR   = 0.5   -- fraction of token speed for comet mode
 local TRAIL_BACK_FACTOR  = 0.2   -- exhaust speed as a fraction of token speed (scales naturally with velocity)
@@ -30,11 +37,13 @@ local SPEED = 6000
 local TOP_SPEED = 20000
 local PULL_SPEED = 10000
 local ACCEL = 5000
+local ATTRACT_DECAY_K = 4
 
 local DEFAULT_DELAY = 0.2
+local BASE_DELAY = 0.25
 
 local function defaultDelay()
-    return math.min(0.5, math.random() + DEFAULT_DELAY)
+    return math.min(BASE_DELAY, math.random() + DEFAULT_DELAY)
 end
 
 ------------------------------------------------------------------------
@@ -335,14 +344,25 @@ function Token:update(dt, gameDt)
     end
 
     if self.done and self.quiver and self.quiver.active then
-        self.quiver.time = self.quiver.time + dt
-        self.rotation = self.quiver.baseRot + math.sin(self.quiver.time * 18) * 0.35
-        self.scale    = self.base_scale + math.abs(math.sin(self.quiver.time * 12)) * 0.5
+        self.quiver.time = self.quiver.time + gameDt
+        local tweenDur = self.quiver.tweenDur
+        if self.quiver.time < tweenDur then
+            -- smoothstep tween from landing rotation to upright
+            local t = self.quiver.time / tweenDur
+            local eased = t * t * (3 - 2 * t)
+            self.rotation = self.quiver.baseRot + (self.quiver.targetRot - self.quiver.baseRot) * eased
+            self.scale    = self.base_scale
+        else
+            -- jiggle around upright for the scanner's remaining duration
+            local jt = self.quiver.time - tweenDur
+            self.rotation = math.sin(jt * QUIVER_FREQ) * QUIVER_AMP
+            self.scale    = self.base_scale + math.abs(math.sin(jt * QUIVER_SCALE_FREQ)) * QUIVER_SCALE_AMP
+        end
         if self.quiver.time >= self.quiver.duration then
             self.quiver.active = false
-            self.rotation = self.quiver.baseRot
-            self.scale    = self.base_scale
-            self.target_rotation = shortest_rotation_target(self.rotation, 0)
+            -- self.rotation        = self.quiver.baseRot  -- rotation is already near 0 after jiggle phase
+            -- self.scale           = self.base_scale
+            -- self.target_rotation = shortest_rotation_target(self.rotation, 0)
         end
     end
 
@@ -361,7 +381,8 @@ function Token:update(dt, gameDt)
     if self.done and not (self.quiver and self.quiver.active) and self.target_rotation then
         local diff = self.target_rotation - self.rotation
         if math.abs(diff) > 0.005 then
-            self.rotation = self.rotation + diff * math.min(dt * 6, 1)
+            -- self.rotation = self.rotation + diff * math.min(dt * 6, 1)
+            self.rotation = self.rotation + diff * math.min(gameDt * 60, 1)
         else
             self.rotation = self.target_rotation
             self.target_rotation = nil
@@ -401,7 +422,7 @@ function Token:_update_fling(dt)
     local speed = math.sqrt(self.vx*self.vx + self.vy*self.vy)
     if bounced then
       self.v0 = speed
-      Audio.playClink()
+      Audio.playClink(self.token_type)
     end
 
     -- drag (frame-rate independent: same decay per second regardless of fps)
@@ -488,14 +509,15 @@ function Token:_update_attract(dt)
     if (self.elapsed - dt) < (ant_dur + ant_pause) then
         self.attract_dist = math.max(dist, 1)
         self.speed = self.initial_speed
-        Audio.playZip()
+        Audio.playZip(self.token_type)
     end
 
     local t = 1 - math.min(dist / self.attract_dist, 1)
 
     -- cubic ease-in: nearly still early, rockets toward the end
-    local eased = t * t * t
-    self.speed = self.initial_speed + (self.max_speed - self.initial_speed) * eased
+    -- local eased = t * t * t
+    -- self.speed = self.initial_speed + (self.max_speed - self.initial_speed) * eased
+    self.speed = animation.expDecay(self.speed, self.max_speed, ATTRACT_DECAY_K, dt)
 
     local nx = dx / dist
     local ny = dy / dist
@@ -632,6 +654,13 @@ function Token.isActive()
       if not token.done then return true end
   end
   return false
+end
+
+function Token.allQuiverDone()
+  for _, token in ipairs(instances) do
+    if token.quiver and token.quiver.active then return false end
+  end
+  return true
 end
 
 function Token.allDone(token_type)
@@ -796,18 +825,25 @@ end
 ------------------------------------------------------------------------
 -- Trigger quiver on all done tokens within threshold pixels of scannerY.
 ------------------------------------------------------------------------
-function Token.triggerQuiverNear(scannerY, threshold, duration)
+function Token.triggerQuiverNear(scannerY, threshold, duration, direction)
     threshold = threshold or (40 * SCALE_Y)
     duration  = duration  or 0.25
+    direction = direction or 1
     for _, token in ipairs(instances) do
-        if token.done and math.abs(token.y - scannerY) < threshold then
-            if not (token.quiver and token.quiver.active) and not token.quivered then
+        if token.done and not token.quivered and not (token.quiver and token.quiver.active) then
+            -- going down: trigger when scanner has swept past the token
+            -- going up:   force any stragglers the downward pass missed
+            local passed = direction == 1 and scannerY >= token.y - threshold
+            local force  = direction == -1
+            if passed or force then
                 token.quivered = true
                 token.quiver = {
-                    active   = true,
-                    time     = 0,
-                    duration = duration,
-                    baseRot  = token.rotation,
+                    active    = true,
+                    time      = 0,
+                    duration  = duration,
+                    tweenDur  = math.min(QUIVER_TWEEN_DUR, duration),
+                    baseRot   = token.rotation,
+                    targetRot = shortest_rotation_target(token.rotation, 0),
                 }
             end
         end

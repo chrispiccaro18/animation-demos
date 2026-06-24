@@ -162,7 +162,7 @@ end
 function Card:_initState(x, y, data)
   local baseAsset = _assets.base
   self.hover      = { is = false, can = true }
-  self.drag       = { is = false, can = true, offsetX = 0, offsetY = 0 }
+  self.drag       = { is = false, can = true, offsetX = 0, offsetY = 0, isTouch = false }
   self.stationary = true
   self.horizontalVelocity = 0
   self._startX    = x

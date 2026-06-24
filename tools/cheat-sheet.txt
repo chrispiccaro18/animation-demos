@@ -1,5 +1,7 @@
 # Fatal Exception Build Cheat Sheet
 
+ffmpeg -i input.mkv -c copy output.mp4
+
 git tag 0.0.2
 git push
 git push origin 0.0.2

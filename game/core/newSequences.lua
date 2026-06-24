@@ -23,7 +23,7 @@ local function discardFlingOptions()
     bounces = math.random(1, 3),
     target_rect = areas.discardDeskArea,
     base_scale = 1.25,
-    delay = 1.0,
+    delay = false,
   }
 end
 local function playFlingOptions()
@@ -179,6 +179,13 @@ function sequences.scan(scanner)
   })
   events.push({
     fn = function()
+      return Token.allQuiverDone()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll"
+  })
+  events.push({
+    fn = function()
       Audio.stopScanner()
       terminalAttract()
     end,
@@ -314,6 +321,7 @@ function sequences.discard(card, camera, hand)
       camera:setColor(Color("#D56E6E"))
       laser.hide()
       card:startDissolve()
+      card.target.scale = card.scales.drag
       card:flingZone("bottomEnergy", areas.desk, discardFlingOptions())
       card:flingZone("discardEffect",  areas.desk, discardFlingOptions())
       card:flingZone("dtorEffect",     areas.desk, discardFlingOptions())

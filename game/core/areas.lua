@@ -1,11 +1,12 @@
 local AssetManifest = require("assets.manifest")
 local Audio          = require("assets.audio")
 local animation     = require("lib.animation")
+local Color      = require("lib.color")
 
 local areas = {}
 
 -- Scale-dependent layout locals — computed in load() once SCALE_X/Y are final
-local W, H, playDiscardGap
+local W, H, playDiscardGap, dropYExtend
 
 local endTurnAsset      = nil
 local endTurnHoverAsset = nil
@@ -17,6 +18,7 @@ function areas.load()
   W              = SCALE_X * 3840
   H              = SCALE_Y * 2160
   playDiscardGap = 250 * SCALE_X
+  dropYExtend    = 250 * SCALE_Y
 
   areas.play = {
     x        = 1,
@@ -114,6 +116,7 @@ function areas.load()
     w     = playDiscardGap * 2,
     h     = 800 * SCALE_Y,
     chips = {},
+    showText = false
   }
 
   endTurnAsset             = AssetManifest.get("endTurn", "idle")
@@ -130,6 +133,9 @@ function areas.load()
 
   statFont     = AssetManifest.getFont(72)
 
+  local scannerSpeed = 4000 * SCALE_Y
+  -- local scannerSpeed = 3000 * SCALE_Y
+
   local dk = areas.desk
   areas.scanner = {
     left = {
@@ -137,7 +143,7 @@ function areas.load()
       x2          = dk.x + dk.w / 2,
       y           = dk.y,
       direction   = 1,
-      speed       = 3000 * SCALE_Y,
+      speed       = scannerSpeed,
       active      = false,
       color       = { 0, 1, 0.4 },
       trailLength = 1000 * SCALE_Y,
@@ -148,7 +154,7 @@ function areas.load()
       x2          = dk.x + dk.w,
       y           = dk.y,
       direction   = 1,
-      speed       = 3000 * SCALE_Y,
+      speed       = scannerSpeed,
       active      = false,
       color       = { 1, 0.2, 0.2 },
       trailLength = 1000 * SCALE_Y,
@@ -290,14 +296,16 @@ end
 
 -- Hit detection
 
-function areas.mouseInPlay(x, y)
+function areas.mouseInPlay(x, y, isTouch)
   local a = areas.play
-  return x >= a.x and x <= a.x + a.w and y >= a.y and y <= a.y + a.h
+  local extend = isTouch and dropYExtend or 0
+  return x >= a.x and x <= a.x + a.w and y >= a.y and y <= a.y + a.h + extend
 end
 
-function areas.mouseInDiscard(x, y)
+function areas.mouseInDiscard(x, y, isTouch)
   local a = areas.discard
-  return x >= a.x and x <= a.x + a.w and y >= a.startY and y <= a.startY + a.h
+  local extend = isTouch and dropYExtend or 0
+  return x >= a.x and x <= a.x + a.w and y >= a.startY and y <= a.startY + a.h + extend
 end
 
 function areas.mouseInEndTurn(x, y)
@@ -320,6 +328,37 @@ end
 -- Draw helpers
 function areas.drawStatic()
   local et = areas.endTurn
+
+  if areas.pool.showText then
+    love.graphics.setColor(Color("#d0be74"))
+    local previousFont = love.graphics.getFont()
+    love.graphics.setFont(statFont)
+    love.graphics.printf(
+      "RAM: " .. tostring(#areas.pool.chips),
+      areas.pool.x,
+      areas.pool.y + areas.pool.h / 4,
+      areas.pool.w,
+      "center"
+    )
+    love.graphics.setColor(1, 1, 1, 1)
+
+
+    love.graphics.printf(
+      "PLAY",
+      areas.play.x,
+      areas.play.y + areas.play.h,
+      areas.play.w,
+      "right"
+    )
+    love.graphics.printf(
+      "DISCARD",
+      areas.discard.x ,
+      areas.discard.startY + areas.discard.h,
+      areas.discard.w + playDiscardGap,
+      "left"
+    )
+    love.graphics.setFont(previousFont)
+  end
 
   love.graphics.setColor(1, 1, 1, 1)
   if et.state == "idle" and endTurnAsset then

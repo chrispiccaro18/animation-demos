@@ -249,8 +249,16 @@ function love.update(dt)
       })
     end
   end
-  if areas.scanner.left.active  then Token.triggerQuiverNear(areas.scanner.left.y)  end
-  if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y) end
+  local dk = areas.desk
+  local function scannerRemaining(s)
+    if s.direction == 1 then
+      return ((dk.y + dk.h - s.y) + dk.h) / s.speed
+    else
+      return (s.y - dk.y) / s.speed
+    end
+  end
+  if areas.scanner.left.active  then Token.triggerQuiverNear(areas.scanner.left.y,  nil, scannerRemaining(areas.scanner.left),  areas.scanner.left.direction)  end
+  if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y, nil, scannerRemaining(areas.scanner.right), areas.scanner.right.direction) end
   events.updateAll()
   actionQueue.update()
 end
@@ -258,7 +266,8 @@ end
 function love.mousepressed(x, y, button, istouch, presses)
   local gx, gy = toGame(x, y)
   if speedControl.mousepressed(gx, gy, button) then return end
-  hand:mousepressed(gx, gy, button)
+  -- hand:mousepressed(gx, gy, button, true)
+  hand:mousepressed(gx, gy, button, istouch)
 end
 
 function love.keyreleased(key)

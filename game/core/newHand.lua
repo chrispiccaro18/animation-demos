@@ -80,7 +80,7 @@ end
 
 local function returnCardToHand(card, hand)
   card._excluded    = false
-  -- card.hover.can    = true
+  card.hover.can    = true
   card.drag.can     = true
   card:setZoneState("idle")
   hand:layout()
@@ -97,7 +97,10 @@ function Hand:update(mouseX, mouseY)
     end
   end
 
+  local isDragTouch = draggingCard and draggingCard.drag.isTouch or false
+
   -- Suppress hover on siblings while a card is being dragged
+  areas.pool.showText = draggingCard ~= nil
   if draggingCard then
     for _, card in ipairs(self.cards) do
       if card ~= draggingCard and not card._excluded then
@@ -109,7 +112,7 @@ function Hand:update(mouseX, mouseY)
   end
 
   -- Update area highlight colors
-  if areas.mouseInPlay(mouseX, mouseY) and draggingCard then
+  if areas.mouseInPlay(mouseX, mouseY, isDragTouch) and draggingCard then
     areas.play.color = { 0.5, 0.5, 1, 1 }
     Camera:setColor(Color("#6ED59E"))
     draggingCard:setZoneState("play")
@@ -121,7 +124,7 @@ function Hand:update(mouseX, mouseY)
     areas.play.color = { 0.5, 0.5, 0.5, 1 }
   end
 
-  if areas.mouseInDiscard(mouseX, mouseY) and draggingCard then
+  if areas.mouseInDiscard(mouseX, mouseY, isDragTouch) and draggingCard then
     areas.discard.color = { 0.5, 0.5, 1, 1 }
     Camera:setColor(Color("#D56E6E"))
     draggingCard:setZoneState("discard")
@@ -134,8 +137,8 @@ function Hand:update(mouseX, mouseY)
   end
 
   if draggingCard and
-    not areas.mouseInPlay(mouseX, mouseY) and
-    not areas.mouseInDiscard(mouseX, mouseY) then
+    not areas.mouseInPlay(mouseX, mouseY, isDragTouch) and
+    not areas.mouseInDiscard(mouseX, mouseY, isDragTouch) then
       Camera:setColor(Color("#88EDFF"))
       draggingCard:setZoneState("idle")
   end
@@ -170,6 +173,12 @@ function Hand:update(mouseX, mouseY)
   for _, card in ipairs(self.cards) do
     -- Release drag
     if card.drag.is and not love.mouse.isDown(1) then
+      local wasTouch = card.drag.isTouch
+      if wasTouch then
+        -- card.current.y    = mouseY
+        card.target.y     = mouseY - (card.h * SCALE_Y / 4)
+        card.drag.isTouch = false
+      end
       card.drag.is   = false
       card.drag.can  = true
       card.hover.is  = false
@@ -178,7 +187,7 @@ function Hand:update(mouseX, mouseY)
       -- card._excluded = true
       -- self:layout()
 
-      if areas.mouseInPlay(mouseX, mouseY) then
+      if areas.mouseInPlay(mouseX, mouseY, wasTouch) then
         if actionQueue.isTerminal() then
           -- end turn already queued — return card immediately
           returnCardToHand(card, self)
@@ -221,7 +230,7 @@ function Hand:update(mouseX, mouseY)
           end
         end
 
-      elseif areas.mouseInDiscard(mouseX, mouseY) then
+      elseif areas.mouseInDiscard(mouseX, mouseY, wasTouch) then
         if actionQueue.isTerminal() then
           -- end turn already queued — return card immediately
           returnCardToHand(card, self)
@@ -330,14 +339,17 @@ function Hand:draw()
   laser.draw()
 end
 
-function Hand:mousepressed(x, y, button)
+function Hand:mousepressed(x, y, button, istouch)
   for _, card in ipairs(self.cards) do
     if button == 1 and card:containsPoint(x, y) and card.drag.can then
       card.hover.is     = false
       card.drag.is      = true
       card.drag.can     = false
       card.drag.offsetX = x - card.current.x
-      card.drag.offsetY = y - card.current.y
+      card.drag.isTouch = istouch == true
+      card.drag.offsetY = istouch
+        and (card.h * SCALE_Y)
+        or  (y - card.current.y)
       Camera:followMouse()
       Audio.playDrag()
       return

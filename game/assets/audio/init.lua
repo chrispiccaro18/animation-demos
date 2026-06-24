@@ -13,13 +13,18 @@ local nextClinkTime = 0
 
 local Audio = {}
 
+-- Returns tbl[token_type] if it exists, otherwise tbl.default.
+local function resolveSources(tbl, token_type)
+  return (token_type and tbl[token_type]) or tbl.default
+end
+
 function Audio.update()
   if not (Audio.sfx and Audio.sfx.clink) then return end
   local now       = love.timer.getTime()
   local remaining = {}
   for _, item in ipairs(clinkQueue) do
     if now >= item.time then
-      local clone = Audio.sfx.clink[math.random(#Audio.sfx.clink)]:clone()
+      local clone = item.sources[math.random(#item.sources)]:clone()
       clone:setPitch(item.pitch)
       clone:setVolume(item.volume)
       clone:play()
@@ -33,11 +38,21 @@ end
 function Audio.load()
   Audio.sfx = {
     clink = {
-      love.audio.newSource("assets/audio/sfx/clink.wav", "static"),
-      love.audio.newSource("assets/audio/sfx/clink2.wav", "static"),
-      love.audio.newSource("assets/audio/sfx/clink3.wav", "static"),
-      love.audio.newSource("assets/audio/sfx/clink4.wav", "static"),
-      love.audio.newSource("assets/audio/sfx/clink5.wav", "static"),
+      default = {
+        love.audio.newSource("assets/audio/sfx/clink2.wav", "static"),
+      },
+      ram     = {
+        love.audio.newSource("assets/audio/sfx/clink.wav", "static"),
+      },
+      threat  = {
+        love.audio.newSource("assets/audio/sfx/clink4.wav", "static"),
+      },
+      progress = {
+        love.audio.newSource("assets/audio/sfx/clink5.wav", "static"),
+      },
+      nullify = {
+        love.audio.newSource("assets/audio/sfx/clink3.wav", "static"),
+      },
     },
     deal = love.audio.newSource("assets/audio/sfx/deal.wav", "static"),
     hover = love.audio.newSource("assets/audio/sfx/hover.wav", "static"),
@@ -54,7 +69,10 @@ function Audio.load()
     press = love.audio.newSource("assets/audio/sfx/press.wav", "static"),
     clickIn = love.audio.newSource("assets/audio/sfx/click-in-w-thump.wav", "static"),
     clickOut = love.audio.newSource("assets/audio/sfx/click-out-w-thump.wav", "static"),
-    zip = love.audio.newSource("assets/audio/sfx/zip.wav", "static"),
+    zip = {
+      default = love.audio.newSource("assets/audio/sfx/zip.wav", "static"),
+      -- ram   = love.audio.newSource("assets/audio/sfx/zip_ram.wav", "static"),
+    },
     nullify = love.audio.newSource("assets/audio/sfx/nullify.wav", "static"),
     recombineCard = love.audio.newSource("assets/audio/sfx/recombineCard.wav", "static"),
     failure = love.audio.newSource("assets/audio/sfx/failure.wav", "static"),
@@ -62,15 +80,16 @@ function Audio.load()
   }
 end
 
-function Audio.playClink()
+function Audio.playClink(token_type)
   if not (Audio.sfx and Audio.sfx.clink) then return end
   local now        = love.timer.getTime()
   local scheduleAt = math.max(now, nextClinkTime)
   nextClinkTime    = scheduleAt + MIN_CLINK_GAP / config.speed
   table.insert(clinkQueue, {
-    time   = scheduleAt,
-    pitch  = 1 + (math.random() - 0.5) * 0.2,
-    volume = 0.8 + (math.random() - 0.5) * 0.2,
+    time    = scheduleAt,
+    sources = resolveSources(Audio.sfx.clink, token_type),
+    pitch   = 1 + (math.random() - 0.5) * 0.2,
+    volume  = 0.8 + (math.random() - 0.5) * 0.2,
   })
 end
 
@@ -193,13 +212,13 @@ function Audio.playClickOut()
   end
 end
 
-function Audio.playZip()
-  if Audio.sfx and Audio.sfx.zip then
-    local zipClone = Audio.sfx.zip:clone()
-    zipClone:setPitch(zipRamp:getPitch())
-    zipClone:setVolume(0.05)
-    zipClone:play()
-  end
+function Audio.playZip(token_type)
+  if not (Audio.sfx and Audio.sfx.zip) then return end
+  local source = resolveSources(Audio.sfx.zip, token_type)
+  local zipClone = source:clone()
+  zipClone:setPitch(zipRamp:getPitch())
+  zipClone:setVolume(0.05)
+  zipClone:play()
 end
 
 function Audio.playNullify()
