@@ -170,7 +170,7 @@ function areas.load()
   areas.scanner = {
     left = {
       x1          = dk.x,
-      x2          = dk.x + dk.w / 2,
+      x2          = dk.x + dk.w / 2 + (70 * SCALE_X),
       y           = dk.y,
       direction   = 1,
       speed       = scannerSpeed,
