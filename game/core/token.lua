@@ -328,6 +328,9 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
     self.target_rotation = shortest_rotation_target(0, options.target_rotation or 0)
     self.start_scale     = self.base_scale
     self.target_scale    = options.target_scale    or self.base_scale
+    self.start_alpha     = options.start_alpha     or 1
+    self.target_alpha    = options.target_alpha    or 1
+    self.alpha           = self.start_alpha
     local adx = target_x - start_x
     local ady = target_y - start_y
     self.attract_dist    = math.max(math.sqrt(adx*adx + ady*ady), 1)
@@ -547,6 +550,11 @@ function Token:_update_attract(dt)
     -- scale deflates from anticipation peak down to target as token travels
     self.scale = self.ant_peak_scale + (self.target_scale - self.ant_peak_scale) * t
 
+    -- tween alpha (for overflow fade-in / fade-out)
+    local sa = self.start_alpha  or 1
+    local ta = self.target_alpha or 1
+    self.alpha = sa + (ta - sa) * t
+
     -- trail particles (only reached in travel phase; anticipation/pause phases return early)
     local gameSpeed = self.speed / SCALE_X
     if gameSpeed > TRAIL_SPEED_THRESH then
@@ -576,9 +584,10 @@ function Token:draw()
     (self.scale * SCALE_X) * 0.3,
     (self.scale * SCALE_Y) * 0.3
   )
+  local alpha = self.alpha or 1
   if self.asset then
     local iw, ih = self.asset:getDimensions()
-    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setColor(1, 1, 1, alpha)
     love.graphics.draw(self.asset, 0, 0, 0, 1, 1, iw / 2, ih / 2)
     if self.subTokens and #self.subTokens > 0 then
       local n     = #self.subTokens
@@ -594,7 +603,7 @@ function Token:draw()
       end
     end
   else
-    love.graphics.setColor(1, 0.5, 0.5, 1)
+    love.graphics.setColor(1, 0.5, 0.5, alpha)
     love.graphics.circle("fill", 0, 0, 100 * SCALE_X)
   end
   love.graphics.pop()
@@ -757,6 +766,9 @@ function Token.attractDone(token_type, destination, options)
                     token.delay = running_delay
                     running_delay = running_delay + defaultDelay()
                 end
+                token.start_alpha      = token.alpha or 1
+                token.target_alpha     = options.target_alpha or 1
+                token.alpha            = token.start_alpha
                 token.done             = false
                 token.quivered         = false
                 token.onArrive         = options.onArrive

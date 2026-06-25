@@ -258,13 +258,15 @@ function Dtor.beginShuffle()
     local fromVisIdx = math.min(o.slotIdx, dq.maxSlots)
     local toVisIdx   = math.min(toIdx,     dq.maxSlots)
     table.insert(moves, {
-      fromX     = dq.x + dq.w / 2,
-      fromY     = dq.y + (fromVisIdx - 0.5) * slotH,
-      toX       = dq.x + dq.w / 2,
-      toY       = dq.y + (toVisIdx   - 0.5) * slotH,
-      toIdx     = toIdx,
-      scale     = o.scale,
-      subTokens = o.subTokens,
+      fromX       = dq.x + dq.w / 2,
+      fromY       = dq.y + (fromVisIdx - 0.5) * slotH,
+      toX         = dq.x + dq.w / 2,
+      toY         = dq.y + (toVisIdx   - 0.5) * slotH,
+      toIdx       = toIdx,
+      scale       = o.scale,
+      subTokens   = o.subTokens,
+      fromOverflow = o.slotIdx >= dq.maxSlots,
+      toOverflow   = toIdx     >= dq.maxSlots,
     })
   end
 
@@ -344,8 +346,9 @@ function Dtor.compactSlots()
       local slotNullif = dq.slots[oldIdx] and dq.slots[oldIdx].nullified
 
       if oldIdx ~= nextSlot then
-        local oldVisY   = dq.y + (math.min(oldIdx,   dq.maxSlots) - 0.5) * slotH
-        local newVisY   = dq.y + (math.min(nextSlot, dq.maxSlots) - 0.5) * slotH
+        local oldVisY    = dq.y + (math.min(oldIdx,   dq.maxSlots) - 0.5) * slotH
+        local newVisY    = dq.y + (math.min(nextSlot, dq.maxSlots) - 0.5) * slotH
+        local wasOverflow = oldIdx >= dq.maxSlots
 
         if oldVisY ~= newVisY then
           -- Visible animation (covers visible→visible and overflow→visible)
@@ -369,6 +372,7 @@ function Dtor.compactSlots()
               initial_speed    = 100 * SCALE_X,
               acceleration     = 200 * SCALE_X,
               no_anticipation  = true,
+              start_alpha      = wasOverflow and 0 or 1,
               onArrive      = function(t)
                 dq.slots[capturedN].occupied  = true
                 dq.slots[capturedN].reserved  = false

@@ -264,28 +264,39 @@ local function terminalEvent(tokenType)
             local acc = Token.makeCascadeAccumulator(0.06)
             for _, move in ipairs(moves) do
               local m = move
-              Token.new_attract(
-                m.fromX, m.fromY,
-                m.toX,   m.toY,
-                acc:next({
-                  type            = "dtor",
-                  base_scale      = m.scale or 1.5,
-                  target_scale    = m.scale or 1.5,
-                  subTokens       = m.subTokens,
-                  initial_speed   = 100 * SCALE_X,
-                  acceleration    = 200 * SCALE_X,
-                  no_anticipation = true,
-                  onArrive        = function(t)
-                    Dtor.area.slots[m.toIdx].occupied = true
-                    Dtor.area.slots[m.toIdx].reserved = false
-                    Dtor.area.slots[m.toIdx].scale    = m.scale
-                    Token.removeSingle(t)
-                    remaining = remaining - 1
-                    if remaining == 0 then Dtor.showText() end
-                  end,
-                })
-              )
+              if m.fromOverflow and m.toOverflow then
+                -- overflow→overflow: same visual position, update state immediately
+                Dtor.area.slots[m.toIdx].occupied = true
+                Dtor.area.slots[m.toIdx].reserved = false
+                Dtor.area.slots[m.toIdx].scale    = m.scale
+                remaining = remaining - 1
+              else
+                Token.new_attract(
+                  m.fromX, m.fromY,
+                  m.toX,   m.toY,
+                  acc:next({
+                    type            = "dtor",
+                    base_scale      = m.scale or 1.5,
+                    target_scale    = m.scale or 1.5,
+                    subTokens       = m.subTokens,
+                    initial_speed   = 100 * SCALE_X,
+                    acceleration    = 200 * SCALE_X,
+                    no_anticipation = true,
+                    start_alpha     = m.fromOverflow and 0 or 1,
+                    target_alpha    = m.toOverflow   and 0 or 1,
+                    onArrive        = function(t)
+                      Dtor.area.slots[m.toIdx].occupied = true
+                      Dtor.area.slots[m.toIdx].reserved = false
+                      Dtor.area.slots[m.toIdx].scale    = m.scale
+                      Token.removeSingle(t)
+                      remaining = remaining - 1
+                      if remaining == 0 then Dtor.showText() end
+                    end,
+                  })
+                )
+              end
             end
+            if remaining == 0 then Dtor.showText() end
             screenshake.triggerH(3)
             token:triggerPop(token.scale * 2.5, 0.35, function()
               Audio.playImpactIn()
