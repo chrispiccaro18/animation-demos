@@ -131,7 +131,10 @@ local function terminalEvent(tokenType)
           token._remove = true
           screenshake.triggerH(2)
           local dtorCard = _deck:deal()
-          if not dtorCard then return end
+          if not dtorCard then
+            screenshake.triggerH(2)
+            return
+          end
           dtorCard.current.scale = 0.05
           Dtor.setTransitCard(dtorCard)
 

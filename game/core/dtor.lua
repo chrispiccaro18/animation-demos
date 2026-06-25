@@ -127,14 +127,24 @@ function Dtor.reserveSlot()
   local dq    = Dtor.area
   local slotH = dq.h / dq.maxSlots
   for i = 1, dq.maxSlots do
+    local s = dq.slots[i]
+    if s and not s.occupied and not s.reserved then
+      s.reserved = true
+      return { x = dq.x + dq.w / 2, y = dq.y + (i - 0.5) * slotH, index = i }
+    end
+  end
+  -- Overflow: all visual slots full; reserve a logical slot beyond maxSlots
+  local i = dq.maxSlots + 1
+  while i <= dq.maxSlots + 50 do
+    if not dq.slots[i] then
+      dq.slots[i] = { occupied = false, reserved = false, nullified = false }
+    end
     if not dq.slots[i].occupied and not dq.slots[i].reserved then
       dq.slots[i].reserved = true
-      return {
-        x     = dq.x + dq.w / 2,
-        y     = dq.y + (i - 0.5) * slotH,
-        index = i,
-      }
+      -- Animate to last visual slot position
+      return { x = dq.x + dq.w / 2, y = dq.y + (dq.maxSlots - 0.5) * slotH, index = i }
     end
+    i = i + 1
   end
   return nil
 end
@@ -245,11 +255,13 @@ function Dtor.beginShuffle()
   for i, o in ipairs(occupied) do
     local toIdx = toIndices[i]
     _queue[o.entryIdx].slotIndices[o.withinIdx] = toIdx
+    local fromVisIdx = math.min(o.slotIdx, dq.maxSlots)
+    local toVisIdx   = math.min(toIdx,     dq.maxSlots)
     table.insert(moves, {
       fromX     = dq.x + dq.w / 2,
-      fromY     = dq.y + (o.slotIdx - 0.5) * slotH,
+      fromY     = dq.y + (fromVisIdx - 0.5) * slotH,
       toX       = dq.x + dq.w / 2,
-      toY       = dq.y + (toIdx   - 0.5) * slotH,
+      toY       = dq.y + (toVisIdx   - 0.5) * slotH,
       toIdx     = toIdx,
       scale     = o.scale,
       subTokens = o.subTokens,
@@ -288,6 +300,7 @@ function Dtor.reset()
   _text.content     = ""
   _text.alpha       = 0
   _text.targetAlpha = 0
+  Dtor.area.slots = {}
   for i = 1, Dtor.area.maxSlots do
     Dtor.area.slots[i] = { occupied = false, reserved = false, nullified = false }
   end
@@ -331,35 +344,51 @@ function Dtor.compactSlots()
       local slotNullif = dq.slots[oldIdx] and dq.slots[oldIdx].nullified
 
       if oldIdx ~= nextSlot then
-        local oldSx     = dq.x + dq.w / 2
-        local oldSy     = dq.y + (oldIdx - 0.5) * slotH
-        local newSy     = dq.y + (nextSlot - 0.5) * slotH
-        local capturedN = nextSlot
-        local subTokens = {}
-        for _, effect in ipairs(entry.card.data.dtor or {}) do
-          table.insert(subTokens, effect.type)
+        local oldVisY   = dq.y + (math.min(oldIdx,   dq.maxSlots) - 0.5) * slotH
+        local newVisY   = dq.y + (math.min(nextSlot, dq.maxSlots) - 0.5) * slotH
+
+        if oldVisY ~= newVisY then
+          -- Visible animation (covers visible→visible and overflow→visible)
+          local capturedN = nextSlot
+          local subTokens = {}
+          for _, effect in ipairs(entry.card.data.dtor or {}) do
+            table.insert(subTokens, effect.type)
+          end
+          if not dq.slots[capturedN] then
+            dq.slots[capturedN] = { occupied = false, reserved = false, nullified = false }
+          end
+          dq.slots[capturedN].reserved = true
+          Dtor.releaseSlot(oldIdx)
+          Token.new_attract(
+            dq.x + dq.w / 2, oldVisY,
+            dq.x + dq.w / 2, newVisY,
+            acc1:next({
+              type             = slotNullif and "dtor_null" or "dtor",
+              base_scale       = slotScale or 1,
+              subTokens        = slotNullif and nil or subTokens,
+              initial_speed    = 100 * SCALE_X,
+              acceleration     = 200 * SCALE_X,
+              no_anticipation  = true,
+              onArrive      = function(t)
+                dq.slots[capturedN].occupied  = true
+                dq.slots[capturedN].reserved  = false
+                dq.slots[capturedN].scale     = slotScale
+                dq.slots[capturedN].nullified = slotNullif
+                Token.removeSingle(t)
+              end,
+            })
+          )
+        else
+          -- Overflow→overflow: both map to the same visual position; update index silently
+          Dtor.releaseSlot(oldIdx)
+          if not dq.slots[nextSlot] then
+            dq.slots[nextSlot] = { occupied = false, reserved = false, nullified = false }
+          end
+          dq.slots[nextSlot].occupied  = true
+          dq.slots[nextSlot].reserved  = false
+          dq.slots[nextSlot].scale     = slotScale
+          dq.slots[nextSlot].nullified = slotNullif
         end
-        dq.slots[capturedN].reserved = true
-        Dtor.releaseSlot(oldIdx)
-        Token.new_attract(
-          oldSx, oldSy,
-          dq.x + dq.w / 2, newSy,
-          acc1:next({
-            type             = slotNullif and "dtor_null" or "dtor",
-            base_scale       = slotScale or 1,
-            subTokens        = slotNullif and nil or subTokens,
-            initial_speed    = 100 * SCALE_X,
-            acceleration     = 200 * SCALE_X,
-            no_anticipation  = true,
-            onArrive      = function(t)
-              dq.slots[capturedN].occupied  = true
-              dq.slots[capturedN].reserved  = false
-              dq.slots[capturedN].scale     = slotScale
-              dq.slots[capturedN].nullified = slotNullif
-              Token.removeSingle(t)
-            end,
-          })
-        )
       end
 
       table.insert(newIndices, nextSlot)
@@ -407,10 +436,22 @@ function Dtor.drawAll()
   local slotH = dq.h / dq.maxSlots
   local sw, sh = _dtorSlotAsset:getDimensions()
 
+  -- Count occupied slots including any overflow beyond maxSlots
+  local totalOccupied = 0
+  local overflowDots  = 0
+  for i, slot in pairs(dq.slots) do
+    if type(i) == "number" and slot.occupied then
+      totalOccupied = totalOccupied + 1
+      if i >= dq.maxSlots then overflowDots = overflowDots + 1 end
+    end
+  end
+  local isOverflow = totalOccupied > dq.maxSlots
+
   for entryIdx, entry in ipairs(_queue) do
     for _, idx in ipairs(entry.slotIndices) do
       local slot = dq.slots[idx]
-      if slot and slot.occupied then
+      -- In overflow mode, only draw slots strictly inside the visual range (< maxSlots)
+      if slot and slot.occupied and (not isOverflow or idx < dq.maxSlots) then
         local sx = dq.x + dq.w / 2
         local sy = dq.y + (idx - 0.5) * slotH
         local sc = (slot.scale or 1) * SCALE_X * 0.3
@@ -451,12 +492,25 @@ function Dtor.drawAll()
     -- end
   end
 
+  -- Overflow dot indicator: shown in last visual slot when total > maxSlots
+  if isOverflow and overflowDots > 0 then
+    local sx    = dq.x + dq.w / 2
+    local sy    = dq.y + (dq.maxSlots - 0.5) * slotH
+    local dotR  = 22 * SCALE_X
+    local gap   = dotR * 2.8
+    love.graphics.setColor(Color("#ff8b00", 1))
+    for d = 1, overflowDots do
+      local offset = (d - (overflowDots + 1) / 2) * gap
+      love.graphics.circle("fill", sx + offset, sy, dotR)
+    end
+  end
+
   -- Pre-nullified empty slots: render at their actual fixed index
   if _emptyNullifySlot then
     local ew, eh = _emptyNullifySlot:getDimensions()
     for i = 1, dq.maxSlots do
       local slot = dq.slots[i]
-      if slot.nullified and not slot.occupied then
+      if slot and slot.nullified and not slot.occupied then
         local sx = dq.x + dq.w / 2
         local sy = dq.y + (i - 0.5) * slotH
         local sc = 1.5 * SCALE_X * 0.3
