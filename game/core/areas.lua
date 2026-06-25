@@ -40,6 +40,36 @@ function areas.load()
     target   = { y = 1 },
   }
 
+  areas.dtorRow = {
+    x = 3430 * SCALE_X,
+    y = 1200 * SCALE_Y,
+    asset = AssetManifest.get("board", "dtorRow")
+  }
+
+  areas.leftLine = {
+    x1 = 230 * SCALE_X,
+    y1 = 309 * SCALE_Y,
+    x2 = 94 * SCALE_X,
+    y2 = 1974 * SCALE_Y,
+    w = 6 * SCALE_X
+  }
+
+  areas.envEffects = {
+    positive = AssetManifest.get("envEffects", "positive"),
+    negative = AssetManifest.get("envEffects", "negative"),
+    gapY     = 25 * SCALE_Y,
+    startY = 324 * SCALE_Y,
+    xOffset = -25 * SCALE_X
+  }
+
+  areas.rightLine = {
+    x1 = 3522 * SCALE_X,
+    y1 = 309 * SCALE_Y,
+    x2 = 3658 * SCALE_X,
+    y2 = 1974 * SCALE_Y,
+    w = 6 * SCALE_X
+  }
+
   areas.progressDestination = {
     x = 436 * SCALE_X,
     y = 142 * SCALE_Y,
@@ -148,6 +178,8 @@ function areas.load()
       color       = { 0, 1, 0.4 },
       trailLength = 1000 * SCALE_Y,
       segments    = 48,
+      boundLine   = areas.leftLine,
+      boundSide   = "x1",
     },
     right = {
       x1          = dk.x + dk.w / 2,
@@ -159,6 +191,8 @@ function areas.load()
       color       = { 1, 0.2, 0.2 },
       trailLength = 1000 * SCALE_Y,
       segments    = 48,
+      boundLine   = areas.rightLine,
+      boundSide   = "x2",
     },
   }
 
@@ -210,6 +244,20 @@ function areas.updateScanners(dt)
   end
 end
 
+local function lineXAtY(line, y)
+  local t = (y - line.y1) / (line.y2 - line.y1)
+  t = math.max(0, math.min(1, t))
+  return line.x1 + t * (line.x2 - line.x1)
+end
+
+local function scannerX1(s, y)
+  return s.boundSide == "x1" and lineXAtY(s.boundLine, y) or s.x1
+end
+
+local function scannerX2(s, y)
+  return s.boundSide == "x2" and lineXAtY(s.boundLine, y) or s.x2
+end
+
 function areas.drawScanners()
   local top = areas.desk.y
   local bot = areas.desk.y + areas.desk.h
@@ -222,18 +270,20 @@ function areas.drawScanners()
           local alpha = (1 - i / s.segments) * 0.5
           love.graphics.setColor(s.color[1], s.color[2], s.color[3], alpha)
           love.graphics.setLineWidth(2 * SCALE_Y)
-          love.graphics.line(s.x1, ty, s.x2, ty)
+          love.graphics.line(scannerX1(s, ty), ty, scannerX2(s, ty), ty)
         end
       end
+      local lx1 = scannerX1(s, s.y)
+      local lx2 = scannerX2(s, s.y)
       love.graphics.setColor(s.color[1], s.color[2], s.color[3], 0.2)
       love.graphics.setLineWidth(8 * SCALE_Y)
-      love.graphics.line(s.x1, s.y, s.x2, s.y)
+      love.graphics.line(lx1, s.y, lx2, s.y)
       love.graphics.setColor(s.color[1], s.color[2], s.color[3], 0.55)
       love.graphics.setLineWidth(4 * SCALE_Y)
-      love.graphics.line(s.x1, s.y, s.x2, s.y)
+      love.graphics.line(lx1, s.y, lx2, s.y)
       love.graphics.setColor(s.color[1], s.color[2], s.color[3], 1)
       love.graphics.setLineWidth(1.5 * SCALE_Y)
-      love.graphics.line(s.x1, s.y, s.x2, s.y)
+      love.graphics.line(lx1, s.y, lx2, s.y)
       love.graphics.setColor(1, 1, 1, 1)
       love.graphics.setLineWidth(1)
     end
@@ -327,8 +377,6 @@ end
 
 -- Draw helpers
 function areas.drawStatic()
-  local et = areas.endTurn
-
   if areas.pool.showText then
     love.graphics.setColor(Color("#d0be74"))
     local previousFont = love.graphics.getFont()
@@ -360,17 +408,6 @@ function areas.drawStatic()
     love.graphics.setFont(previousFont)
   end
 
-  love.graphics.setColor(1, 1, 1, 1)
-  if et.state == "idle" and endTurnAsset then
-    love.graphics.draw(endTurnAsset, et.x, et.y, 0, SCALE_X, SCALE_Y)
-  elseif et.state == "hover" and endTurnHoverAsset then
-    love.graphics.draw(endTurnHoverAsset, et.x, et.y, 0, SCALE_X, SCALE_Y)
-  elseif et.state == "click" and endTurnClickAsset then
-    love.graphics.draw(endTurnClickAsset, et.x, et.y, 0, SCALE_X, SCALE_Y)
-  else
-    love.graphics.setColor(et.color)
-    love.graphics.rectangle("line", et.x, et.y, et.w, et.h)
-  end
   love.graphics.setColor(1, 1, 1, 1)
 
   if areas.progressBar.asset then
@@ -444,6 +481,60 @@ function areas.drawStatic()
         ramTokenAsset:getHeight() / 2
       )
     end
+  end
+  love.graphics.setColor(1, 1, 1, 1)
+end
+
+function areas.drawDynamic()
+  if areas.dtorRow.asset then
+    love.graphics.draw(
+      areas.dtorRow.asset,
+      areas.dtorRow.x,
+      areas.dtorRow.y,
+      0,
+      SCALE_X,
+      SCALE_Y,
+      areas.dtorRow.asset:getWidth() / 2,
+      areas.dtorRow.asset:getHeight() / 2
+    )
+  end
+  local et = areas.endTurn
+
+  if et.state == "idle" and endTurnAsset then
+    love.graphics.draw(endTurnAsset, et.x, et.y, 0, SCALE_X, SCALE_Y)
+  elseif et.state == "hover" and endTurnHoverAsset then
+    love.graphics.draw(endTurnHoverAsset, et.x, et.y, 0, SCALE_X, SCALE_Y)
+  elseif et.state == "click" and endTurnClickAsset then
+    love.graphics.draw(endTurnClickAsset, et.x, et.y, 0, SCALE_X, SCALE_Y)
+  else
+    love.graphics.setColor(et.color)
+    love.graphics.rectangle("line", et.x, et.y, et.w, et.h)
+  end
+
+  if areas.envEffects.positive then
+    love.graphics.draw(
+      areas.envEffects.positive,
+      lineXAtY(areas.leftLine, areas.envEffects.startY) + areas.envEffects.xOffset,
+      areas.envEffects.startY,
+      0,
+      SCALE_X,
+      SCALE_Y,
+      areas.envEffects.positive:getWidth() / 2,
+      0
+    )
+  end
+  if areas.envEffects.negative then
+    local gap = areas.envEffects.gapY + (areas.envEffects.negative:getHeight() * SCALE_Y)
+    love.graphics.draw(
+      areas.envEffects.negative,
+      lineXAtY(areas.leftLine, areas.envEffects.startY + gap) + areas.envEffects.xOffset,
+      areas.envEffects.startY + gap,
+      0,
+      SCALE_X,
+      SCALE_Y,
+      areas.envEffects.negative:getWidth() / 2,
+      0
+    )
   end
   love.graphics.setColor(1, 1, 1, 1)
 end

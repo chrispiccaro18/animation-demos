@@ -191,13 +191,14 @@ function love.draw()
 
   particles.draw()
   areas.drawStatic()
-  Dtor.drawAll()
   if camera then camera:draw() end
   if camera then camera:drawScannerLines(areas.scanner) end
   if deck then deck:draw() end
+  areas.drawScanners()
+  areas.drawDynamic()
+  Dtor.drawAll()
   hand:draw()
   Token.drawAll()
-  areas.drawScanners()
   message.draw()
   love.graphics.pop()
 

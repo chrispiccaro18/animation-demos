@@ -5,6 +5,9 @@ local basePath = "assets/"
 Manifest.board = {
   base = {
     path = basePath .. "proto/board.png"
+  },
+  dtorRow = {
+    path = basePath .. "proto/dtor-row.png"
   }
 }
 
@@ -64,7 +67,7 @@ Manifest.endTurn = {
     path = basePath .. "proto/end-turn-hover.png"
   },
   down = {
-    path = basePath .. "proto/end-turn-down.png"
+    path = basePath .. "proto/end-turn-down2.png"
   }
 }
 
@@ -86,6 +89,15 @@ Manifest.camera = {
   },
   ring = {
     path = basePath .. "proto/camera-ring.png"
+  }
+}
+
+Manifest.envEffects = {
+  positive = {
+    path = basePath .. "proto/env-effect-positive.png"
+  },
+  negative = {
+    path = basePath .. "proto/env-effect-negative.png"
   }
 }
 
