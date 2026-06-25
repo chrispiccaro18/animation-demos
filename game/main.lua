@@ -68,9 +68,9 @@ local function resetGame()
   Dtor.reset()
   laser.hide()
 
-  areas.progressBar.count = 5
+  areas.progressBar.count = 0
   areas.progressBar.textArea.value = "00/10"
-  areas.threatBar.count = 5
+  areas.threatBar.count = 0
   areas.threatBar.textArea.value = "00/10"
   areas.endTurn.frozen = false
   areas.endTurn.state = "idle"
@@ -142,8 +142,6 @@ function love.load()
 
   boardAsset = AssetManifest.get("board", "base")
   cardBackAsset = AssetManifest.get("card", "back")
-  -- boardAsset:setFilter("linear", "linear")
-  -- boardAsset:setMipmapFilter("linear")
   dissolveShader = love.graphics.newShader("assets/dissolve.fs")
   tiltShader = love.graphics.newShader("assets/tilt.fs")
 
@@ -191,7 +189,6 @@ function love.draw()
     love.graphics.draw(boardAsset, 0, 0, 0, SCALE_X, SCALE_Y)
   end
 
-  particles.draw()
   areas.drawStatic()
   if camera then camera:draw() end
   if camera then camera:drawScannerLines(areas.scanner) end
@@ -200,6 +197,7 @@ function love.draw()
   areas.drawDynamic()
   Dtor.drawAll()
   hand:draw()
+  particles.draw()
   Token.drawAll()
   message.draw()
   love.graphics.pop()
@@ -289,7 +287,9 @@ function love.keypressed(key)
   elseif key == "r" then
     resetGame()
   elseif key == "s" then
-    screenshake.trigger()
+    -- screenshake.trigger()
+    print(events.get("terminalArrive").isRunning())
+    print("Token all done: ", Token.allDone())
   elseif key == "q" then
     areas.scanner.left.active = not areas.scanner.left.active
   elseif key == "w" then

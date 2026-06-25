@@ -127,6 +127,127 @@ local function terminalEvent(tokenType)
           token._remove = true
           sequences.dealCardToHand("terminalArrive", 0)
           screenshake.triggerH(2)
+        elseif tokenType == "drawToDtor" then
+          token._remove = true
+          screenshake.triggerH(2)
+          local dtorCard = _deck:deal()
+          if not dtorCard then return end
+          dtorCard.current.scale = 0.05
+          Dtor.setTransitCard(dtorCard)
+
+          events.push({
+            fn = function()
+              local cx = SCALE_X * 1920
+              local cy = SCALE_Y * 1080
+              dtorCard.target.x     = cx
+              dtorCard.target.y     = cy
+              dtorCard.target.scale = dtorCard.scales.hover
+              dtorCard.drawShadow = false
+              Camera:lookAt(dtorCard)
+              Audio.playDeal()
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "immediate",
+          }, "terminalArrive")
+
+          events.push({
+            fn = function()
+              return dtorCard:isAtTarget()
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "poll",
+          }, "terminalArrive")
+
+          events.push({
+            fn = function()
+              Camera:setColor(Color("#9C2B2B"))
+              local lensX, lensY = Camera:getLensPosition()
+              laser.show(lensX, lensY, dtorCard.current.x, dtorCard.current.y)
+              Audio.playLaserStart()
+              screenshake.trigger(10, 0.25)
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0.5, type = "before",
+          }, "terminalArrive")
+
+          events.push({
+            fn = function()
+              return laser.isDone()
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "poll",
+          }, "terminalArrive")
+
+          events.push({
+            fn = function()
+              Audio.playImpactIn()
+              Camera:setColor(Color("#D56E6E"))
+              laser.hide()
+              dtorCard:startDissolve()
+              dtorCard.target.scale = dtorCard.scales.drag
+              dtorCard:flingZone("dtorEffect", areas.desk, discardFlingOptions())
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "immediate",
+          }, "terminalArrive")
+
+          events.push({
+            fn = function()
+              return not Token.isActive()
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "poll",
+          }, "terminalArrive")
+
+          events.push({
+            fn = function()
+              Token.attractDone(
+                "dtor",
+                function(_t)
+                  return Dtor.reserveSlot()
+                end,
+                {
+                  target_rotation = 0,
+                  target_scale    = 1.5,
+                  initial_speed   = 700,
+                  onArrive = function()
+                    Audio.playImpactIn()
+                  end,
+                }
+              )
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "immediate",
+          }, "terminalArrive")
+
+          events.push({
+            fn = function()
+              return Token.allDone() and not dtorCard:isDissolving()
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "poll",
+          }, "terminalArrive")
+
+          events.push({
+            fn = function()
+              local dtorTokens  = Token.removeDone("dtor")
+              local slotIndices = {}
+              for _, t in ipairs(dtorTokens) do
+                if t.dest_meta and t.dest_meta.index then
+                  Dtor.claimSlot(t.dest_meta.index, t.scale)
+                  table.insert(slotIndices, t.dest_meta.index)
+                end
+              end
+              if #slotIndices > 0 then
+                Dtor.register(dtorCard, slotIndices)
+                Dtor.showText()
+              end
+              Dtor.clearTransitCard()
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0.1, type = "after",
+          }, "terminalArrive")
+
         elseif tokenType == "shuffle" then
           local moves = Dtor.beginShuffle()
           if not moves then
@@ -134,6 +255,8 @@ local function terminalEvent(tokenType)
             token._remove = true
           else
             Dtor.hideText()
+            local firstDtorSlot = Dtor.topSlot()
+            particles.emit("shuffle", firstDtorSlot.x, firstDtorSlot.y, 15)
             local remaining = #moves
             local acc = Token.makeCascadeAccumulator(0.06)
             for _, move in ipairs(moves) do
@@ -163,6 +286,7 @@ local function terminalEvent(tokenType)
             screenshake.triggerH(3)
             token:triggerPop(token.scale * 2.5, 0.35, function()
               Audio.playImpactIn()
+              particles.emit("shuffle", firstDtorSlot.x, firstDtorSlot.y, 15)
             end)
           end
         end
@@ -271,8 +395,10 @@ function sequences.scan(scanner)
 end
 
 function sequences.restoreCard(card)
+  print("restoreCard fired")
   events.push({
     fn = function()
+      print("restoreCard first event fired")
       Dtor.setTransitCard(card)
       Audio.playRecombineCard()
       card:restoreAllSlots()
@@ -313,7 +439,7 @@ function sequences.restoreCard(card)
       Dtor.clearTransitCard()
       _deck:add(card)
       Camera:setIdle()
-      Dtor.compactSlots()
+      -- Dtor.compactSlots()
       areas.endTurn.frozen = false
     end,
     blocking = true, blockable = true, persistent = false,
@@ -714,6 +840,7 @@ function sequences.endTurn()
         Dtor.popEntry()
         local idx   = slotIndices[1]
         Dtor.releaseSlot(idx)
+        Dtor.compactSlots()
         sequences.restoreCard(card)
       else
         local sx, sy = Dtor.getTextCenter()
@@ -723,9 +850,17 @@ function sequences.endTurn()
         Dtor.popEntry()
         local idx   = slotIndices[1]
         Dtor.releaseSlot(idx)
+        Dtor.compactSlots()
         if Token.count() > 0 then
           sequences.scan(areas.scanner.right)
         end
+        events.push({
+          fn = function()
+            return Token.allDone() and not events.isRunning("terminalArrive")
+          end,
+          blocking = true, blockable = true, persistent = false,
+          delay = 0, type = "poll",
+        })
         sequences.restoreCard(card)
       end
     end,

@@ -517,13 +517,11 @@ function Card:getEffects(zone)
 end
 
 function Card:startDissolve()
-  print("Card:startDissolve() called")
   self.reverseDissolving = false
   self.dissolving        = true
 end
 
 function Card:startReverseDissolve()
-  print("Card:startReverseDissolve() called")
   self.dissolving        = false
   self.dissolveAmount    = 1.0
   self.dissolveTime      = 0
@@ -531,7 +529,6 @@ function Card:startReverseDissolve()
 end
 
 function Card:resetDissolve()
-  print("Card:resetDissolve() called")
   self.dissolving        = false
   self.reverseDissolving = false
   self.dissolveAmount    = 0
@@ -640,6 +637,9 @@ function Card:update()
   if self.dissolving then
     self.dissolveTime   = self.dissolveTime + realDt
     self.dissolveAmount = math.min(self.dissolveAmount + realDt * 0.9, 1)
+    if self.dissolveAmount >= 1 then
+      self.dissolving = false
+    end
   end
 
   if self.reverseDissolving then

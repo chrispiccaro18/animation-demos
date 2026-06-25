@@ -130,6 +130,8 @@ function particles.load()
   particles.define("threat",   { color1 = {1.0, 0.45, 0.1}, color2 = {1.0, 0.2, 0.1} })
   particles.define("progressNegative", { color1 = Color("#293f2a"), color2 = Color("#1e2c1f") })
   particles.define("threatNegative",   { color1 = Color("#563332"), color2 = Color("#352222") })
+  particles.define("dtor",   { color1 = Color("#563332"), color2 = Color("#352222") })
+  particles.define("shuffle",   { color1 = Color("#ff8b00"), color2 = Color("#ff8b00") })
 
   local trailLayers = { { sizeMult = 1.0, countMult = 1.0 } }
   local function trail(c1, c2)
