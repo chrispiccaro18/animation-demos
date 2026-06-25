@@ -242,7 +242,10 @@ function love.update(dt)
       actionQueue.push({
         card     = nil,
         terminal = true,
-        fn       = function() sequences.endTurn() end,
+        fn       = function()
+          hand:setActiveCardDraw(false)
+          sequences.endTurn()
+        end,
         onReject = function(_item)
           areas.endTurn.frozen    = false
           areas.endTurn.state     = "idle"

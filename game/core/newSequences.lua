@@ -80,7 +80,7 @@ local function terminalEvent(tokenType)
             lifetimeMax   = 0.5,
             speed = 1000
           })
-          Audio.playImpactOut("progress")
+          Audio.playImpactOut("progressNegative")
           token:triggerPop(token.scale * 2.5, 0.35, function()
             particles.emit("progressNegative", areas.progressDestination.x, areas.progressDestination.y, pbCount)
             Audio.playImpactIn()
@@ -112,7 +112,7 @@ local function terminalEvent(tokenType)
             lifetimeMax   = 0.5,
             speed = 1000
           })
-          Audio.playImpactOut("threat")
+          Audio.playImpactOut("threatNegative")
           token:triggerPop(token.scale * 2.5, 0.35, function()
             particles.emit("threatNegative", areas.threatDestination.x, areas.threatDestination.y, tbCount)
             Audio.playImpactIn()
@@ -273,7 +273,7 @@ end
 function sequences.restoreCard(card)
   events.push({
     fn = function()
-      _hand:setActiveCardDraw(true)
+      Dtor.setTransitCard(card)
       Audio.playRecombineCard()
       card:restoreAllSlots()
       card:startReverseDissolve()
@@ -662,7 +662,6 @@ function sequences.play(card, camera)
 end
 
 function sequences.endTurn()
-  -- _hand:setActiveCardDraw(false)
 
   if not Dtor.hasEntry() then
     Camera:setIdle()
@@ -682,13 +681,6 @@ function sequences.endTurn()
 
   events.push({
     fn = function()
-      _hand:setActiveCardDraw(false)
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
-  })
-  events.push({
-    fn = function()
       local cx = SCALE_X * 1920
       local cy = SCALE_Y * 1080
       -- local cx = love.graphics.getWidth() / 2
@@ -700,7 +692,6 @@ function sequences.endTurn()
       card.current.y = cy
       card.target.x = cx
       card.target.y = cy
-      Dtor.setTransitCard(card)
       Camera:lookAt(card)
     end,
     blocking = true, blockable = true, persistent = false,

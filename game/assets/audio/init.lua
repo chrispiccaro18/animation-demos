@@ -6,6 +6,8 @@ local dealRamp = PitchRamp.new()
 local impactOutThreatRamp = PitchRamp.new()
 local impactOutProgressRamp = PitchRamp.new()
 local ramImpactRamp = PitchRamp.new()
+local impactOutNegativeThreatRamp = PitchRamp.new(0.75, 0.8, -0.08, false)
+local impactOutNegativeProgressRamp = PitchRamp.new(0.75, 0.8, -0.08, false)
 
 local MIN_CLINK_GAP = 0.02  -- seconds between staggered clinks
 local clinkQueue    = {}
@@ -63,6 +65,8 @@ function Audio.load()
     impactOut = {
       threat = love.audio.newSource("assets/audio/sfx/impactOutThreat.wav", "static"),
       progress = love.audio.newSource("assets/audio/sfx/impactOutProgress.wav", "static"),
+      threatNegative = love.audio.newSource("assets/audio/sfx/impactOutThreat.wav", "static"),
+      progressNegative = love.audio.newSource("assets/audio/sfx/impactOutProgress.wav", "static"),
     },
     laserStart = love.audio.newSource("assets/audio/sfx/laserStart.wav", "static"),
     scanner = love.audio.newSource("assets/audio/sfx/scanner2.wav", "stream"),
@@ -154,6 +158,10 @@ function Audio.playImpactOut(type)
       impactOutClone:setPitch(impactOutThreatRamp:getPitch())
     elseif type == "progress" then
       impactOutClone:setPitch(impactOutProgressRamp:getPitch())
+    elseif type == "threatNegative" then
+      impactOutClone:setPitch(impactOutNegativeThreatRamp:getPitch())
+    elseif type == "progressNegative" then
+      impactOutClone:setPitch(impactOutNegativeProgressRamp:getPitch())
     else
       impactOutClone:setPitch(1 + (math.random() - 0.5) * 0.2)
     end
