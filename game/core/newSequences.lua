@@ -54,7 +54,6 @@ local function terminalEvent(tokenType)
   return function(token)
     events.push({
       fn = function()
-        print("terminal event for token type", tokenType)
         if tokenType == "progress" then
           areas.progressBar.count = math.min(areas.progressBar.count + 1, 10)
           areas.triggerBarPop(areas.progressBar)
@@ -134,6 +133,8 @@ local function terminalEvent(tokenType)
             screenshake.trigger(8, 0.25)
             token._remove = true
           else
+            Dtor.hideText()
+            local remaining = #moves
             local acc = Token.makeCascadeAccumulator(0.06)
             for _, move in ipairs(moves) do
               local m = move
@@ -153,6 +154,8 @@ local function terminalEvent(tokenType)
                     Dtor.area.slots[m.toIdx].reserved = false
                     Dtor.area.slots[m.toIdx].scale    = m.scale
                     Token.removeSingle(t)
+                    remaining = remaining - 1
+                    if remaining == 0 then Dtor.showText() end
                   end,
                 })
               )
@@ -210,7 +213,6 @@ end
 function sequences.dealCardToHand(eventType, delay)
   if not eventType then eventType = "default" end
   if not delay then delay = 0.5 end
-  print("Dealing card to hand with event type:", eventType)
   events.push({
     fn = function()
       local card = _deck:deal()
@@ -335,9 +337,7 @@ function sequences.restoreCard(card)
   events.push({
     fn = function()
     local handSize = _hand:handSize()
-      print("hand size after end turn:", handSize)
       local toDeal = math.min(4 - handSize, 4)
-      print("cards to deal after end turn:", toDeal)
       for _ = 1, toDeal do
         sequences.dealCardToHand()
       end
@@ -662,6 +662,7 @@ function sequences.play(card, camera)
 end
 
 function sequences.endTurn()
+  -- _hand:setActiveCardDraw(false)
 
   if not Dtor.hasEntry() then
     Camera:setIdle()
@@ -682,6 +683,12 @@ function sequences.endTurn()
   events.push({
     fn = function()
       _hand:setActiveCardDraw(false)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+  events.push({
+    fn = function()
       local cx = SCALE_X * 1920
       local cy = SCALE_Y * 1080
       -- local cx = love.graphics.getWidth() / 2
@@ -725,7 +732,6 @@ function sequences.endTurn()
         Dtor.popEntry()
         local idx   = slotIndices[1]
         Dtor.releaseSlot(idx)
-        print("Token count before end turn scan:", Token.count())
         if Token.count() > 0 then
           sequences.scan(areas.scanner.right)
         end

@@ -277,7 +277,6 @@ function love.keyreleased(key)
   if key == "space" then
     config.speed = previousSpeed
     speedControl.setSpaceHeld(false)
-    print("Speed: " .. config.speed .. "x")
   end
 end
 
@@ -294,12 +293,10 @@ function love.keypressed(key)
     areas.scanner.right.active = not areas.scanner.right.active
   elseif key == "tab" then
     config.cycleSpeed()
-    print("Speed: " .. config.speed .. "x")
   elseif key == "space" then
     previousSpeed = config.speed
     config.speed = 3.0
     speedControl.setSpaceHeld(true)
-    print("Speed: " .. config.speed .. "x")
   elseif key == "o" then
     print(events.isRunning())
   else

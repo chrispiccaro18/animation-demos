@@ -377,37 +377,6 @@ end
 
 -- Draw helpers
 function areas.drawStatic()
-  if areas.pool.showText then
-    love.graphics.setColor(Color("#d0be74"))
-    local previousFont = love.graphics.getFont()
-    love.graphics.setFont(statFont)
-    love.graphics.printf(
-      "RAM: " .. tostring(#areas.pool.chips),
-      areas.pool.x,
-      areas.pool.y + areas.pool.h / 4,
-      areas.pool.w,
-      "center"
-    )
-    love.graphics.setColor(1, 1, 1, 1)
-
-
-    love.graphics.printf(
-      "PLAY",
-      areas.play.x,
-      areas.play.y + areas.play.h,
-      areas.play.w,
-      "right"
-    )
-    love.graphics.printf(
-      "DISCARD",
-      areas.discard.x ,
-      areas.discard.startY + areas.discard.h,
-      areas.discard.w + playDiscardGap,
-      "left"
-    )
-    love.graphics.setFont(previousFont)
-  end
-
   love.graphics.setColor(1, 1, 1, 1)
 
   if areas.progressBar.asset then
@@ -486,6 +455,38 @@ function areas.drawStatic()
 end
 
 function areas.drawDynamic()
+  if areas.pool.showText then
+    love.graphics.setColor(Color("#d0be74"))
+    local previousFont = love.graphics.getFont()
+    love.graphics.setFont(statFont)
+    love.graphics.printf(
+      "RAM: " .. tostring(#areas.pool.chips),
+      areas.pool.x,
+      areas.pool.y + areas.pool.h / 4,
+      areas.pool.w,
+      "center"
+    )
+    love.graphics.setColor(1, 1, 1, 1)
+
+
+    love.graphics.printf(
+      "PLAY",
+      areas.play.x,
+      areas.play.y + areas.play.h,
+      areas.play.w,
+      "right"
+    )
+    love.graphics.printf(
+      "DISCARD",
+      areas.discard.x ,
+      areas.discard.startY + areas.discard.h,
+      areas.discard.w + playDiscardGap,
+      "left"
+    )
+    love.graphics.setFont(previousFont)
+  end
+  love.graphics.setColor(1, 1, 1, 1)
+
   if areas.dtorRow.asset then
     love.graphics.draw(
       areas.dtorRow.asset,
