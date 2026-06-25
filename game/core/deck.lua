@@ -89,6 +89,22 @@ function Deck:draw()
   end
 
   love.graphics.setColor(1, 1, 1, 1)
+
+  -- debug: centerPosition() in green, actual draw center in red
+  -- local cp = self:centerPosition()
+  -- local r  = 8 * SCALE_Y
+  -- love.graphics.setColor(0, 1, 0, 1)
+  -- love.graphics.circle("fill", cp.x, cp.y, r)
+  -- love.graphics.setColor(1, 0, 0, 1)
+  -- love.graphics.circle("fill", cx, cy, r)
+  -- love.graphics.setColor(1, 1, 1, 1)
+end
+
+function Deck:centerPosition()
+  return {
+    x = self.x,
+    y = self.y,
+  }
 end
 
 return Deck

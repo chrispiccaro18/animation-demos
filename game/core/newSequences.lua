@@ -8,6 +8,7 @@ local Camera = require("core.camera")
 local laser = require("core.laser")
 local Dtor  = require("core.dtor")
 local Audio = require("assets.audio")
+local Deck = require("core.deck")
 
 local COUNT_MIN = 10
 local COUNT_MAX = 20
@@ -16,6 +17,9 @@ local sequences = {}
 
 local _deck = nil
 function sequences.setDeck(d) _deck = d end
+
+local _hand = nil
+function sequences.setHand(h) _hand = h end
 
 
 local function discardFlingOptions()
@@ -66,10 +70,22 @@ local function terminalEvent(tokenType)
             particles.emit("progress", areas.progressDestination.x, areas.progressDestination.y, pbCount)
             Audio.playImpactIn()
           end)
-          local pbSegIdx   = pb.count - 1
-          local pbCx       = pb.x + pbSegIdx * pb.gapX + pb.w / 2
-          -- local pbBarCount = math.floor(COUNT_MIN + (COUNT_MAX - COUNT_MIN) * (pb.count / pb.max))
-          -- particles.emit("progress", pbCx, pb.y + pb.h / 2, pbBarCount)
+          screenshake.trigger(5, 0.2)
+        elseif tokenType == "progressNegative" then
+          areas.progressBar.count = math.max(areas.progressBar.count - 1, 0)
+          -- areas.triggerBarPop(areas.progressBar)
+          local pb = areas.progressBar
+          local pbCount = math.floor(8 + 12 * (pb.count / pb.max))
+          particles.emit("progressNegative", areas.progressDestination.x, areas.progressDestination.y, pbCount, {
+            lifetimeMin   = 0.25,
+            lifetimeMax   = 0.5,
+            speed = 1000
+          })
+          Audio.playImpactOut("progress")
+          token:triggerPop(token.scale * 2.5, 0.35, function()
+            particles.emit("progressNegative", areas.progressDestination.x, areas.progressDestination.y, pbCount)
+            Audio.playImpactIn()
+          end)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "threat" then
           areas.threatBar.count = math.min(areas.threatBar.count + 1, 10)
@@ -86,16 +102,66 @@ local function terminalEvent(tokenType)
             particles.emit("threat", areas.threatDestination.x, areas.threatDestination.y, tbCount)
             Audio.playImpactIn()
           end)
-          local tbSegIdx   = tb.count - 1
-          local tbCx       = tb.x + tbSegIdx * tb.gapX + tb.w / 2
-          -- local tbBarCount = math.floor(COUNT_MIN + (COUNT_MAX - COUNT_MIN) * (tb.count / tb.max))
-          -- particles.emit("threat", tbCx, tb.y + tb.h / 2, tbBarCount)
+          screenshake.trigger(5, 0.2)
+        elseif tokenType == "threatNegative" then
+          areas.threatBar.count = math.max(areas.threatBar.count - 1, 0)
+          -- areas.triggerBarPop(areas.threatBar)
+          local tb = areas.threatBar
+          local tbCount = math.floor(8 + 12 * (tb.count / tb.max))
+          particles.emit("threatNegative", areas.threatDestination.x, areas.threatDestination.y, tbCount, {
+            lifetimeMin   = 0.25,
+            lifetimeMax   = 0.5,
+            speed = 1000
+          })
+          Audio.playImpactOut("threat")
+          token:triggerPop(token.scale * 2.5, 0.35, function()
+            particles.emit("threatNegative", areas.threatDestination.x, areas.threatDestination.y, tbCount)
+            Audio.playImpactIn()
+          end)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "nullify" then
           token._remove = true
           Dtor.nullifyNextSlot()
           screenshake.triggerH(2)
           Audio.playNullify()
+        elseif tokenType == "drawToHand" then
+          token._remove = true
+          sequences.dealCardToHand("terminalArrive", 0)
+          screenshake.triggerH(2)
+        elseif tokenType == "shuffle" then
+          local moves = Dtor.beginShuffle()
+          if not moves then
+            screenshake.trigger(8, 0.25)
+            token._remove = true
+          else
+            local acc = Token.makeCascadeAccumulator(0.06)
+            for _, move in ipairs(moves) do
+              local m = move
+              Token.new_attract(
+                m.fromX, m.fromY,
+                m.toX,   m.toY,
+                acc:next({
+                  type            = "dtor",
+                  base_scale      = m.scale or 1.5,
+                  target_scale    = m.scale or 1.5,
+                  subTokens       = m.subTokens,
+                  initial_speed   = 100 * SCALE_X,
+                  acceleration    = 200 * SCALE_X,
+                  no_anticipation = true,
+                  onArrive        = function(t)
+                    Dtor.area.slots[m.toIdx].occupied = true
+                    Dtor.area.slots[m.toIdx].reserved = false
+                    Dtor.area.slots[m.toIdx].scale    = m.scale
+                    Token.removeSingle(t)
+                  end,
+                })
+              )
+            end
+            screenshake.triggerH(3)
+            token:triggerPop(token.scale * 2.5, 0.35, function()
+              Audio.playImpactIn()
+            end)
+          end
         end
         if areas.progressBar.count >= areas.progressBar.max then
           gameOver = "win"
@@ -133,25 +199,33 @@ local function terminalAttract()
   local acc = Token.makeCascadeAccumulator()
   startTerminalAttract("progress", areas.progressDestination, acc)
   startTerminalAttract("threat", areas.threatDestination, acc)
+  startTerminalAttract("progressNegative", areas.progressDestination, acc)
+  startTerminalAttract("threatNegative", areas.threatDestination, acc)
   startTerminalAttract("nullify", Dtor.nextUnnullifiedSlot(), acc)
+  startTerminalAttract("shuffle", Dtor.topSlot(), acc)
+  startTerminalAttract("drawToDtor", _deck:centerPosition(), acc)
+  startTerminalAttract("drawToHand", _deck:centerPosition(), acc)
 end
 
-function sequences.dealCardToHand(hand)
+function sequences.dealCardToHand(eventType, delay)
+  if not eventType then eventType = "default" end
+  if not delay then delay = 0.5 end
+  print("Dealing card to hand with event type:", eventType)
   events.push({
     fn = function()
       local card = _deck:deal()
       if card then
         card:resetToInitial(_deck.x, _deck.y)
         card.current.scale = 0.05
-        hand:add(card, false, true)
+        _hand:add(card, false, true)
         Audio.playDeal()
       else
         print("no card to deal to hand")
       end
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "after",
-  })
+    delay = delay, type = "after",
+  }, eventType)
 end
 
 function sequences.scan(scanner)
@@ -194,9 +268,10 @@ function sequences.scan(scanner)
   })
 end
 
-function sequences.restoreCard(card, hand)
+function sequences.restoreCard(card)
   events.push({
     fn = function()
+      _hand:setActiveCardDraw(true)
       Audio.playRecombineCard()
       card:restoreAllSlots()
       card:startReverseDissolve()
@@ -259,12 +334,12 @@ function sequences.restoreCard(card, hand)
   })
   events.push({
     fn = function()
-    local handSize = hand:handSize()
+    local handSize = _hand:handSize()
       print("hand size after end turn:", handSize)
       local toDeal = math.min(4 - handSize, 4)
       print("cards to deal after end turn:", toDeal)
       for _ = 1, toDeal do
-        sequences.dealCardToHand(hand)
+        sequences.dealCardToHand()
       end
     end,
     blocking = true, blockable = true, persistent = false,
@@ -272,7 +347,7 @@ function sequences.restoreCard(card, hand)
   })
 end
 
-function sequences.discard(card, camera, hand)
+function sequences.discard(card, camera)
   events.push({
     fn = function()
       card:lock()
@@ -406,7 +481,7 @@ function sequences.discard(card, camera, hand)
       events.push({
         fn = function()
           Camera:setIdle()
-          hand:remove(card)
+          _hand:remove(card)
         end,
         blocking = true, blockable = true, persistent = false,
         delay = 0, type = "immediate"
@@ -417,7 +492,7 @@ function sequences.discard(card, camera, hand)
   })
 end
 
-function sequences.play(card, camera, hand)
+function sequences.play(card, camera)
   events.push({
     fn = function()
       card:lock()
@@ -542,6 +617,22 @@ function sequences.play(card, camera, hand)
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"
   })
+  events.push({
+    fn = function()
+      return card:isAtTarget()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll"
+  })
+  events.push({
+    fn = function()
+      _hand:setActiveCardDraw(false)
+      _hand:remove(card)
+      _deck:add(card)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate"
+  })
 
   events.push({
     fn = function()
@@ -558,8 +649,8 @@ function sequences.play(card, camera, hand)
       events.push({
         fn = function()
           Camera:setIdle()
-          hand:remove(card)
-          _deck:add(card)
+          -- _hand:remove(card)
+          -- _deck:add(card)
         end,
         blocking = true, blockable = true, persistent = false,
         delay = 0, type = "immediate"
@@ -570,7 +661,8 @@ function sequences.play(card, camera, hand)
   })
 end
 
-function sequences.endTurn(hand)
+function sequences.endTurn()
+
   if not Dtor.hasEntry() then
     Camera:setIdle()
     areas.endTurn.frozen = false
@@ -589,6 +681,7 @@ function sequences.endTurn(hand)
 
   events.push({
     fn = function()
+      _hand:setActiveCardDraw(false)
       local cx = SCALE_X * 1920
       local cy = SCALE_Y * 1080
       -- local cx = love.graphics.getWidth() / 2
@@ -623,7 +716,7 @@ function sequences.endTurn(hand)
         Dtor.popEntry()
         local idx   = slotIndices[1]
         Dtor.releaseSlot(idx)
-        sequences.restoreCard(card, hand)
+        sequences.restoreCard(card)
       else
         local sx, sy = Dtor.getTextCenter()
         for _, effect in ipairs(card.data.dtor or {}) do
@@ -636,7 +729,7 @@ function sequences.endTurn(hand)
         if Token.count() > 0 then
           sequences.scan(areas.scanner.right)
         end
-        sequences.restoreCard(card, hand)
+        sequences.restoreCard(card)
       end
     end,
     blocking = true, blockable = true, persistent = false,

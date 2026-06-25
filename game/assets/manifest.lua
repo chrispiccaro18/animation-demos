@@ -48,14 +48,29 @@ Manifest.tokens = {
   progress = {
     path = basePath .. "proto/progress-token.png"
   },
+  progressNegative = {
+    path = basePath .. "proto/progress-token-negative.png"
+  },
   threat = {
     path = basePath .. "proto/threat-token.png"
+  },
+  threatNegative = {
+    path = basePath .. "proto/threat-token-negative.png"
   },
   nullify = {
     path = basePath .. "proto/nullify-token.png"
   },
+  shuffle = {
+    path = basePath .. "proto/shuffle-token.png"
+  },
   dtor = {
     path = basePath .. "proto/dtor-token.png"
+  },
+  drawToDtor = {
+    path = basePath .. "proto/draw-to-dtor.png"
+  },
+  drawToHand = {
+    path = basePath .. "proto/draw-to-hand.png"
   }
 }
 

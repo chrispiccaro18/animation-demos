@@ -82,6 +82,11 @@ function Dtor.load()
     progress = AssetManifest.get("tokens", "progress"),
     nullify  = AssetManifest.get("tokens", "nullify"),
     ram      = AssetManifest.get("tokens", "ram"),
+    progressNegative = AssetManifest.get("tokens", "progressNegative"),
+    threatNegative = AssetManifest.get("tokens", "threatNegative"),
+    shuffle         = AssetManifest.get("tokens", "shuffle"),
+    drawToDtor      = AssetManifest.get("tokens", "drawToDtor"),
+    drawToHand      = AssetManifest.get("tokens", "drawToHand"),
   }
   _font = AssetManifest.getFont(72)
 end
@@ -181,6 +186,89 @@ function Dtor.nullifyNextSlot()
       dq.slots[i].nullified = true; return
     end
   end
+end
+
+------------------------------------------------------------------------
+-- Compute a shuffled permutation of occupied dtor slots (80% bias for
+-- top slot to change), mark all involved slots in-transit, update queue
+-- entry slotIndices, re-sort the queue top-to-bottom, and return an
+-- array of move descriptors for the caller to animate.
+-- Returns nil when there are 1 or fewer occupied slots.
+------------------------------------------------------------------------
+function Dtor.beginShuffle()
+  local dq    = Dtor.area
+  local slotH = dq.h / dq.maxSlots
+
+  -- Flat list of every occupied slot with ownership metadata
+  local occupied = {}
+  for entryIdx, entry in ipairs(_queue) do
+    for withinIdx, slotIdx in ipairs(entry.slotIndices) do
+      if dq.slots[slotIdx] and dq.slots[slotIdx].occupied then
+        local subTokens = {}
+        for _, eff in ipairs(entry.card.data.dtor or {}) do
+          table.insert(subTokens, eff.type)
+        end
+        table.insert(occupied, {
+          slotIdx   = slotIdx,
+          entryIdx  = entryIdx,
+          withinIdx = withinIdx,
+          scale     = dq.slots[slotIdx].scale,
+          subTokens = subTokens,
+        })
+      end
+    end
+  end
+
+  if #occupied <= 1 then return nil end
+
+  -- Fisher-Yates shuffle of destination slot indices
+  local toIndices = {}
+  for _, o in ipairs(occupied) do table.insert(toIndices, o.slotIdx) end
+  for i = #toIndices, 2, -1 do
+    local j = math.random(1, i)
+    toIndices[i], toIndices[j] = toIndices[j], toIndices[i]
+  end
+  -- 80% bias: force the top slot to receive a different token
+  if math.random() < 0.8 and toIndices[1] == occupied[1].slotIdx then
+    local swapWith = math.random(2, #toIndices)
+    toIndices[1], toIndices[swapWith] = toIndices[swapWith], toIndices[1]
+  end
+
+  -- Mark all occupied slots as in-transit (suppresses static drawing)
+  for _, o in ipairs(occupied) do
+    dq.slots[o.slotIdx].occupied = false
+    dq.slots[o.slotIdx].reserved = true
+  end
+
+  -- Build move descriptors and update queue entry slot indices
+  local moves = {}
+  for i, o in ipairs(occupied) do
+    local toIdx = toIndices[i]
+    _queue[o.entryIdx].slotIndices[o.withinIdx] = toIdx
+    table.insert(moves, {
+      fromX     = dq.x + dq.w / 2,
+      fromY     = dq.y + (o.slotIdx - 0.5) * slotH,
+      toX       = dq.x + dq.w / 2,
+      toY       = dq.y + (toIdx   - 0.5) * slotH,
+      toIdx     = toIdx,
+      scale     = o.scale,
+      subTokens = o.subTokens,
+    })
+  end
+
+  -- Re-sort queue so end-turn processes entries top-to-bottom
+  table.sort(_queue, function(a, b)
+    return (a.slotIndices[1] or math.huge) < (b.slotIndices[1] or math.huge)
+  end)
+  _updateTextContent()
+
+  return moves
+end
+
+function Dtor.topSlot()
+  local dq    = Dtor.area
+  local slotH = dq.h / dq.maxSlots
+  return { x = dq.x + dq.w / 2, y = dq.y + (1 - 0.5) * slotH, index = 1 }
 end
 
 ------------------------------------------------------------------------

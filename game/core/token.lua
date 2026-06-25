@@ -78,6 +78,11 @@ local threatAsset = nil
 local dtorAsset = nil
 local nullifyAsset = nil
 local emptyNullifyDtorAsset = nil
+local progressNegativeAsset = nil
+local threatNegativeAsset = nil
+local shuffleAsset = nil
+local drawToDtorAsset = nil
+local drawToHandAsset = nil
 
 ------------------------------------------------------------------------
 -- Internal: reflect a point across a rect wall
@@ -190,6 +195,11 @@ local function resolveAsset(token_type)
   elseif token_type == "dtor"     then return dtorAsset
   elseif token_type == "nullify"   then return nullifyAsset
   elseif token_type == "dtor_null" then return emptyNullifyDtorAsset
+  elseif token_type == "progressNegative" then return progressNegativeAsset
+  elseif token_type == "threatNegative" then return threatNegativeAsset
+  elseif token_type == "shuffle" then return shuffleAsset
+  elseif token_type == "drawToDtor" then return drawToDtorAsset
+  elseif token_type == "drawToHand" then return drawToHandAsset
   end
 end
 
@@ -243,6 +253,11 @@ function Token.load()
   dtorAsset = AssetManifest.get("card", "dtorSlot")
   nullifyAsset = AssetManifest.get("tokens", "nullify")
   emptyNullifyDtorAsset = AssetManifest.get("card", "emptyNullifySlot")
+  progressNegativeAsset = AssetManifest.get("tokens", "progressNegative")
+  threatNegativeAsset = AssetManifest.get("tokens", "threatNegative")
+  shuffleAsset         = AssetManifest.get("tokens", "shuffle")
+  drawToDtorAsset      = AssetManifest.get("tokens", "drawToDtor")
+  drawToHandAsset      = AssetManifest.get("tokens", "drawToHand")
 end
 
 ------------------------------------------------------------------------

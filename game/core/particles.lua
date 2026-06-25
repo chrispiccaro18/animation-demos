@@ -1,4 +1,5 @@
 local overlayStats = require("lib.overlayStats")
+local Color = require("lib.color")
 
 local particles = {}
 
@@ -127,6 +128,8 @@ end
 function particles.load()
   particles.define("progress", { color1 = {0.4, 1.0, 0.5},  color2 = {0.2, 0.8, 0.3} })
   particles.define("threat",   { color1 = {1.0, 0.45, 0.1}, color2 = {1.0, 0.2, 0.1} })
+  particles.define("progressNegative", { color1 = Color("#293f2a"), color2 = Color("#1e2c1f") })
+  particles.define("threatNegative",   { color1 = Color("#563332"), color2 = Color("#352222") })
 
   local trailLayers = { { sizeMult = 1.0, countMult = 1.0 } }
   local function trail(c1, c2)
@@ -140,9 +143,18 @@ function particles.load()
 
   particles.define("progress_trail", trail({0.4,  1.0,  0.5},  {0.2,  0.8,  0.3}))
   particles.define("threat_trail",   trail({1.0,  0.45, 0.1},  {1.0,  0.2,  0.1}))
-  particles.define("ram_trail",      trail({1.0,  0.85, 0.2},  {0.9,  0.55, 0.05}))
-  particles.define("nullify_trail",  trail({0.7,  0.3,  1.0},  {0.5,  0.1,  0.8}))
-  particles.define("token_trail",    trail({1.0,  1.0,  0.9},  {0.7,  0.7,  0.6}))
+  -- particles.define("progressNegative_trail", trail({0.4,  1.0,  0.5},  {0.2,  0.8,  0.3}))
+  -- particles.define("threatNegative_trail",   trail({1.0,  0.45, 0.1},  {1.0,  0.2,  0.1}))
+  particles.define("progressNegative_trail", trail({0.4,  1.0,  0.5},  Color("#00ff00")))
+  particles.define("threatNegative_trail",   trail({1.0,  0.45, 0.1},  Color("#ff0000")))
+  -- particles.define("progressNegative_trail", trail(Color("#293f2a"),  Color("#1e2c1f")))
+  -- particles.define("threatNegative_trail",   trail(Color("#563332"),  Color("#352222")))
+  particles.define("shuffle_trail",   trail(Color("#ff8b00"),  Color("#ff8b00")))
+  particles.define("drawToDtor_trail",   trail(Color("#ff8b00"),  Color("#ff8b00")))
+  particles.define("drawToHand_trail",   trail(Color("#6e83d4"),  Color("#6e83d4")))
+  particles.define("ram_trail",      trail(Color("#ffdd33"),  Color("#ffbb00")))
+  particles.define("nullify_trail",  trail(Color("#aa33ff"),  Color("#7700cc")))
+  particles.define("token_trail",    trail(Color("#ffffcc"),  Color("#cccc99")))
 end
 
 -- opts (optional): { speed, lifetimeMin, lifetimeMax, sizeBirth, sizeMid, sizeVariation, layers }

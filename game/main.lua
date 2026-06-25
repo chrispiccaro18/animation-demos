@@ -68,9 +68,9 @@ local function resetGame()
   Dtor.reset()
   laser.hide()
 
-  areas.progressBar.count = 0
+  areas.progressBar.count = 5
   areas.progressBar.textArea.value = "00/10"
-  areas.threatBar.count = 0
+  areas.threatBar.count = 5
   areas.threatBar.textArea.value = "00/10"
   areas.endTurn.frozen = false
   areas.endTurn.state = "idle"
@@ -93,8 +93,10 @@ local function resetGame()
   hand = NewHand.new()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
   sequences.setDeck(deck)
+  sequences.setHand(hand)
 
-  for _, cardData in pairs(CardData.cards) do
+  for _, cardData in pairs(CardData.startingDeck) do
+  -- for _, cardData in pairs(CardData.cards) do
     local card = Card.new(
       canvasW / 2,
       canvasH / 2,
@@ -105,7 +107,7 @@ local function resetGame()
   deck:shuffle()
 
   for _ = 1, 4 do
-    sequences.dealCardToHand(hand)
+    sequences.dealCardToHand()
   end
 
   camera:setIdle()
@@ -240,7 +242,7 @@ function love.update(dt)
       actionQueue.push({
         card     = nil,
         terminal = true,
-        fn       = function() sequences.endTurn(hand) end,
+        fn       = function() sequences.endTurn() end,
         onReject = function(_item)
           areas.endTurn.frozen    = false
           areas.endTurn.state     = "idle"

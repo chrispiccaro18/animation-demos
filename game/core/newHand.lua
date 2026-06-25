@@ -11,7 +11,7 @@ local Hand      = {}
 Hand.__index    = Hand
 
 function Hand.new()
-  return setmetatable({ cards = {} }, Hand)
+  return setmetatable({ cards = {}, _suppressActiveCard = false, _lastActiveCard = nil }, Hand)
 end
 
 function Hand:layout()
@@ -215,7 +215,7 @@ function Hand:update(mouseX, mouseY)
               returnCardToHand(item.card, hand)
             end,
             fn = function()
-              sequences.play(card, Camera, hand)
+              sequences.play(card, Camera)
             end,
           })
           if pushed then
@@ -243,7 +243,7 @@ function Hand:update(mouseX, mouseY)
               returnCardToHand(item.card, hand)
             end,
             fn = function()
-              sequences.discard(card, Camera, hand)
+              sequences.discard(card, Camera)
             end,
           })
           if pushed then
@@ -313,8 +313,16 @@ function Hand:update(mouseX, mouseY)
   end
 end
 
+function Hand:setActiveCardDraw(visible)
+  self._suppressActiveCard = not visible
+end
+
 function Hand:draw()
   local activeCard    = actionQueue.activeCard()
+  if activeCard ~= self._lastActiveCard then
+    self._suppressActiveCard = false
+    self._lastActiveCard     = activeCard
+  end
   local pendingCards  = actionQueue.pendingCards()
   local queued = {}
   if activeCard then queued[activeCard] = true end
@@ -328,7 +336,7 @@ function Hand:draw()
   end
   -- reverse order so queue[1] (next to process) is drawn on top
   for i = #pendingCards, 1, -1 do pendingCards[i]:draw() end
-  if activeCard then activeCard:draw() end
+  if activeCard and not self._suppressActiveCard then activeCard:draw() end
   for _, card in ipairs(self.cards) do
     if not card.drag.is and card.hover.is and not queued[card] then card:draw() end
   end

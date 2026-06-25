@@ -29,6 +29,7 @@ local EFFECT_ZONES = {
 
 local ENERGY_GAP = 16
 local EFFECT_GAP = 20
+local DTOR_CENTERED_CY = 700  -- cy for dtor zone when no discard section present
 
 local STATE_CONFIG = {
   idle = {
@@ -79,6 +80,9 @@ local function buildParts(data)
   if _assets.playLine    then table.insert(parts, { id = "playLine",    asset = _assets.playLine,    origin = { x = 107, y = 422 } }) end
   if _assets.discardLine then table.insert(parts, { id = "discardLine", asset = _assets.discardLine, origin = { x = 452, y = 469 } }) end
 
+  local hasDiscard = type(data.discard) == "table"  and #data.discard  > 0
+                  or type(data.discard) == "number" and data.discard   > 0
+
   for _, zone in ipairs(EFFECT_ZONES) do
     local holeAsset       = _assets[zone.holeKey or "tokenHole"]
     local holePW, holePH  = holeAsset:getDimensions()
@@ -100,9 +104,11 @@ local function buildParts(data)
       local groupOriginX, groupOriginY
       local tokenSlotW, tokenSlotH
 
+      local zoneCy = (zone.id == "dtorEffect" and not hasDiscard) and DTOR_CENTERED_CY or ZONES[zone.id].cy
+
       if zone.singleBackground then
         groupOriginX = ZONES[zone.id].cx - holePW / 2
-        groupOriginY = ZONES[zone.id].cy - holePH / 2
+        groupOriginY = zoneCy - holePH / 2
         table.insert(items, { asset = holeAsset, offsetX = 0, offsetY = 0 })
         local slotW = holePW / n
         tokenSlotW  = holePW / (zone.fixedCount or n)
@@ -113,7 +119,7 @@ local function buildParts(data)
       else
         local totalW = n * holePW + (n - 1) * gap
         groupOriginX = ZONES[zone.id].cx - totalW / 2
-        groupOriginY = ZONES[zone.id].cy - holePH / 2
+        groupOriginY = zoneCy - holePH / 2
         for i = 1, n do
           local offsetX = (i - 1) * (holePW + gap)
           slotCenters[i] = { dx = offsetX + holePW / 2, dy = holePH / 2 }
@@ -156,6 +162,11 @@ function Card.load(dissolveShader, tiltShader)
     nullify  = AssetManifest.get("tokens", "nullify"),
     ram      = _assets.ramChip,
     dtor     = AssetManifest.get("tokens", "dtor"),
+    progressNegative = AssetManifest.get("tokens", "progressNegative"),
+    threatNegative = AssetManifest.get("tokens", "threatNegative"),
+    shuffle         = AssetManifest.get("tokens", "shuffle"),
+    drawToDtor      = AssetManifest.get("tokens", "drawToDtor"),
+    drawToHand      = AssetManifest.get("tokens", "drawToHand"),
   }
 end
 
