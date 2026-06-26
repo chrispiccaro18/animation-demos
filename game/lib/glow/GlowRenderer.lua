@@ -153,8 +153,12 @@ function GlowRenderer:_drawSourceItem(item, time)
         love.graphics.circle("line", spec.cx, spec.cy, spec.r)
 
     elseif kind == "text" then
-        if spec.font then love.graphics.setFont(spec.font) end
+      if spec.drawFunc then
+        spec.drawFunc()
+      else
+      if spec.font then love.graphics.setFont(spec.font) end
         love.graphics.print(spec.text, spec.x, spec.y)
+      end
 
     elseif kind == "image" then
         love.graphics.draw(

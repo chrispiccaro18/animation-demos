@@ -13,8 +13,8 @@ GlowConfig.removeAlphaThreshold = 0.01
 
 GlowConfig.pulse = {
     enabledByDefault = false,
-    speed = 2.0,
-    min   = 0.5,
+    speed = 1.0,
+    min   = 0.75,
     max   = 1.0,
 }
 
@@ -31,15 +31,15 @@ GlowConfig.defaults = {
 GlowConfig.quality = {
     high = {
         scale            = 1.0,
-        blurPasses       = 2,
-        blurRadius       = 8,
+        blurPasses       = 3,
+        blurRadius       = 1,
         blurSamples      = 9,
         compositeBlend   = "add",
         useShaderBlur    = true,
     },
     medium = {
         scale            = 0.5,
-        blurPasses       = 3,
+        blurPasses       = 2,
         blurRadius       = 1,
         blurSamples      = 7,
         compositeBlend   = "add",
@@ -48,16 +48,16 @@ GlowConfig.quality = {
     low = {
         scale            = 0.5,
         blurPasses       = 1,
-        blurRadius       = 4,
-        blurSamples      = 5,
+        blurRadius       = 1,
+        blurSamples      = 4,
         compositeBlend   = "add",
         useShaderBlur    = true,
     },
     mobileWeb = {
         scale            = 0.25,
         blurPasses       = 1,
-        blurRadius       = 3,
-        blurSamples      = 5,
+        blurRadius       = 1,
+        blurSamples      = 4,
         compositeBlend   = "add",
         useShaderBlur    = true,
     },

@@ -183,6 +183,7 @@ function Card:_initState(x, y, data)
   self.w          = baseAsset:getWidth()  * self.current.scale
   self.h          = baseAsset:getHeight() * self.current.scale
   self.parts      = {}
+  self.zoneState  = "idle"
   self._excluded  = false
   self.drawShadow = true
   self.mouseX     = 0
@@ -463,6 +464,7 @@ function Card:fadeOutPart(id)
 end
 
 function Card:setZoneState(state)
+  self.zoneState = state
   local cfg = STATE_CONFIG[state]
   for _, part in ipairs(self.parts) do
     local pc = cfg and cfg[part.id]

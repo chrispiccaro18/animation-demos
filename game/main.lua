@@ -197,9 +197,10 @@ function love.draw()
   end
 
   areas.drawStatic()
-  if camera then camera:draw() end
-  if camera then camera:drawScannerLines(areas.scanner) end
   if deck then deck:draw() end
+  glow:render()
+  if camera then camera:drawScannerLines(areas.scanner) end
+  if camera then camera:draw() end
   areas.drawScanners()
   areas.drawDynamic()
   Dtor.drawAll()
@@ -207,9 +208,10 @@ function love.draw()
   particles.draw()
   Token.drawAll()
   message.draw()
+
+  hand:drawDragged()
   love.graphics.pop()
 
-  glow:render()
   overlayStats.draw()
   speedControl.draw()
   love.graphics.setCanvas()
@@ -220,20 +222,94 @@ function love.draw()
 end
 
 local function collectGlowRequests()
-  -- TODO: wire in real game state (playable cards, drop zones, tutorial, threat warnings)
-  -- Test: pulsing rect over the play area so the system is visible while integrating
-  glow:request("debug:play-area", {
-    kind      = "rect",
-    x         = areas.play.x,
-    y         = areas.play.y,
-    w         = areas.play.w,
-    h         = areas.play.h,
-    color     = {0.2, 0.9, 1.0, 1.0},
-    alpha     = 0.65,
-    radius    = 10,
-    lineWidth = 3,
-    pulse     = true,
-  })
+  local draggingCard = nil
+  for _, card in ipairs(hand.cards) do
+    if card.drag.is then draggingCard = card; break end
+  end
+
+  -- Playable card highlights
+  -- for _, card in ipairs(hand.cards) do
+  --   if card.drag.can and not card._excluded and not card.drag.is then
+  --     glow:request("card-playable:" .. tostring(card), {
+  --       kind      = "rect",
+  --       x         = card.current.x - (card.w / 2 * SCALE_X),
+  --       y         = card.current.y - (card.h / 2 * SCALE_Y),
+  --       w         = card.w * SCALE_X,
+  --       h         = card.h * SCALE_Y,
+  --       color     = {0.2, 0.9, 1.0, 1.0},
+  --       alpha     = 0.6,
+  --       radius    = 10,
+  --       lineWidth = 3,
+  --       pulse     = true,
+  --     })
+  --   end
+  -- end
+
+  -- Drop zone highlight while dragging
+  if draggingCard then
+    -- if draggingCard.zoneState == "play" then
+      glow:request("drop-zone:play", {
+        kind      = "rect",
+        x         = areas.play.x,
+        y         = areas.play.y,
+        w         = areas.play.w,
+        h         = areas.play.h,
+        color     = {0.2, 1.0, 0.5, 1.0},
+        alpha     = 0.5,
+        radius    = 14,
+        lineWidth = 4,
+        pulse     = { speed = 2.0, min = 0.70, max = 1.0 },
+      })
+      glow:request("drop-zone-text:play", {
+        kind  = "callback",
+        -- color = {1.0, 1.0, 1.0, 1.0},
+        color     = {0.2, 1.0, 0.5, 1.0},
+        alpha = 0.5,
+        pulse = { speed = 2.0, min = 0.20, max = 1.0 },
+        draw  = function(alpha, time, spec)
+          love.graphics.setFont(AssetManifest.getFont(72))
+          love.graphics.printf(
+            "PLAY",
+            areas.play.x,
+            areas.play.y + areas.play.h,
+            areas.play.w,
+            "right"
+          )
+        end,
+      })
+    -- elseif draggingCard.zoneState == "discard" then
+      glow:request("drop-zone:discard", {
+        kind      = "rect",
+        x         = areas.discard.x,
+        y         = areas.discard.startY,
+        w         = areas.discard.w,
+        h         = areas.discard.h,
+        color     = {1.0, 0.4, 0.2, 1.0},
+        alpha     = 0.5,
+        radius    = 14,
+        lineWidth = 4,
+        pulse     = { speed = 2.0, min = 0.70, max = 1.0 },
+      })
+      glow:request("drop-zone-text:discard", {
+        kind  = "callback",
+        -- color = {1.0, 1.0, 1.0, 1.0},
+        color     = {1.0, 0.4, 0.2, 1.0},
+        alpha = 0.5,
+        radius    = 14,
+        pulse = { speed = 2.0, min = 0.20, max = 1.0 },
+        draw  = function(alpha, time, spec)
+          love.graphics.setFont(AssetManifest.getFont(72))
+          love.graphics.printf(
+            "DISCARD",
+            areas.discard.x ,
+            areas.discard.startY + areas.discard.h,
+            areas.discard.w,
+            "left"
+          )
+        end,
+      })
+    -- end
+  end
 end
 
 function love.update(dt)
@@ -347,6 +423,24 @@ function love.keypressed(key)
     local GlowConfig = require("lib.glow.GlowConfig")
     GlowConfig.debug.disablePulse = not GlowConfig.debug.disablePulse
     print("[Glow] disablePulse=" .. tostring(GlowConfig.debug.disablePulse))
+  elseif key == "g" then
+    local GlowConfig = require("lib.glow.GlowConfig")
+    GlowConfig.enabled = not GlowConfig.enabled
+    print("[Glow] enabled=" .. tostring(GlowConfig.enabled))
+  elseif key == "b" then
+    local GlowConfig = require("lib.glow.GlowConfig")
+    GlowConfig.debug.disableBlur = not GlowConfig.debug.disableBlur
+    print("[Glow] disableBlur=" .. tostring(GlowConfig.debug.disableBlur))
+  elseif key == "f6" then
+    local tiers = { "high", "medium", "low", "mobileWeb", "fake" }
+    local current = glow.qualityName
+    local idx = 1
+    for i, name in ipairs(tiers) do
+      if name == current then idx = i; break end
+    end
+    local next = tiers[(idx % #tiers) + 1]
+    glow:setQuality(next, canvasW, canvasH)
+    print("[Glow] quality=" .. next)
   else
     overlayStats.handleKeyboard(key)
   end

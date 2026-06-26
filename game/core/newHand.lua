@@ -340,10 +340,12 @@ function Hand:draw()
   for _, card in ipairs(self.cards) do
     if not card.drag.is and card.hover.is and not queued[card] then card:draw() end
   end
+end
+
+function Hand:drawDragged()
   for _, card in ipairs(self.cards) do
     if card.drag.is then card:draw() end
   end
-
   laser.draw()
 end
 

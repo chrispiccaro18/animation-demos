@@ -21,19 +21,23 @@ function areas.load()
   dropYExtend    = 250 * SCALE_Y
 
   areas.play = {
-    x        = 1,
-    y        = 1,
-    w        = W / 2 - playDiscardGap,
-    h        = H * 0.6,
+    x        = 91 * SCALE_X,
+    y        = 303  * SCALE_Y,
+    w        = 1591 * SCALE_X,
+    h        = 1000 * SCALE_Y,
+    -- w        = W / 2 - playDiscardGap,
+    -- h        = H * 0.6,
     color    = { 0.5, 0.5, 0.5, 1 },
     slotText = "",
   }
 
   areas.discard = {
-    x        = W / 2 + playDiscardGap,
-    startY   = 1,
-    w        = W / 2 - playDiscardGap,
-    h        = H * 0.6,
+    x        = 2110 * SCALE_X,
+    startY   = 303  * SCALE_Y,
+    w        = 1591 * SCALE_X,
+    h        = 1000 * SCALE_Y,
+    -- w        = W / 2 - playDiscardGap,
+    -- h        = H * 0.6,
     color    = { 0.5, 0.5, 0.5, 1 },
     slotText = "",
     current  = { y = 1 },
@@ -480,7 +484,7 @@ function areas.drawDynamic()
       "DISCARD",
       areas.discard.x ,
       areas.discard.startY + areas.discard.h,
-      areas.discard.w + playDiscardGap,
+      areas.discard.w,
       "left"
     )
     love.graphics.setFont(previousFont)
