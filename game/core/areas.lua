@@ -60,6 +60,7 @@ function areas.load()
 
   areas.envEffects = {
     positive = AssetManifest.get("envEffects", "positive"),
+    positiveInactive = AssetManifest.get("envEffects", "positiveInactive"),
     negative = AssetManifest.get("envEffects", "negative"),
     gapY     = 25 * SCALE_Y,
     startY = 324 * SCALE_Y,
@@ -98,6 +99,8 @@ function areas.load()
     h        = 138 * SCALE_Y,
     gapX     = 64  * SCALE_X,
     asset    = nil,
+    activeEnvIndAsset = nil,
+    inactiveEnvIndAsset = nil,
     count    = 9,
     max      = 10,
     popScale = 1.0,
@@ -158,6 +161,8 @@ function areas.load()
   endTurnClickAsset        = AssetManifest.get("endTurn", "down")
 
   areas.progressBar.asset  = AssetManifest.get("ticks", "progress")
+  areas.progressBar.activeEnvIndAsset = AssetManifest.get("envEffects", "indicatorActive")
+  areas.progressBar.inactiveEnvIndAsset = AssetManifest.get("envEffects", "indicatorInactive")
   areas.threatBar.asset    = AssetManifest.get("ticks", "threat")
   ramTokenAsset            = AssetManifest.get("tokens", "ram")
 
@@ -395,6 +400,21 @@ function areas.drawStatic()
     end
   end
 
+  if areas.progressBar.activeEnvIndAsset and areas.progressBar.inactiveEnvIndAsset then
+    local pb = areas.progressBar
+    local aw = pb.w / SCALE_X
+    local ah = pb.h / SCALE_Y
+    local x = pb.x + 1 * pb.gapX + pb.w / 2 - 5 * SCALE_X
+    local y = pb.y
+    local firstAsset = pb.inactiveEnvIndAsset
+    if pb.count >= 2 then firstAsset = pb.activeEnvIndAsset end
+    love.graphics.draw(firstAsset, x, y, 0, SCALE_X, SCALE_Y, aw / 2, ah / 2)
+    local x2 = pb.x + 5 * pb.gapX + pb.w / 2 - 4 * SCALE_X
+    local secondAsset = pb.inactiveEnvIndAsset
+    if pb.count >= 6 then secondAsset = pb.activeEnvIndAsset end
+    love.graphics.draw(secondAsset, x2, y, 0, SCALE_X, SCALE_Y, aw / 2, ah / 2)
+  end
+
   if areas.threatBar.asset then
     local tb = areas.threatBar
     local aw = tb.w / SCALE_X
@@ -475,15 +495,15 @@ function areas.drawDynamic()
 
     love.graphics.printf(
       "PLAY",
-      areas.play.x,
-      areas.play.y + areas.play.h,
+      areas.play.x - 20 * SCALE_X,
+      areas.play.y + areas.play.h - 120 * SCALE_Y,
       areas.play.w,
       "right"
     )
     love.graphics.printf(
       "DISCARD",
-      areas.discard.x ,
-      areas.discard.startY + areas.discard.h,
+      areas.discard.x + 20 * SCALE_X,
+      areas.discard.startY + areas.discard.h - 120 * SCALE_Y,
       areas.discard.w,
       "left"
     )
@@ -516,28 +536,47 @@ function areas.drawDynamic()
     love.graphics.rectangle("line", et.x, et.y, et.w, et.h)
   end
 
-  if areas.envEffects.positive then
+  if areas.envEffects.positive and
+    areas.envEffects.negative and
+    areas.envEffects.positiveInactive then
+    local gap = areas.envEffects.gapY + (areas.envEffects.negative:getHeight() * SCALE_Y)
     love.graphics.draw(
-      areas.envEffects.positive,
+      areas.envEffects.negative,
       lineXAtY(areas.leftLine, areas.envEffects.startY) + areas.envEffects.xOffset,
       areas.envEffects.startY,
       0,
       SCALE_X,
       SCALE_Y,
-      areas.envEffects.positive:getWidth() / 2,
+      areas.envEffects.negative:getWidth() / 2,
       0
     )
-  end
-  if areas.envEffects.negative then
-    local gap = areas.envEffects.gapY + (areas.envEffects.negative:getHeight() * SCALE_Y)
+
+    local pb = areas.progressBar
+    local firstAsset = areas.envEffects.positiveInactive
+    if pb.count >= 2 then firstAsset = areas.envEffects.positive end
+
     love.graphics.draw(
-      areas.envEffects.negative,
+      firstAsset,
       lineXAtY(areas.leftLine, areas.envEffects.startY + gap) + areas.envEffects.xOffset,
       areas.envEffects.startY + gap,
       0,
       SCALE_X,
       SCALE_Y,
-      areas.envEffects.negative:getWidth() / 2,
+      firstAsset:getWidth() / 2,
+      0
+    )
+
+    local secondAsset = areas.envEffects.positiveInactive
+    if pb.count >= 6 then secondAsset = areas.envEffects.positive end
+
+    love.graphics.draw(
+      secondAsset,
+      lineXAtY(areas.leftLine, areas.envEffects.startY + gap * 2) + areas.envEffects.xOffset,
+      areas.envEffects.startY + gap * 2,
+      0,
+      SCALE_X,
+      SCALE_Y,
+      secondAsset:getWidth() / 2,
       0
     )
   end

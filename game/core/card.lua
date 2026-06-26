@@ -247,7 +247,7 @@ function Card.new(x, y, data)
   self.offsetY    = baseAsset:getHeight() / 2
   self.shader     = _shaders.dissolve
   self.tiltShader = _shaders.tilt
-  self.scales     = { idle = 0.5, hover = 0.65, drag = 0.8 }
+  self.scales     = { idle = 0.55, hover = 0.75, drag = 0.9 }
   -- self.scales     = { idle = 0.5, hover = 0.65, drag = 0.7 }
   self:_initState(x, y, data)
   return self

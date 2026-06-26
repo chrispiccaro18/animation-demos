@@ -72,7 +72,7 @@ local function resetGame()
   Dtor.reset()
   laser.hide()
 
-  areas.progressBar.count = 0
+  areas.progressBar.count = 6
   areas.progressBar.textArea.value = "00/10"
   areas.threatBar.count = 0
   areas.threatBar.textArea.value = "00/10"
@@ -199,12 +199,12 @@ function love.draw()
   areas.drawStatic()
   if deck then deck:draw() end
   glow:render()
-  if camera then camera:drawScannerLines(areas.scanner) end
   if camera then camera:draw() end
+  if camera then camera:drawScannerLines(areas.scanner) end
   areas.drawScanners()
   areas.drawDynamic()
-  Dtor.drawAll()
   hand:draw()
+  Dtor.drawAll()
   particles.draw()
   Token.drawAll()
   message.draw()
@@ -270,8 +270,8 @@ local function collectGlowRequests()
           love.graphics.setFont(AssetManifest.getFont(72))
           love.graphics.printf(
             "PLAY",
-            areas.play.x,
-            areas.play.y + areas.play.h,
+            areas.play.x - 20 * SCALE_X,
+            areas.play.y + areas.play.h - 120 * SCALE_Y,
             areas.play.w,
             "right"
           )
@@ -301,8 +301,8 @@ local function collectGlowRequests()
           love.graphics.setFont(AssetManifest.getFont(72))
           love.graphics.printf(
             "DISCARD",
-            areas.discard.x ,
-            areas.discard.startY + areas.discard.h,
+            areas.discard.x + 20 * SCALE_X,
+            areas.discard.startY + areas.discard.h - 120 * SCALE_Y,
             areas.discard.w,
             "left"
           )

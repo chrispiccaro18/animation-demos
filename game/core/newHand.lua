@@ -170,6 +170,17 @@ function Hand:update(mouseX, mouseY)
     end
   end
 
+  local hoverCandidate = nil
+  if not draggingCard then
+    for i = #self.cards, 1, -1 do
+      local c = self.cards[i]
+      if c.hover.can and not c.drag.is and c:containsPoint(mouseX, mouseY) and c:isAtTargetHeight() then
+        hoverCandidate = c
+        break
+      end
+    end
+  end
+
   for _, card in ipairs(self.cards) do
     -- Release drag
     if card.drag.is and not love.mouse.isDown(1) then
@@ -276,7 +287,7 @@ function Hand:update(mouseX, mouseY)
     end
 
     -- Hover scale
-    if card.hover.can and not card.hover.is and not card.drag.is and card:containsPoint(mouseX, mouseY) and card:isAtTargetHeight() then
+    if card.hover.can and not card.hover.is and card == hoverCandidate then
       card.hover.is     = true
       card.target.scale = card.scales.hover
       card.mouseX       = mouseX
@@ -285,7 +296,7 @@ function Hand:update(mouseX, mouseY)
       Audio.playHover()
     elseif card:containsPoint(mouseX, mouseY) and card.drag.is then
       card.target.scale = card.scales.drag
-    elseif not card:containsPoint(mouseX, mouseY) and not card.drag.is and card.hover.can then
+    elseif card ~= hoverCandidate and not card.drag.is and card.hover.can then
       card.hover.is     = false
       card.target.scale = card.scales.idle
     elseif card.hover.is then
