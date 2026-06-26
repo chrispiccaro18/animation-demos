@@ -8,6 +8,9 @@ Manifest.board = {
   },
   dtorRow = {
     path = basePath .. "proto/dtor-row.png"
+  },
+  fullScreenVignette = {
+    path = basePath .. "proto/vignette.png"
   }
 }
 
@@ -110,6 +113,9 @@ Manifest.camera = {
 Manifest.envEffects = {
   positive = {
     path = basePath .. "proto/env-effect-positive.png"
+  },
+  positiveInactive = {
+    path = basePath .. "proto/env-effect-positive-inactive.png"
   },
   negative = {
     path = basePath .. "proto/env-effect-negative.png"

@@ -409,10 +409,8 @@ function sequences.scan(scanner)
 end
 
 function sequences.restoreCard(card)
-  print("restoreCard fired")
   events.push({
     fn = function()
-      print("restoreCard first event fired")
       Dtor.setTransitCard(card)
       Audio.playRecombineCard()
       card:restoreAllSlots()

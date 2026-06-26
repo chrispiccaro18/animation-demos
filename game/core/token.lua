@@ -33,6 +33,12 @@ local TRAIL_RATE         = 120    -- particles per second at peak speed
 local TRAIL_SPEED_THRESH = 150   -- game px/s below which trail is suppressed
 local TRAIL_PEAK_SPEED   = 1500  -- game px/s at which trail rate reaches full intensity
 
+local _dtorBounds = nil
+
+function Token.setDtorBounds(x, y, w, h)
+  _dtorBounds = { x = x, y = y, w = w, h = h }
+end
+
 local SPEED = 6000
 local TOP_SPEED = 20000
 local PULL_SPEED = 10000
@@ -668,9 +674,23 @@ function Token.updateAll(dt, gameDt)
 end
 
 function Token.drawAll()
-  for _, token in ipairs(instances) do
+  -- Scissor disabled: dtor tokens need to be visible during fling/attract phases
+  -- before they reach the dtor area.
+  -- local db = _dtorBounds
+  -- if db then
+  --   for _, token in ipairs(instances) do
+  --     if token.token_type ~= "dtor" and token.token_type ~= "dtor_null" then token:draw() end
+  --   end
+  --   love.graphics.setScissor(db.x, db.y, db.w, db.h)
+  --   for _, token in ipairs(instances) do
+  --     if token.token_type == "dtor" or token.token_type == "dtor_null" then token:draw() end
+  --   end
+  --   love.graphics.setScissor()
+  -- else
+    for _, token in ipairs(instances) do
       token:draw()
-  end
+    end
+  -- end
 end
 
 function Token.isActive()

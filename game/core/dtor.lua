@@ -18,6 +18,22 @@ local _font             = nil
 -- Layout initialized in Dtor.load()
 local _text = {}
 
+local function convertTypeToText(type)
+  -- Convert a token type to a human-readable string
+  local mapping = {
+    THREAT = "THREAT",
+    PROGRESS = "PROGRESS",
+    NULLIFY = "NULLIFY",
+    RAM = "RAM",
+    PROGRESSNEGATIVE = "PROGRESS",
+    THREATNEGATIVE = "THREAT",
+    SHUFFLE = "SHUFFLE DTOR",
+    DRAWTODTOR = "DRAW TO DTOR",
+    DRAWTTOHAND = "DRAW TO HAND",
+  }
+  return mapping[type] or type
+end
+
 ------------------------------------------------------------------------
 -- Private: rebuild text from the current top queue entry
 ------------------------------------------------------------------------
@@ -43,13 +59,17 @@ local function _updateTextContent()
   end
   local parts = {}
   for _, t in ipairs(order) do
+    if t == "PROGRESSNEGATIVE" or t == "THREATNEGATIVE" then
+      table.insert(parts, "-")
+    end
+    local text = convertTypeToText(t)
     if counts[t] > 1 then
-      table.insert(parts, counts[t] .. " " .. t)
+      table.insert(parts, counts[t] .. " " .. text)
     else
-      table.insert(parts, t)
+      table.insert(parts, text)
     end
   end
-  _text.content = table.concat(parts, "  ·  ")
+  _text.content = table.concat(parts, "")
 end
 
 ------------------------------------------------------------------------
@@ -89,6 +109,7 @@ function Dtor.load()
     drawToHand      = AssetManifest.get("tokens", "drawToHand"),
   }
   _font = AssetManifest.getFont(72)
+  Token.setDtorBounds(Dtor.area.x, Dtor.area.y, Dtor.area.w, Dtor.area.h)
 end
 
 ------------------------------------------------------------------------
@@ -440,22 +461,24 @@ function Dtor.drawAll()
   local slotH = dq.h / dq.maxSlots
   local sw, sh = _dtorSlotAsset:getDimensions()
 
-  -- Count occupied slots including any overflow beyond maxSlots
-  local totalOccupied = 0
-  local overflowDots  = 0
+  -- Count all active (occupied or in-transit) slots so overflow detection stays
+  -- stable during animations when some slots are temporarily reserved.
+  local totalActive = 0
+  local overflowDots = 0
   for i, slot in pairs(dq.slots) do
-    if type(i) == "number" and slot.occupied then
-      totalOccupied = totalOccupied + 1
-      if i >= dq.maxSlots then overflowDots = overflowDots + 1 end
+    if type(i) == "number" then
+      if slot.occupied or slot.reserved then totalActive = totalActive + 1 end
+      if slot.occupied and i >= dq.maxSlots then overflowDots = overflowDots + 1 end
     end
   end
-  local isOverflow = totalOccupied > dq.maxSlots
+  local isOverflow = totalActive > dq.maxSlots
+  -- In overflow mode draw slots 1..(maxSlots-1); otherwise draw slots 1..maxSlots.
+  local maxVisIdx = isOverflow and (dq.maxSlots - 1) or dq.maxSlots
 
   for entryIdx, entry in ipairs(_queue) do
     for _, idx in ipairs(entry.slotIndices) do
       local slot = dq.slots[idx]
-      -- In overflow mode, only draw slots strictly inside the visual range (< maxSlots)
-      if slot and slot.occupied and (not isOverflow or idx < dq.maxSlots) then
+      if slot and slot.occupied and idx <= maxVisIdx then
         local sx = dq.x + dq.w / 2
         local sy = dq.y + (idx - 0.5) * slotH
         local sc = (slot.scale or 1) * SCALE_X * 0.3
