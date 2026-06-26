@@ -72,7 +72,7 @@ local function resetGame()
   Dtor.reset()
   laser.hide()
 
-  areas.progressBar.count = 6
+  areas.progressBar.count = 0
   areas.progressBar.textArea.value = "00/10"
   areas.threatBar.count = 0
   areas.threatBar.textArea.value = "00/10"
