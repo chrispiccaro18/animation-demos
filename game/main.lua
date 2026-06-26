@@ -23,7 +23,11 @@ local CardData     = require("data.cards")
 local AssetManifest = require("assets.manifest")
 local Audio = require("assets.audio")
 
-local Color = require("lib.color")
+local Color   = require("lib.color")
+local Palette = require("lib.palette")
+local Glow    = require("lib.glow.Glow")
+
+local glow = nil
 
 local touches = {}
 
@@ -164,12 +168,15 @@ function love.load()
   gameCanvas = love.graphics.newCanvas(canvasW, canvasH)
   overlayStats.setGameCanvas(gameCanvas)
   updateViewport()
+
+  glow = Glow.load(canvasW, canvasH)
+
   resetGame()
 end
 
 function love.draw()
   -- Fill full screen to cover letterbox bars
-  love.graphics.setColor(Color("#12131A"))
+  love.graphics.setColor(Palette.void)
   -- love.graphics.setColor(hexToRGBA("#20222E"))
   love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(1, 1, 1, 1)
@@ -177,7 +184,7 @@ function love.draw()
   -- Draw all game content into the fixed-resolution canvas
   love.graphics.setCanvas(gameCanvas)
   love.graphics.clear(0, 0, 0, 0)
-  love.graphics.setColor(Color("#12131A"))
+  love.graphics.setColor(Palette.void)
   love.graphics.rectangle("fill", 0, 0, canvasW, canvasH)
   love.graphics.setColor(1, 1, 1, 1)
 
@@ -202,6 +209,7 @@ function love.draw()
   message.draw()
   love.graphics.pop()
 
+  glow:render()
   overlayStats.draw()
   speedControl.draw()
   love.graphics.setCanvas()
@@ -209,6 +217,23 @@ function love.draw()
   -- Blit the canvas onto the screen, centered and letterboxed
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.draw(gameCanvas, viewX, viewY, 0, viewScale, viewScale)
+end
+
+local function collectGlowRequests()
+  -- TODO: wire in real game state (playable cards, drop zones, tutorial, threat warnings)
+  -- Test: pulsing rect over the play area so the system is visible while integrating
+  glow:request("debug:play-area", {
+    kind      = "rect",
+    x         = areas.play.x,
+    y         = areas.play.y,
+    w         = areas.play.w,
+    h         = areas.play.h,
+    color     = {0.2, 0.9, 1.0, 1.0},
+    alpha     = 0.65,
+    radius    = 10,
+    lineWidth = 3,
+    pulse     = true,
+  })
 end
 
 function love.update(dt)
@@ -265,6 +290,8 @@ function love.update(dt)
   if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y, nil, scannerRemaining(areas.scanner.right), areas.scanner.right.direction) end
   events.updateAll()
   actionQueue.update()
+  collectGlowRequests()
+  glow:update(realDt)
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
@@ -300,8 +327,26 @@ function love.keypressed(key)
     previousSpeed = config.speed
     config.speed = 3.0
     speedControl.setSpaceHeld(true)
+  elseif key == "left" or key == "right" then
+    local names   = Palette.variantNames()
+    local current = Palette.getVariant()
+    local idx     = 1
+    for i, name in ipairs(names) do
+      if name == current then idx = i; break end
+    end
+    if key == "right" then
+      idx = (idx % #names) + 1
+    else
+      idx = ((idx - 2) % #names) + 1
+    end
+    Palette.setVariant(names[idx])
+    print("Palette: " .. names[idx])
   elseif key == "o" then
     print(events.isRunning())
+  elseif key == "p" then
+    local GlowConfig = require("lib.glow.GlowConfig")
+    GlowConfig.debug.disablePulse = not GlowConfig.debug.disablePulse
+    print("[Glow] disablePulse=" .. tostring(GlowConfig.debug.disablePulse))
   else
     overlayStats.handleKeyboard(key)
   end

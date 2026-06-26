@@ -1,7 +1,9 @@
 local AssetManifest = require("assets.manifest")
 local Token     = require("core.token")
 local animation = require("lib.animation")
-local Color = require("lib.color")
+local Color     = require("lib.color")
+local Palette   = require("lib.palette")
+local RichText  = require("core.richText")
 
 local Dtor = {}
 
@@ -18,58 +20,40 @@ local _font             = nil
 -- Layout initialized in Dtor.load()
 local _text = {}
 
-local function convertTypeToText(type)
-  -- Convert a token type to a human-readable string
-  local mapping = {
-    THREAT = "THREAT",
-    PROGRESS = "PROGRESS",
-    NULLIFY = "NULLIFY",
-    RAM = "RAM",
-    PROGRESSNEGATIVE = "PROGRESS",
-    THREATNEGATIVE = "THREAT",
-    SHUFFLE = "SHUFFLE DTOR",
-    DRAWTODTOR = "DRAW TO DTOR",
-    DRAWTTOHAND = "DRAW TO HAND",
-  }
-  return mapping[type] or type
-end
-
 ------------------------------------------------------------------------
--- Private: rebuild text from the current top queue entry
+-- Private: rebuild rich text segments from the current top queue entry.
+-- Produces markup like "{c:danger|2 }{threat} {progressNegative}" so that
+-- counts render as colored text and each effect type renders as its token
+-- sprite. Groups with count > 1 prefix the icon with a number.
 ------------------------------------------------------------------------
 local function _updateTextContent()
-  if #_queue == 0 then
-    _text.content = ""
-    return
-  end
+  _text.segments = nil
+  if #_queue == 0 then return end
   local effects = _queue[1].card.data.dtor
-  if not effects or #effects == 0 then
-    _text.content = ""
-    return
-  end
+  if not effects or #effects == 0 then return end
+
   local counts = {}
   local order  = {}
   for _, effect in ipairs(effects) do
-    local t = effect.type:upper()
+    local t = effect.type
     if not counts[t] then
       counts[t] = 0
       table.insert(order, t)
     end
     counts[t] = counts[t] + 1
   end
+
   local parts = {}
-  for _, t in ipairs(order) do
-    if t == "PROGRESSNEGATIVE" or t == "THREATNEGATIVE" then
-      table.insert(parts, "-")
+  for i, t in ipairs(order) do
+    if i > 1 then table.insert(parts, " ") end
+    local n = counts[t]
+    if n > 1 then
+      table.insert(parts, "{c:danger|" .. n .. " }")
     end
-    local text = convertTypeToText(t)
-    if counts[t] > 1 then
-      table.insert(parts, counts[t] .. " " .. text)
-    else
-      table.insert(parts, text)
-    end
+    table.insert(parts, "{" .. t .. "}")
   end
-  _text.content = table.concat(parts, "")
+
+  _text.segments = RichText.parse(table.concat(parts))
 end
 
 ------------------------------------------------------------------------
@@ -88,7 +72,7 @@ function Dtor.load()
     y           = 448  * SCALE_Y,
     w           = 1095 * SCALE_X,
     h           = 80   * SCALE_Y,
-    content     = "",
+    segments    = nil,
     alpha       = 0,
     targetAlpha = 0,
   }
@@ -318,9 +302,9 @@ function Dtor.clearTransitCard()
 end
 
 function Dtor.reset()
-  _queue        = {}
-  _transitCard  = nil
-  _text.content     = ""
+  _queue            = {}
+  _transitCard      = nil
+  _text.segments    = nil
   _text.alpha       = 0
   _text.targetAlpha = 0
   Dtor.area.slots = {}
@@ -525,7 +509,7 @@ function Dtor.drawAll()
     local sy    = dq.y + (dq.maxSlots - 0.5) * slotH
     local dotR  = 22 * SCALE_X
     local gap   = dotR * 2.8
-    love.graphics.setColor(Color("#ff8b00", 1))
+    love.graphics.setColor(Palette.warning)
     for d = 1, overflowDots do
       local offset = (d - (overflowDots + 1) / 2) * gap
       love.graphics.circle("fill", sx + offset, sy, dotR)
@@ -552,16 +536,23 @@ function Dtor.drawAll()
   end
 
   -- Text overlay
-  if _text.alpha > 0.01 and _text.content ~= "" and _font then
+  if _text.alpha > 0.01 and _text.segments and _font then
     local isTopEntryNullified = Dtor.isEntryNullified()
-    -- local isTopEntryNullified = _queue[1] and _queue[1].slotIndices and #_queue[1].slotIndices > 0 and Dtor.area.slots[_queue[1].slotIndices[1]] and Dtor.area.slots[_queue[1].slotIndices[1]].nullified
-    love.graphics.setColor(Color("#D56E6E", _text.alpha))
-    local prevFont = love.graphics.getFont()
-    love.graphics.setFont(_font)
-    love.graphics.printf(_text.content, _text.x, _text.y + (_text.h - _font:getHeight()) / 2, _text.w, "center")
-    love.graphics.setFont(prevFont)
+    local spriteSize = _font:getHeight()
+    local gap        = 4 * SCALE_X
+    local totalW     = RichText.measure(_text.segments, _font, spriteSize, gap)
+    local drawX      = _text.x + (_text.w - totalW) / 2
+    local drawY      = _text.y + (_text.h - spriteSize) / 2
+    RichText.draw(_text.segments, drawX, drawY, {
+      font       = _font,
+      tokens     = _tokenAssets,
+      gap        = gap,
+      spriteSize = spriteSize,
+      alpha      = _text.alpha,
+    })
     if isTopEntryNullified then
-      love.graphics.setColor(Color("#FF8C00", _text.alpha))
+      local wc = Palette.warning
+      love.graphics.setColor(wc[1], wc[2], wc[3], _text.alpha)
       love.graphics.setLineWidth(8 * SCALE_X)
       love.graphics.line(_text.x + 20 * SCALE_X, _text.y + _text.h / 2, _text.x + _text.w - 20 * SCALE_X, _text.y + _text.h / 2)
     end

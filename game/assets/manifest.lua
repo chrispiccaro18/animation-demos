@@ -119,6 +119,12 @@ Manifest.envEffects = {
   },
   negative = {
     path = basePath .. "proto/env-effect-negative.png"
+  },
+  indicatorActive = {
+    path = basePath .. "proto/env-ind-active.png"
+  },
+  indicatorInactive = {
+    path = basePath .. "proto/env-ind-inactive.png"
   }
 }
 
