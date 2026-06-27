@@ -1,7 +1,9 @@
 local AssetManifest = require("assets.manifest")
 local Audio          = require("assets.audio")
-local animation     = require("lib.animation")
 local Color      = require("lib.color")
+local progressBar = require("core.progressBar")
+local threatBar   = require("core.threatBar")
+local envEffects  = require("core.envEffects")
 
 local areas = {}
 
@@ -58,15 +60,6 @@ function areas.load()
     w = 6 * SCALE_X
   }
 
-  areas.envEffects = {
-    positive = AssetManifest.get("envEffects", "positive"),
-    positiveInactive = AssetManifest.get("envEffects", "positiveInactive"),
-    negative = AssetManifest.get("envEffects", "negative"),
-    gapY     = 25 * SCALE_Y,
-    startY = 324 * SCALE_Y,
-    xOffset = -25 * SCALE_X
-  }
-
   areas.rightLine = {
     x1 = 3522 * SCALE_X,
     y1 = 309 * SCALE_Y,
@@ -92,45 +85,11 @@ function areas.load()
     h = 1684 * SCALE_Y,
   }
 
-  areas.progressBar = {
-    x        = 873 * SCALE_X,
-    y        = 73  * SCALE_Y,
-    w        = 38  * SCALE_X,
-    h        = 138 * SCALE_Y,
-    gapX     = 64  * SCALE_X,
-    asset    = nil,
-    activeEnvIndAsset = nil,
-    inactiveEnvIndAsset = nil,
-    count    = 9,
-    max      = 10,
-    popScale = 1.0,
-    textArea = {
-      x     = 522 * SCALE_X,
-      y     = 120 * SCALE_Y,
-      w     = 291 * SCALE_X,
-      h     = 66  * SCALE_Y,
-      value = "",
-    },
-  }
-
-  areas.threatBar = {
-    x        = 2320 * SCALE_X,
-    y        = 73   * SCALE_Y,
-    w        = 38   * SCALE_X,
-    h        = 138  * SCALE_Y,
-    gapX     = 64   * SCALE_X,
-    asset    = nil,
-    count    = 9,
-    max      = 10,
-    popScale = 1.0,
-    textArea = {
-      x     = 2997 * SCALE_X,
-      y     = 110  * SCALE_Y,
-      w     = 291  * SCALE_X,
-      h     = 66   * SCALE_Y,
-      value = "",
-    },
-  }
+  progressBar.load()
+  threatBar.load()
+  envEffects.load(areas.leftLine)
+  envEffects.register(1, 2, progressBar.getCount)
+  envEffects.register(2, 6, progressBar.getCount)
 
   areas.endTurn = {
     x          = 3136 * SCALE_X,
@@ -160,10 +119,6 @@ function areas.load()
   endTurnHoverAsset        = AssetManifest.get("endTurn", "hover")
   endTurnClickAsset        = AssetManifest.get("endTurn", "down")
 
-  areas.progressBar.asset  = AssetManifest.get("ticks", "progress")
-  areas.progressBar.activeEnvIndAsset = AssetManifest.get("envEffects", "indicatorActive")
-  areas.progressBar.inactiveEnvIndAsset = AssetManifest.get("envEffects", "indicatorInactive")
-  areas.threatBar.asset    = AssetManifest.get("ticks", "threat")
   ramTokenAsset            = AssetManifest.get("tokens", "ram")
 
   areas.endTurn.baseAsset  = endTurnAsset
@@ -340,16 +295,6 @@ function areas.updateEndTurn(dt, mouseX, mouseY)
   end
 end
 
-function areas.triggerBarPop(bar)
-  local peak = 1.0 + 0.6 * (bar.count / bar.max)
-  bar.popScale = peak
-end
-
-function areas.updateBars(dt)
-  areas.progressBar.popScale = animation.expDecay(areas.progressBar.popScale, 1.0, 10, dt)
-  areas.threatBar.popScale   = animation.expDecay(areas.threatBar.popScale,   1.0, 10, dt)
-end
-
 function areas.update(mouseX, mouseY)
 end
 
@@ -387,77 +332,8 @@ end
 -- Draw helpers
 function areas.drawStatic()
   love.graphics.setColor(1, 1, 1, 1)
-
-  if areas.progressBar.asset then
-    local pb = areas.progressBar
-    local aw = pb.w / SCALE_X
-    local ah = pb.h / SCALE_Y
-    for i = 0, pb.count - 1 do
-      local s = (i == pb.count - 1) and pb.popScale or 1.0
-      local cx = pb.x + i * pb.gapX + pb.w / 2
-      local cy = pb.y + pb.h / 2
-      love.graphics.draw(pb.asset, cx, cy, 0, SCALE_X * s, SCALE_Y * s, aw / 2, ah / 2)
-    end
-  end
-
-  if areas.progressBar.activeEnvIndAsset and areas.progressBar.inactiveEnvIndAsset then
-    local pb = areas.progressBar
-    local aw = pb.w / SCALE_X
-    local ah = pb.h / SCALE_Y
-    local x = pb.x + 1 * pb.gapX + pb.w / 2 - 5 * SCALE_X
-    local y = pb.y
-    local firstAsset = pb.inactiveEnvIndAsset
-    if pb.count >= 2 then firstAsset = pb.activeEnvIndAsset end
-    love.graphics.draw(firstAsset, x, y, 0, SCALE_X, SCALE_Y, aw / 2, ah / 2)
-    local x2 = pb.x + 5 * pb.gapX + pb.w / 2 - 4 * SCALE_X
-    local secondAsset = pb.inactiveEnvIndAsset
-    if pb.count >= 6 then secondAsset = pb.activeEnvIndAsset end
-    love.graphics.draw(secondAsset, x2, y, 0, SCALE_X, SCALE_Y, aw / 2, ah / 2)
-  end
-
-  if areas.threatBar.asset then
-    local tb = areas.threatBar
-    local aw = tb.w / SCALE_X
-    local ah = tb.h / SCALE_Y
-    for i = 0, tb.count - 1 do
-      local s = (i == tb.count - 1) and tb.popScale or 1.0
-      local cx = tb.x + i * tb.gapX + tb.w / 2
-      local cy = tb.y + tb.h / 2
-      love.graphics.draw(tb.asset, cx, cy, 0, SCALE_X * s, SCALE_Y * s, aw / 2, ah / 2)
-    end
-  end
-
-  if areas.progressBar.textArea.value ~= "" then
-    love.graphics.setColor(1, 1, 1, 1)
-    local prevFont = love.graphics.getFont()
-    if statFont then love.graphics.setFont(statFont) end
-    local progressCount = areas.progressBar.count
-    areas.progressBar.textArea.value = string.format("%02d/%02d", progressCount, areas.progressBar.max)
-    love.graphics.printf(
-      areas.progressBar.textArea.value,
-      areas.progressBar.textArea.x,
-      areas.progressBar.textArea.y,
-      areas.progressBar.textArea.w,
-      "right"
-    )
-    love.graphics.setFont(prevFont)
-  end
-
-  if areas.threatBar.textArea.value ~= "" then
-    love.graphics.setColor(1, 1, 1, 1)
-    local prevFont = love.graphics.getFont()
-    if statFont then love.graphics.setFont(statFont) end
-    local threatCount = areas.threatBar.count
-    areas.threatBar.textArea.value = string.format("%02d/%02d", threatCount, areas.threatBar.max)
-    love.graphics.printf(
-      areas.threatBar.textArea.value,
-      areas.threatBar.textArea.x,
-      areas.threatBar.textArea.y,
-      areas.threatBar.textArea.w,
-      "left"
-    )
-    love.graphics.setFont(prevFont)
-  end
+  progressBar.draw()
+  threatBar.draw()
 
   local po = areas.pool
   love.graphics.setColor(1, 1, 1, 1)
@@ -536,50 +412,7 @@ function areas.drawDynamic()
     love.graphics.rectangle("line", et.x, et.y, et.w, et.h)
   end
 
-  if areas.envEffects.positive and
-    areas.envEffects.negative and
-    areas.envEffects.positiveInactive then
-    local gap = areas.envEffects.gapY + (areas.envEffects.negative:getHeight() * SCALE_Y)
-    love.graphics.draw(
-      areas.envEffects.negative,
-      lineXAtY(areas.leftLine, areas.envEffects.startY) + areas.envEffects.xOffset,
-      areas.envEffects.startY,
-      0,
-      SCALE_X,
-      SCALE_Y,
-      areas.envEffects.negative:getWidth() / 2,
-      0
-    )
-
-    local pb = areas.progressBar
-    local firstAsset = areas.envEffects.positiveInactive
-    if pb.count >= 2 then firstAsset = areas.envEffects.positive end
-
-    love.graphics.draw(
-      firstAsset,
-      lineXAtY(areas.leftLine, areas.envEffects.startY + gap) + areas.envEffects.xOffset,
-      areas.envEffects.startY + gap,
-      0,
-      SCALE_X,
-      SCALE_Y,
-      firstAsset:getWidth() / 2,
-      0
-    )
-
-    local secondAsset = areas.envEffects.positiveInactive
-    if pb.count >= 6 then secondAsset = areas.envEffects.positive end
-
-    love.graphics.draw(
-      secondAsset,
-      lineXAtY(areas.leftLine, areas.envEffects.startY + gap * 2) + areas.envEffects.xOffset,
-      areas.envEffects.startY + gap * 2,
-      0,
-      SCALE_X,
-      SCALE_Y,
-      secondAsset:getWidth() / 2,
-      0
-    )
-  end
+  envEffects.draw()
   love.graphics.setColor(1, 1, 1, 1)
 end
 

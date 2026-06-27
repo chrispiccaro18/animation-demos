@@ -225,6 +225,8 @@ local function applyFlingPhysics(self, rect, options)
 
   if options and options.downward then
     dest_y = math.max(dest_y, self.y + rect.h * 0.1)
+  elseif options and options.rightward then
+    dest_x = math.max(dest_x, self.x + rect.w * 0.1)
   end
 
   self.debug_dest_x = dest_x

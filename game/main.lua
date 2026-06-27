@@ -5,7 +5,10 @@ local overlayStats   = require("lib.overlayStats")
 local speedControl   = require("lib.speedControl")
 local runtimeLoader = require("runtime.loader")
 local events = require("lib.events")
-local areas  = require("core.areas")
+local areas       = require("core.areas")
+local progressBar = require("core.progressBar")
+local threatBar   = require("core.threatBar")
+local envEffects  = require("core.envEffects")
 local Card   = require("core.card")
 -- local Hand   = require("core.hand")
 local NewHand   = require("core.newHand")
@@ -72,10 +75,8 @@ local function resetGame()
   Dtor.reset()
   laser.hide()
 
-  areas.progressBar.count = 0
-  areas.progressBar.textArea.value = "00/10"
-  areas.threatBar.count = 0
-  areas.threatBar.textArea.value = "00/10"
+  progressBar.reset()
+  threatBar.reset()
   areas.endTurn.frozen = false
   areas.endTurn.state = "idle"
   areas.endTurn.hover.can = true
@@ -262,8 +263,8 @@ local function collectGlowRequests()
       })
       glow:request("drop-zone-text:play", {
         kind  = "callback",
-        -- color = {1.0, 1.0, 1.0, 1.0},
-        color     = {0.2, 1.0, 0.5, 1.0},
+        color = {1.0, 1.0, 1.0, 1.0},
+        -- color     = {0.2, 1.0, 0.5, 1.0},
         alpha = 0.5,
         pulse = { speed = 2.0, min = 0.20, max = 1.0 },
         draw  = function(alpha, time, spec)
@@ -292,8 +293,8 @@ local function collectGlowRequests()
       })
       glow:request("drop-zone-text:discard", {
         kind  = "callback",
-        -- color = {1.0, 1.0, 1.0, 1.0},
-        color     = {1.0, 0.4, 0.2, 1.0},
+        color = {1.0, 1.0, 1.0, 1.0},
+        -- color     = {1.0, 0.4, 0.2, 1.0},
         alpha = 0.5,
         radius    = 14,
         pulse = { speed = 2.0, min = 0.20, max = 1.0 },
@@ -306,6 +307,24 @@ local function collectGlowRequests()
             areas.discard.w,
             "left"
           )
+        end,
+      })
+      glow:request("ram-zone-text:ram", {
+        kind  = "callback",
+        color = {1.0, 1.0, 1.0, 1.0},
+        -- color     = {1.0, 0.4, 0.2, 1.0},
+        alpha = 0.5,
+        radius    = 14,
+        pulse = { speed = 2.0, min = 0.20, max = 1.0 },
+        draw  = function(alpha, time, spec)
+          love.graphics.setFont(AssetManifest.getFont(72))
+          love.graphics.printf(
+      "RAM: " .. tostring(#areas.pool.chips),
+      areas.pool.x,
+      areas.pool.y + areas.pool.h / 4,
+      areas.pool.w,
+      "center"
+    )
         end,
       })
     -- end
@@ -324,7 +343,9 @@ function love.update(dt)
   Audio.update()
   overlayStats.update(dt)
   message.update(realDt)
-  areas.updateBars(realDt)
+  progressBar.update(realDt)
+  threatBar.update(realDt)
+  envEffects.update(gameDt)
   particles.update(realDt)
   if gameOver then return end
   local mx, my = love.mouse.getPosition()

@@ -31,12 +31,12 @@ doesn't kill you until scoring/end of score so player has a chance to save thems
 scoring
 
 
-ASSET LIST
-TOKENS:
-- negative progress, 
-- negative threat
-- shuffle dtor
-- draw (cards) to hand
-- draw (card) to dtor
-A way to show different system levels
+env effects fire after dtor tokens fling
+env effects also fling tokens/affect flung tokens
 
+fix card scaling positions or revert scale
+implement env effects
+
+work on glow
+onboarding
+tooltips

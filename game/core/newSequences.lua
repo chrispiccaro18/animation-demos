@@ -1,6 +1,9 @@
 local events        = require("lib.events")
 local particles     = require("core.particles")
 local areas         = require("core.areas")
+local progressBar   = require("core.progressBar")
+local threatBar     = require("core.threatBar")
+local envEffects    = require("core.envEffects")
 local message       = require("core.message")
 local Token         = require("core.token")
 local Color = require("lib.color")
@@ -39,15 +42,51 @@ local function playFlingOptions()
     downward = true
   }
 end
-local function endTurnFlingOptions(token_type)
+local function endTurnFlingOptions(token_type, direction)
+  local flingDirection = direction or "downward"
   return {
     type       = token_type,
     bounces    = math.random(1, 3),
     base_scale = 1.25,
     delay      = false,
     target_rect = areas.discardDeskArea,
-    downward   = true,
+    [flingDirection] = true,
   }
+end
+
+local ENV_EFFECT_DELAY = 0.35
+
+local function pushAnimAndFling(index, tokenType, withDelay)
+  events.push({
+    fn = function() envEffects.triggerAnim(index) end,
+    blocking = true, blockable = true, persistent = false,
+    delay = withDelay and ENV_EFFECT_DELAY or 0,
+    type  = withDelay and "after" or "immediate",
+  })
+  events.push({
+    fn = function() return envEffects.animDone(index) end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  events.push({
+    fn = function()
+      local x, y = envEffects.getPosition(index)
+      Token.new_fling(x, y, areas.desk, endTurnFlingOptions(tokenType, "rightward"))
+      Audio.playImpactIn()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+end
+
+local function queueEnvEffects()
+  pushAnimAndFling("negative", "threat",     false)
+  if envEffects.isActive(1) then
+    pushAnimAndFling(1,        "drawToHand", true)
+  end
+  if envEffects.isActive(2) then
+    pushAnimAndFling(2,        "ram",        true)
+  end
 end
 
 local function terminalEvent(tokenType)
@@ -55,10 +94,8 @@ local function terminalEvent(tokenType)
     events.push({
       fn = function()
         if tokenType == "progress" then
-          areas.progressBar.count = math.min(areas.progressBar.count + 1, 10)
-          areas.triggerBarPop(areas.progressBar)
-          local pb = areas.progressBar
-          local pbCount = math.floor(8 + 12 * (pb.count / pb.max))
+          progressBar.increment()
+          local pbCount = math.floor(8 + 12 * (progressBar.getCount() / progressBar.getMax()))
           particles.emit("progress", areas.progressDestination.x, areas.progressDestination.y, pbCount, {
             lifetimeMin   = 0.25,
             lifetimeMax   = 0.5,
@@ -71,10 +108,8 @@ local function terminalEvent(tokenType)
           end)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "progressNegative" then
-          areas.progressBar.count = math.max(areas.progressBar.count - 1, 0)
-          -- areas.triggerBarPop(areas.progressBar)
-          local pb = areas.progressBar
-          local pbCount = math.floor(8 + 12 * (pb.count / pb.max))
+          progressBar.decrement()
+          local pbCount = math.floor(8 + 12 * (progressBar.getCount() / progressBar.getMax()))
           particles.emit("progressNegative", areas.progressDestination.x, areas.progressDestination.y, pbCount, {
             lifetimeMin   = 0.25,
             lifetimeMax   = 0.5,
@@ -87,10 +122,8 @@ local function terminalEvent(tokenType)
           end)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "threat" then
-          areas.threatBar.count = math.min(areas.threatBar.count + 1, 10)
-          areas.triggerBarPop(areas.threatBar)
-          local tb = areas.threatBar
-          local tbCount = math.floor(8 + 12 * (tb.count / tb.max))
+          threatBar.increment()
+          local tbCount = math.floor(8 + 12 * (threatBar.getCount() / threatBar.getMax()))
           particles.emit("threat", areas.threatDestination.x, areas.threatDestination.y, tbCount, {
             lifetimeMin   = 0.25,
             lifetimeMax   = 0.5,
@@ -103,10 +136,8 @@ local function terminalEvent(tokenType)
           end)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "threatNegative" then
-          areas.threatBar.count = math.max(areas.threatBar.count - 1, 0)
-          -- areas.triggerBarPop(areas.threatBar)
-          local tb = areas.threatBar
-          local tbCount = math.floor(8 + 12 * (tb.count / tb.max))
+          threatBar.decrement()
+          local tbCount = math.floor(8 + 12 * (threatBar.getCount() / threatBar.getMax()))
           particles.emit("threatNegative", areas.threatDestination.x, areas.threatDestination.y, tbCount, {
             lifetimeMin   = 0.25,
             lifetimeMax   = 0.5,
@@ -118,6 +149,10 @@ local function terminalEvent(tokenType)
             Audio.playImpactIn()
           end)
           screenshake.trigger(5, 0.2)
+        elseif tokenType == "ram" then
+          areas.addPoolChip(token.x, token.y)
+          Audio.playRamImpact()
+          token._remove = true
         elseif tokenType == "nullify" then
           token._remove = true
           Dtor.nullifyNextSlot()
@@ -304,14 +339,14 @@ local function terminalEvent(tokenType)
             end)
           end
         end
-        if areas.progressBar.count >= areas.progressBar.max then
+        if progressBar.isFull() then
           gameOver = "win"
           message.text          = "SUCCESS"
           message.subtitle      = "Press R to reset"
           message.textColor     = { 0.4, 1, 0.6, 1 }
           message.current.scale = 6
           Audio.playSuccess()
-        elseif areas.threatBar.count >= areas.threatBar.max then
+        elseif threatBar.isFull() then
           gameOver = "loss"
           message.text          = "FAILURE"
           message.subtitle      = "Press R to reset"
@@ -342,6 +377,7 @@ local function terminalAttract()
   startTerminalAttract("threat", areas.threatDestination, acc)
   startTerminalAttract("progressNegative", areas.progressDestination, acc)
   startTerminalAttract("threatNegative", areas.threatDestination, acc)
+  startTerminalAttract("ram", areas.pool, acc)
   startTerminalAttract("nullify", Dtor.nextUnnullifiedSlot(), acc)
   startTerminalAttract("shuffle", Dtor.topSlot(), acc)
   startTerminalAttract("drawToDtor", _deck:centerPosition(), acc)
@@ -497,8 +533,8 @@ function sequences.discard(card, camera)
   })
   events.push({
     fn = function()
-      card.target.x = areas.discard.x + areas.discard.w / 4
-      card.target.y = areas.discard.current.y + areas.discard.h * 0.75
+      card.target.x = areas.discard.x + areas.discard.w * 0.4
+      card.target.y = areas.discard.current.y + areas.discard.h
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"
@@ -850,9 +886,18 @@ function sequences.endTurn()
         screenshake.trigger(5, 0.15)
         Audio.playNullify()
         Dtor.popEntry()
-        local idx   = slotIndices[1]
+        local idx = slotIndices[1]
         Dtor.releaseSlot(idx)
         Dtor.compactSlots()
+        queueEnvEffects()
+        sequences.scan(areas.scanner.right)
+        events.push({
+          fn = function()
+            return Token.allDone() and not events.isRunning("terminalArrive")
+          end,
+          blocking = true, blockable = true, persistent = false,
+          delay = 0, type = "poll",
+        })
         sequences.restoreCard(card)
       else
         local sx, sy = Dtor.getTextCenter()
@@ -860,12 +905,18 @@ function sequences.endTurn()
           Token.new_fling(sx, sy, areas.desk, endTurnFlingOptions(effect.type))
         end
         Dtor.popEntry()
-        local idx   = slotIndices[1]
+        local idx = slotIndices[1]
         Dtor.releaseSlot(idx)
         Dtor.compactSlots()
-        if Token.count() > 0 then
-          sequences.scan(areas.scanner.right)
-        end
+        events.push({
+          fn = function()
+            return Token.allDone()
+          end,
+          blocking = true, blockable = true, persistent = false,
+          delay = 0, type = "poll",
+        })
+        queueEnvEffects()
+        sequences.scan(areas.scanner.right)
         events.push({
           fn = function()
             return Token.allDone() and not events.isRunning("terminalArrive")
