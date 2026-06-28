@@ -77,6 +77,7 @@ local function resetGame()
 
   progressBar.reset()
   threatBar.reset()
+  envEffects.syncState()
   areas.endTurn.frozen = false
   areas.endTurn.state = "idle"
   areas.endTurn.hover.can = true
@@ -199,9 +200,9 @@ function love.draw()
 
   areas.drawStatic()
   if deck then deck:draw() end
-  glow:render()
   if camera then camera:draw() end
   if camera then camera:drawScannerLines(areas.scanner) end
+  -- glow:render()
   areas.drawScanners()
   areas.drawDynamic()
   hand:draw()
@@ -210,6 +211,9 @@ function love.draw()
   Token.drawAll()
   message.draw()
 
+  glow:render()
+  -- if camera then camera:draw() end
+  -- if camera then camera:drawScannerLines(areas.scanner) end
   hand:drawDragged()
   love.graphics.pop()
 
@@ -289,6 +293,7 @@ local function collectGlowRequests()
         alpha     = 0.5,
         radius    = 14,
         lineWidth = 4,
+        -- luminescence = 2.0,
         pulse     = { speed = 2.0, min = 0.70, max = 1.0 },
       })
       glow:request("drop-zone-text:discard", {

@@ -12,6 +12,7 @@ local laser = require("core.laser")
 local Dtor  = require("core.dtor")
 local Audio = require("assets.audio")
 local Deck = require("core.deck")
+local Palette = require("lib.palette")
 
 local COUNT_MIN = 10
 local COUNT_MAX = 20
@@ -89,12 +90,37 @@ local function queueEnvEffects()
   end
 end
 
+local function fireEnvThresholdCeremony()
+  for _, t in ipairs(envEffects.checkTransitions()) do
+    local ix, iy = envEffects.getPosition(t.index)
+    envEffects.triggerThresholdAnim(t.index, t.gained)
+    screenshake.triggerH(4)
+    if t.gained then
+      particles.emit("progress", ix, iy, 14, { speed = 900 })
+      message.text      = "EFFECT ACTIVE"
+      message.textColor = Palette.positive
+    else
+      particles.emit("threat", ix, iy, 10, { speed = 700 })
+      message.text      = "EFFECT LOST"
+      message.textColor = Palette.danger
+    end
+    message.current.scale = 1.5
+    message.target.scale  = 1.0
+    events.push({
+      fn = function() message.text = "" end,
+      blocking = false, blockable = false, persistent = false,
+      delay = 1.5, type = "after",
+    })
+  end
+end
+
 local function terminalEvent(tokenType)
   return function(token)
     events.push({
       fn = function()
         if tokenType == "progress" then
           progressBar.increment()
+          fireEnvThresholdCeremony()
           local pbCount = math.floor(8 + 12 * (progressBar.getCount() / progressBar.getMax()))
           particles.emit("progress", areas.progressDestination.x, areas.progressDestination.y, pbCount, {
             lifetimeMin   = 0.25,
@@ -109,6 +135,7 @@ local function terminalEvent(tokenType)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "progressNegative" then
           progressBar.decrement()
+          fireEnvThresholdCeremony()
           local pbCount = math.floor(8 + 12 * (progressBar.getCount() / progressBar.getMax()))
           particles.emit("progressNegative", areas.progressDestination.x, areas.progressDestination.y, pbCount, {
             lifetimeMin   = 0.25,

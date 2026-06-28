@@ -35,7 +35,7 @@ function ProgressBar.load()
 end
 
 function ProgressBar.reset()
-  _count    = 6
+  _count    = 1
   _popScale = 1.0
 end
 
@@ -72,7 +72,8 @@ function ProgressBar.draw()
         kind  = "image",
         image = _asset,
         x = cx, y = cy,
-        sx = SCALE_X * s, sy = SCALE_Y * s,
+        sx = SCALE_X * s * 1.2,
+        sy = SCALE_Y * s * 1.1,
         ox = aw / 2, oy = ah / 2,
         color = Palette.positive,
         alpha = 0.7,

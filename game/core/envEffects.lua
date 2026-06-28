@@ -19,6 +19,17 @@ local _anims = {
   [2]      = { t = 0, active = false, done = false, scale = 1 },
 }
 
+local THRESH_PEAK = 1.9
+local THRESH_IN   = 0.25
+local THRESH_OUT  = 0.55
+
+local _thresholdAnims = {
+  [1] = { t = 0, active = false, done = false, scale = 1, gained = true },
+  [2] = { t = 0, active = false, done = false, scale = 1, gained = true },
+}
+
+local _wasActive = { [1] = false, [2] = false }
+
 local function lineXAtY(line, y)
   local t = (y - line.y1) / (line.y2 - line.y1)
   t = math.max(0, math.min(1, t))
@@ -77,6 +88,42 @@ function EnvEffects.animDone(index)
   return a and a.done
 end
 
+-- Sync _wasActive to current state without firing transitions (call after reset).
+function EnvEffects.syncState()
+  for _, i in ipairs({ 1, 2 }) do
+    _wasActive[i] = EnvEffects.isActive(i)
+  end
+end
+
+-- Returns a list of {index, gained} for effects whose active state changed since last call.
+-- Call this after modifying progress/threat counts.
+function EnvEffects.checkTransitions()
+  local changes = {}
+  for _, i in ipairs({ 1, 2 }) do
+    local now = EnvEffects.isActive(i)
+    if now ~= _wasActive[i] then
+      table.insert(changes, { index = i, gained = now })
+      _wasActive[i] = now
+    end
+  end
+  return changes
+end
+
+function EnvEffects.triggerThresholdAnim(index, gained)
+  local a = _thresholdAnims[index]
+  if not a then return end
+  a.t      = 0
+  a.active = true
+  a.done   = false
+  a.scale  = 1
+  a.gained = gained
+end
+
+function EnvEffects.thresholdAnimDone(index)
+  local a = _thresholdAnims[index]
+  return a and a.done
+end
+
 function EnvEffects.update(dt)
   local total = ANIM_IN + ANIM_OUT
   for _, a in pairs(_anims) do
@@ -93,6 +140,22 @@ function EnvEffects.update(dt)
       end
     end
   end
+
+  local tTotal = THRESH_IN + THRESH_OUT
+  for _, a in pairs(_thresholdAnims) do
+    if a.active then
+      a.t = a.t + dt
+      if a.t >= tTotal then
+        a.scale  = 1.0
+        a.active = false
+        a.done   = true
+      elseif a.t <= THRESH_IN then
+        a.scale = 1.0 + (THRESH_PEAK - 1.0) * smoothstep(a.t / THRESH_IN)
+      else
+        a.scale = THRESH_PEAK + (1.0 - THRESH_PEAK) * smoothstep((a.t - THRESH_IN) / THRESH_OUT)
+      end
+    end
+  end
 end
 
 local function drawIcon(img, x, y, scale, glowColor)
@@ -103,16 +166,17 @@ local function drawIcon(img, x, y, scale, glowColor)
 
   local glow = Glow.get()
   if glow and scale > 1.0 then
-    local alpha = (scale - 1.0) / (ANIM_PEAK - 1.0)
+    local alpha = math.min(1.0, (scale - 1.0) / (ANIM_PEAK - 1.0))
     glow:request("env-anim-" .. tostring(img), {
       kind  = "image",
       image = img,
       x = x, y = y,
-      sx = SCALE_X * scale,
-      sy = SCALE_Y * scale,
+      sx = SCALE_X * (scale * 1.1),
+      sy = SCALE_Y * (scale * 1.1),
+      luminescence = 1.5 * scale,
       ox = iw / 2, oy = ih / 2,
       color = glowColor,
-      alpha = alpha * 1.0,
+      alpha = alpha * 0.9,
     })
   end
 end
@@ -131,8 +195,11 @@ function EnvEffects.draw()
   end)
 
   for _, item in ipairs(items) do
-    local x, y = EnvEffects.getPosition(item.index)
-    drawIcon(item.img, x, y, _anims[item.index].scale, item.glowColor)
+    local x, y        = EnvEffects.getPosition(item.index)
+    local animScale   = _anims[item.index].scale
+    local threshAnim  = _thresholdAnims[item.index]
+    local scale       = threshAnim and math.max(animScale, threshAnim.scale) or animScale
+    drawIcon(item.img, x, y, scale, item.glowColor)
   end
 
   love.graphics.setColor(1, 1, 1, 1)

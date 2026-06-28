@@ -133,14 +133,13 @@ function GlowRenderer:_drawSourceItem(item, time)
     local alpha = self:_computeAlpha(item, time)
     if alpha <= 0 then return end
 
-    local color = spec.color or self.config.defaults.color
-    love.graphics.setColor(color[1], color[2], color[3], (color[4] or 1) * alpha)
+    local color   = spec.color or self.config.defaults.color
+    local lum     = spec.luminescence or self.config.defaults.luminescence
+    love.graphics.setColor(color[1] * lum, color[2] * lum, color[3] * lum, (color[4] or 1) * alpha)
 
-    local invScale = 1 / self.quality.scale
     local kind = spec.kind
     if kind == "rect" then
-        -- compensate for canvas scale so lineWidth is consistent at all quality tiers
-        love.graphics.setLineWidth((spec.lineWidth or self.config.defaults.lineWidth) * invScale)
+        love.graphics.setLineWidth(spec.lineWidth or self.config.defaults.lineWidth)
         local r = spec.radius or self.config.defaults.radius
         love.graphics.rectangle("line", spec.x, spec.y, spec.w, spec.h, r, r)
 
@@ -149,7 +148,7 @@ function GlowRenderer:_drawSourceItem(item, time)
         love.graphics.rectangle("fill", spec.x, spec.y, spec.w, spec.h, r, r)
 
     elseif kind == "circle" then
-        love.graphics.setLineWidth((spec.lineWidth or self.config.defaults.lineWidth) * invScale)
+        love.graphics.setLineWidth(spec.lineWidth or self.config.defaults.lineWidth)
         love.graphics.circle("line", spec.cx, spec.cy, spec.r)
 
     elseif kind == "text" then
@@ -189,7 +188,7 @@ function GlowRenderer:_blur(outputCanvas)
 
     if not self.config.debug.disableBlur and self.blurShader then
         self.blurShader:send("canvasSize", {self.canvasW, self.canvasH})
-        self.blurShader:send("radius", q.blurRadius)
+        self.blurShader:send("radius", q.blurRadius * q.scale)
         love.graphics.setShader(self.blurShader)
 
         -- Ping-pong: each pass reads from src, writes to dst, then swaps.

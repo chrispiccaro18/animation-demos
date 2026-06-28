@@ -1,4 +1,5 @@
 local AssetManifest = require("assets.manifest")
+local Glow          = require("lib.glow.Glow")
 local Color = require("lib.color")
 
 local Camera = {}
@@ -199,6 +200,26 @@ function Camera:draw()
     self.offsetY
   )
   love.graphics.setColor(1, 1, 1, 1)
+  local glow = Glow.get()
+  local luminescence = self.state == "idle" and 0.5 or 1.0
+
+    glow:request("camera-ring", {
+      kind  = "image",
+      image = self.parts.ring.asset,
+      x = self.x
+      + self.parts.ring.offsetX * self.scale * windowScaleX
+        + self.parts.ring.originalPosition.x * self.scale * windowScaleX,
+      y = self.y * windowScaleY
+      + self.parts.ring.offsetY * self.scale * windowScaleY
+        + self.parts.ring.originalPosition.y * self.scale * windowScaleY,
+      sx = (self.scale) * windowScaleX,
+      sy = (self.scale) * windowScaleY,
+      ox = self.offsetX,
+      oy = self.offsetY,
+      color = self.parts.ring.color,
+      luminescence = luminescence,
+      alpha = 0.8,
+    })
 end
 
 return Camera

@@ -19,20 +19,22 @@ GlowConfig.pulse = {
 }
 
 GlowConfig.defaults = {
-    color     = {1, 1, 1, 1},
-    alpha     = 1.0,
-    radius    = 8,
-    lineWidth = 12,
-    textScale = 1.0,
+    color        = {1, 1, 1, 1},
+    alpha        = 1.0,
+    luminescence = 1.0,
+    radius       = 8,
+    lineWidth    = 12,
+    textScale    = 1.0,
 }
 
+local defaultBlurRadius = 2
 -- Scale is relative to canvasW x canvasH (the fixed game canvas), not the window.
 -- gammacorrect = false in conf.lua — if that ever changes, additive blend math changes too.
 GlowConfig.quality = {
     high = {
         scale            = 1.0,
         blurPasses       = 3,
-        blurRadius       = 1,
+        blurRadius       = defaultBlurRadius,
         blurSamples      = 9,
         compositeBlend   = "add",
         useShaderBlur    = true,
@@ -40,7 +42,7 @@ GlowConfig.quality = {
     medium = {
         scale            = 0.5,
         blurPasses       = 2,
-        blurRadius       = 1,
+        blurRadius       = defaultBlurRadius,
         blurSamples      = 7,
         compositeBlend   = "add",
         useShaderBlur    = true,
@@ -48,7 +50,7 @@ GlowConfig.quality = {
     low = {
         scale            = 0.5,
         blurPasses       = 1,
-        blurRadius       = 1,
+        blurRadius       = defaultBlurRadius,
         blurSamples      = 4,
         compositeBlend   = "add",
         useShaderBlur    = true,
@@ -56,13 +58,13 @@ GlowConfig.quality = {
     mobileWeb = {
         scale            = 0.25,
         blurPasses       = 1,
-        blurRadius       = 1,
+        blurRadius       = defaultBlurRadius,
         blurSamples      = 4,
         compositeBlend   = "add",
         useShaderBlur    = true,
     },
     fake = {
-        scale            = 1.0,
+        scale            = 0.25,
         blurPasses       = 0,
         blurRadius       = 0,
         blurSamples      = 0,
