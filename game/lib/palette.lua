@@ -24,7 +24,7 @@ local _variants = {
     positive        = Color("#6ED59E"), -- progress, good outcomes
     positiveNeg     = Color("#2B6B47"), -- progressNegative tokens (dark green)
     danger          = Color("#D56E6E"), -- threat, harm (soft red)
-    dangerNeg       = Color("#7A3030"), -- threatNegative tokens (dark red)
+    threatNeg       = Color("#7A3030"), -- threatNegative tokens (dark red)
     critical        = Color("#9C2B2B"), -- severe threat (deep red)
     warning         = Color("#FF8C00"), -- attention, overflow, nullified
 

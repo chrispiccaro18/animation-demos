@@ -106,11 +106,11 @@ function GlowRenderer:render(items, time)
         love.graphics.setCanvas(prevCanvas)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.setShader()
-        if drawOverlay then self:_compositeLights(hasLights) end
+        self:_compositeLights(hasLights, drawOverlay)
         self:_composite(self.outputBufs[readIdx])
     else
         love.graphics.setCanvas(prevCanvas)
-        if drawOverlay then self:_compositeLights(hasLights) end
+        self:_compositeLights(hasLights, drawOverlay)
         self:_renderFake(items, time)
     end
 
@@ -411,11 +411,17 @@ function GlowRenderer:_drawLightCanvas(items, time)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function GlowRenderer:_compositeLights(hasLights)
+-- drawOverlay controls the dark rect; hasLights controls the light bloom.
+-- Both are independent: lights always composite when present, overlay is optional.
+function GlowRenderer:_compositeLights(hasLights, drawOverlay)
+    if not hasLights and not drawOverlay then return end
     local cfg = self.config.light
-    love.graphics.setBlendMode("alpha")
-    love.graphics.setColor(0, 0, 0, cfg.darkOverlayAlpha)
-    love.graphics.rectangle("fill", 0, 0, self.fullW, self.fullH)
+
+    if drawOverlay then
+        love.graphics.setBlendMode("alpha")
+        love.graphics.setColor(0, 0, 0, cfg.darkOverlayAlpha)
+        love.graphics.rectangle("fill", 0, 0, self.fullW, self.fullH)
+    end
 
     if hasLights then
         love.graphics.setBlendMode("add", "premultiplied")

@@ -325,6 +325,18 @@ function Dtor.getTextCenter()
   return _text.x + _text.w / 2, _text.y + _text.h / 2
 end
 
+-- Returns glow data for the text area, or nil when nothing is displayed.
+function Dtor.getTextGlowData()
+  if not _text.segments or _text.alpha <= 0.01 then return nil end
+  return {
+    cx    = _text.x + _text.w / 2,
+    cy    = _text.y + _text.h / 2,
+    w     = _text.w,
+    h     = _text.h,
+    alpha = _text.alpha,
+  }
+end
+
 ------------------------------------------------------------------------
 -- Update — tick text alpha animation
 ------------------------------------------------------------------------

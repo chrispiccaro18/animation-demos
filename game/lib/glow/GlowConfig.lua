@@ -80,7 +80,8 @@ GlowConfig.light = {
     -- "alwaysOff" – never draw overlay
     -- "glowOn"    – overlay when any glow item is visible
     -- "lightOn"   – overlay only when a light-spec item is visible
-    darkOverlayMode  = "glowOn",
+    darkOverlayMode  = "alwaysOff",
+    -- darkOverlayMode  = "alwaysOn",
     -- darkOverlayMode  = "lightOn",
 }
 

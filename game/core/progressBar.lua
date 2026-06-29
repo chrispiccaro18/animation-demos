@@ -1,13 +1,23 @@
 local AssetManifest = require("assets.manifest")
 local animation     = require("lib.animation")
-local Glow          = require("lib.glow.Glow")
-local Palette       = require("lib.palette")
+local pulse         = require("lib.pulse")
 
 local ProgressBar = {}
 
-local _count    = 0
-local _max      = 10
-local _popScale = 1.0
+local _count     = 0
+local _max       = 10
+local _popScale  = 1.0
+local _tickPulseCount  = 0
+local _negPulseStartT  = nil
+
+function ProgressBar.setTickPulseCount(n)
+  if n > 0 and _tickPulseCount == 0 then
+    _negPulseStartT = pulse.getTime()
+  elseif n == 0 then
+    _negPulseStartT = nil
+  end
+  _tickPulseCount = n
+end
 
 local _x, _y, _w, _h, _gapX
 local _textArea = {}
@@ -19,7 +29,8 @@ function ProgressBar.load()
   _y    = 73  * SCALE_Y
   _w    = 38  * SCALE_X
   _h    = 138 * SCALE_Y
-  _gapX = 64  * SCALE_X
+  _gapX = 62  * SCALE_X
+  -- _gapX = 64  * SCALE_X
 
   _textArea = {
     x = 522 * SCALE_X,
@@ -56,34 +67,49 @@ function ProgressBar.update(dt)
   _popScale = animation.expDecay(_popScale, 1.0, 10, dt)
 end
 
-function ProgressBar.draw()
-  if not _asset then return end
-  love.graphics.setColor(1, 1, 1, 1)
-  local aw = _w / SCALE_X
-  local ah = _h / SCALE_Y
-  local glow = Glow.get()
+function ProgressBar.getGhostTickPositions(count)
+  if not _asset or count <= 0 then return {} end
+  local aw     = _w / SCALE_X
+  local ah     = _h / SCALE_Y
+  local ghosts = {}
+  for i = 0, count - 1 do
+    local idx = _count + i
+    if idx >= _max then break end
+    local cx = _x + idx * _gapX + _w / 2
+    local cy = _y + _h / 2
+    ghosts[#ghosts + 1] = { index = idx, cx = cx, cy = cy, asset = _asset, aw = aw, ah = ah }
+  end
+  return ghosts
+end
+
+function ProgressBar.getTickData()
+  if not _asset then return {} end
+  local aw    = _w / SCALE_X
+  local ah    = _h / SCALE_Y
+  local ticks = {}
   for i = 0, _count - 1 do
     local s  = (i == _count - 1) and _popScale or 1.0
     local cx = _x + i * _gapX + _w / 2
     local cy = _y + _h / 2
-    love.graphics.draw(_asset, cx, cy, 0, SCALE_X * s, SCALE_Y * s, aw / 2, ah / 2)
-    if glow then
-      glow:request("progress-tick-" .. i, {
-        kind  = "image",
-        image = _asset,
-        x = cx, y = cy,
-        sx = SCALE_X * s * 1.2,
-        sy = SCALE_Y * s * 1.1,
-        ox = aw / 2, oy = ah / 2,
-        color = Palette.positive,
-        alpha = 0.7,
-        light = {
-          radius = 100 * SCALE_X,
-          alpha = 0.15,
-        },
-      })
-    end
+    ticks[#ticks + 1] = { index = i, cx = cx, cy = cy, s = s, asset = _asset, aw = aw, ah = ah }
   end
+  return ticks
+end
+
+function ProgressBar.draw()
+  if not _asset then return end
+  local pulseA = pulse.valueFrom(2.0, 0.0, 0.8, _negPulseStartT)
+  local aw = _w / SCALE_X
+  local ah = _h / SCALE_Y
+  for i = 0, _count - 1 do
+    local s           = (i == _count - 1) and _popScale or 1.0
+    local cx          = _x + i * _gapX + _w / 2
+    local cy          = _y + _h / 2
+    local isAffected  = _tickPulseCount > 0 and i >= _count - _tickPulseCount
+    love.graphics.setColor(1, 1, 1, isAffected and pulseA or 1.0)
+    love.graphics.draw(_asset, cx, cy, 0, SCALE_X * s, SCALE_Y * s, aw / 2, ah / 2)
+  end
+  love.graphics.setColor(1, 1, 1, 1)
 
   if _activeIndAsset and _inactiveIndAsset then
     local x1 = _x + 1 * _gapX + _w / 2 - 5 * SCALE_X

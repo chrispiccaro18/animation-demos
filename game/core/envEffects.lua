@@ -1,5 +1,4 @@
 local AssetManifest = require("assets.manifest")
-local Glow          = require("lib.glow.Glow")
 local Palette       = require("lib.palette")
 
 local EnvEffects = {}
@@ -164,41 +163,36 @@ local function drawIcon(img, x, y, scale, glowColor, isActive)
   local ih = img:getHeight()
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.draw(img, x, y, 0, SCALE_X * scale, SCALE_Y * scale, iw / 2, ih / 2)
+end
 
-  local glow = Glow.get()
-  if glow and scale > 1.0 then
-    local alpha = math.min(1.0, (scale - 1.0) / (ANIM_PEAK - 1.0))
-    glow:request("env-anim-" .. tostring(img), {
-      kind  = "image",
-      image = img,
-      x = x, y = y,
-      sx = SCALE_X * (scale * 1.1),
-      sy = SCALE_Y * (scale * 1.1),
-      luminescence = 1.5 * scale,
-      ox = iw / 2, oy = ih / 2,
-      color = glowColor,
-      alpha = alpha * 0.9,
-      light = {
-        radius = 100 * SCALE_X,
-        alpha = 0.35,
-      },
-    })
-  elseif glow and isActive then
-    glow:request("env-anim-" .. tostring(img) .. "-" .. tostring(x) .. "-" .. tostring(y), {
-      kind  = "image",
-      image = img,
-      x = x, y = y,
-      sx = SCALE_X * (scale),
-      sy = SCALE_Y * (scale),
-      ox = iw / 2, oy = ih / 2,
-      color = glowColor,
-      alpha = 0.35,
-      light = {
-        radius = 100 * SCALE_X,
-        alpha = 0.35,
-      },
-    })
+-- Returns per-icon glow data for all env effect icons.
+-- animAlpha is pre-computed so callers don't need to know ANIM_PEAK.
+function EnvEffects.getIconGlowData()
+  if not (_positive and _positiveInactive and _negative) then return {} end
+  local defs = {
+    { index = "negative", img = _negative,                                                 glowColor = Palette.danger   },
+    { index = 1,          img = EnvEffects.isActive(1) and _positive or _positiveInactive, glowColor = Palette.positive },
+    { index = 2,          img = EnvEffects.isActive(2) and _positive or _positiveInactive, glowColor = Palette.positive },
+  }
+  local result = {}
+  for _, def in ipairs(defs) do
+    local x, y      = EnvEffects.getPosition(def.index)
+    local animScale  = _anims[def.index].scale
+    local threshAnim = _thresholdAnims[def.index]
+    local scale      = threshAnim and math.max(animScale, threshAnim.scale) or animScale
+    local isAnim     = scale > 1.0
+    result[#result + 1] = {
+      img       = def.img,
+      x         = x,
+      y         = y,
+      scale     = scale,
+      glowColor = def.glowColor,
+      isActive  = EnvEffects.isActive(def.index),
+      isAnim    = isAnim,
+      animAlpha = isAnim and math.min(1.0, (scale - 1.0) / (ANIM_PEAK - 1.0)) or 0,
+    }
   end
+  return result
 end
 
 function EnvEffects.draw()

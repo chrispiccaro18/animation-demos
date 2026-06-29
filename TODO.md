@@ -31,12 +31,16 @@ doesn't kill you until scoring/end of score so player has a chance to save thems
 scoring
 
 
-env effects fire after dtor tokens fling
 env effects also fling tokens/affect flung tokens
-
-fix card scaling positions or revert scale
-implement env effects
 
 work on glow
 onboarding
+
+hover dtor shows terminal destinations
+ram ghosts
+
+insufficient ram feedback
+
 tooltips
+
+onboarding
