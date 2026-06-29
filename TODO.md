@@ -37,10 +37,8 @@ work on glow
 onboarding
 
 hover dtor shows terminal destinations
-ram ghosts
-
-insufficient ram feedback
 
 tooltips
 
 onboarding
+

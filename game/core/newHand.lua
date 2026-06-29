@@ -89,6 +89,10 @@ local function returnCardToHand(card, hand)
 end
 
 function Hand:update(mouseX, mouseY)
+  if areas.pool.insufficientRamTimer > 0 then
+    areas.pool.insufficientRamTimer = math.max(0, areas.pool.insufficientRamTimer - realDt)
+  end
+
   local draggingCard = nil
   local hoveredCard = nil
   for _, card in ipairs(self.cards) do
@@ -205,6 +209,7 @@ function Hand:update(mouseX, mouseY)
         elseif not actionQueue.isRunning() and
           #areas.pool.chips < card.energy then
           returnCardToHand(card, self)
+          areas.pool.insufficientRamTimer = areas.RAM_DISPLAY_TIME + areas.RAM_FADE_TIME
         --   card:setZoneState("idle")
         --   Camera:setColor(Color("#88EDFF"))
         --   Camera:setIdle()
@@ -224,12 +229,14 @@ function Hand:update(mouseX, mouseY)
             end,
             onReject = function(item)
               returnCardToHand(item.card, hand)
+              areas.pool.insufficientRamTimer = areas.RAM_DISPLAY_TIME + areas.RAM_FADE_TIME
             end,
             fn = function()
               sequences.play(card, Camera)
             end,
           })
           if pushed then
+            areas.pool.insufficientRamTimer = 0
             card._excluded = true
             self:layout()
             card.hover.can = false

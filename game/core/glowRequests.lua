@@ -6,6 +6,7 @@ local progressBar = require("core.progressBar")
 local threatBar   = require("core.threatBar")
 local envEffects  = require("core.envEffects")
 local AssetManifest = require("assets.manifest")
+local ActionQueue = require("core.actionQueue")
 
 local M = {}
 
@@ -264,11 +265,79 @@ function M.requestGhostTickGlows(glow, card, zone)
   end
 end
 
+-- Ghost glows on the card's topEnergyHoles (RAM cost) slots when dragging to play.
+-- If pool has enough chips: pulsing rect on each slot. If not: "Insufficient RAM" in pool.
+function M.requestRamCostGlows(glow, card)
+  if ActionQueue.isRunning() then return end
+
+  local ramNeeded = card._slotCounts and card._slotCounts["topEnergyHoles"] or 0
+  if ramNeeded == 0 then return end
+
+  if #areas.pool.chips >= ramNeeded then
+    -- Ghost glow on each card RAM slot (diamond-shaped holes).
+    for i = 1, ramNeeded do
+      local rect = card:getSlotCanvasRect("topEnergyHoles", i)
+      if rect then
+        glow:request("ram-cost-slot:" .. i, {
+          kind     = "rect",
+          cx       = rect.cx,
+          cy       = rect.cy,
+          w        = rect.w * 0.8,
+          h        = rect.h * 0.8,
+          rotation = card.current.r + math.pi / 4,
+          color    = Palette.energy,
+          alpha    = 0.65,
+          pulse    = { speed = 2.0, min = 0.0, max = 1.0 },
+          light    = { radius = 30 * SCALE_X, alpha = 0.4 },
+        }, "top")
+      end
+    end
+    -- Highlight the first N chips in the pool — FIFO, so these are the ones that will actually be consumed.
+    for i = 1, ramNeeded do
+      local chip = areas.pool.chips[i]
+      if chip then
+        glow:request("ram-pool-chip:" .. i, {
+          kind  = "rect",
+          cx    = chip.x,
+          cy    = chip.y,
+          w     = 70 * SCALE_X,
+          h     = 70 * SCALE_Y,
+          rotation = math.pi / 4,
+          color = Palette.energy,
+          alpha = 0.7,
+          pulse = { speed = 2.0, min = 0.0, max = 1.0 },
+          light = { radius = 50 * SCALE_X, alpha = 0.35 },
+        })
+      end
+    end
+  else
+    areas.pool.insufficientRam = true
+    local belowRamText = areas.pool.y + areas.pool.h / 4 + 100 * SCALE_Y
+    glow:request("ram-zone-text:insufficient", {
+      kind  = "callback",
+      color = Palette.warning,
+      alpha = 0.9,
+      pulse = { speed = 3.0, min = 0.5, max = 1.0 },
+      draw  = function(alpha, time, spec)
+        love.graphics.setFont(AssetManifest.getFont(72))
+        love.graphics.printf(
+          "Insufficient RAM",
+          areas.pool.x,
+          belowRamText,
+          areas.pool.w,
+          "center"
+        )
+      end,
+    })
+  end
+end
+
 -- Slot glows for the play effect zone + terminal destination glows.
 function M.requestPlayZoneGlows(glow, card, deck)
   local seenTypes = M.requestSlotGlows(glow, card, "playEffect", "card-slot-play")
   M.requestTerminalGlows(glow, seenTypes, deck)
   M.requestGhostTickGlows(glow, card, "playEffect")
+  M.requestRamCostGlows(glow, card)
 end
 
 -- Slot glows for all discard-visible zones (discardEffect, dtorEffect, bottomEnergy)
@@ -339,18 +408,34 @@ end
 
 function M.requestDtorTextGlow(glow)
   local data = Dtor.getTextGlowData()
-  if not data then return end
-  glow:request("dtor-text-light", {
-    kind  = "filledRect",
-    cx    = data.cx,
-    cy    = data.cy,
-    w     = data.w,
-    h     = data.h,
-    color = Palette.warning,
-    alpha = data.alpha * 0.1,
-    pulse = { speed = 1.5, min = 0.5, max = 1.0 },
-    light = { radius = 40 * SCALE_X, alpha = data.alpha * 0.2 },
-  })
+  if data then
+    glow:request("dtor-text-light", {
+      kind  = "filledRect",
+      cx    = data.cx,
+      cy    = data.cy,
+      w     = data.w,
+      h     = data.h,
+      color = Palette.warning,
+      alpha = data.alpha * 0.1,
+      pulse = { speed = 1.5, min = 0.5, max = 1.0 },
+      light = { radius = 40 * SCALE_X, alpha = data.alpha * 0.2 },
+    })
+  end
+
+  local line = Dtor.getNullifyLineGlowData()
+  if line then
+    glow:request("dtor-nullify-line", {
+      kind  = "filledRect",
+      cx    = line.cx,
+      cy    = line.cy,
+      w     = line.w,
+      h     = line.h,
+      color = Palette.warning,
+      alpha = line.alpha * 0.85,
+      pulse = { speed = 2.0, min = 0.3, max = 1.0 },
+      light = { radius = 55 * SCALE_X, alpha = line.alpha * 0.4 },
+    })
+  end
 end
 
 function M.requestEnvGlows(glow)
@@ -456,6 +541,8 @@ end
 -- ──────────────────────────────────────────────────────────────────────────────
 
 function M.collectAll(glow, hand, deck)
+  areas.pool.insufficientRam = false
+
   -- Find dragging card first so we can gate bar pulsing before emitting glows.
   local draggingCard = nil
   for _, card in ipairs(hand.cards) do
@@ -497,6 +584,28 @@ function M.collectAll(glow, hand, deck)
   M.requestThreatGlows(glow)
   M.requestEnvGlows(glow)
   M.requestDtorTextGlow(glow)
+
+  -- Post-rejection insufficient RAM feedback.
+  if areas.pool.insufficientRamTimer > 0 then
+    areas.pool.insufficientRam = true
+    local fadeAlpha = math.min(1.0, areas.pool.insufficientRamTimer / areas.RAM_FADE_TIME)
+    glow:request("ram-zone-text:insufficient", {
+      kind  = "callback",
+      color = Palette.warning,
+      alpha = 0.9 * fadeAlpha,
+      pulse = { speed = 3.0, min = 0.5, max = 1.0 },
+      draw  = function(alpha, time, spec)
+        love.graphics.setFont(AssetManifest.getFont(72))
+        love.graphics.printf(
+          "Insufficient RAM",
+          areas.pool.x,
+          areas.pool.y + areas.pool.h / 4 + 100 * SCALE_Y,
+          areas.pool.w,
+          "center"
+        )
+      end,
+    })
+  end
 
   if draggingCard then
     requestDragZoneGlows(glow, draggingCard, deck)

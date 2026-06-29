@@ -337,6 +337,18 @@ function Dtor.getTextGlowData()
   }
 end
 
+-- Returns glow data for the nullify strikethrough line, or nil when not applicable.
+function Dtor.getNullifyLineGlowData()
+  if not Dtor.isEntryNullified() or _text.alpha <= 0.01 then return nil end
+  return {
+    cx    = _text.x + _text.w / 2,
+    cy    = _text.y + _text.h / 2,
+    w     = _text.w - 40 * SCALE_X,
+    h     = 10 * SCALE_X,
+    alpha = _text.alpha,
+  }
+end
+
 ------------------------------------------------------------------------
 -- Update — tick text alpha animation
 ------------------------------------------------------------------------

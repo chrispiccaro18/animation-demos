@@ -7,6 +7,12 @@ local envEffects  = require("core.envEffects")
 
 local areas = {}
 
+-- Tweakable: post-rejection "Insufficient RAM" display.
+-- Text/glow show at full opacity for DISPLAY_TIME, then fade over FADE_TIME.
+-- newHand.lua seeds the timer with DISPLAY_TIME + FADE_TIME.
+areas.RAM_DISPLAY_TIME = 0.7
+areas.RAM_FADE_TIME    = 0.3
+
 -- Scale-dependent layout locals — computed in load() once SCALE_X/Y are final
 local W, H, playDiscardGap, dropYExtend
 
@@ -107,12 +113,14 @@ function areas.load()
   }
 
   areas.pool = {
-    x     = 0,
-    y     = 0,
-    w     = playDiscardGap * 2,
-    h     = 800 * SCALE_Y,
-    chips = {},
-    showText = false
+    x                   = 0,
+    y                   = 0,
+    w                   = playDiscardGap * 2,
+    h                   = 800 * SCALE_Y,
+    chips               = {},
+    showText            = false,
+    insufficientRam     = false,
+    insufficientRamTimer = 0,
   }
 
   endTurnAsset             = AssetManifest.get("endTurn", "idle")
@@ -185,7 +193,7 @@ end
 function areas.consumePoolChips(n)
   local consumed = {}
   for i = 1, n do
-    consumed[i] = table.remove(areas.pool.chips)
+    consumed[i] = table.remove(areas.pool.chips, 1)
   end
   return consumed
 end
@@ -366,6 +374,16 @@ function areas.drawDynamic()
       areas.pool.w,
       "center"
     )
+    if areas.pool.insufficientRam then
+      love.graphics.setColor(Color("#FF8C00"))
+      love.graphics.printf(
+        "Insufficient RAM",
+        areas.pool.x,
+        areas.pool.y + areas.pool.h / 4 + 100 * SCALE_Y,
+        areas.pool.w,
+        "center"
+      )
+    end
     love.graphics.setColor(1, 1, 1, 1)
 
 
@@ -382,6 +400,29 @@ function areas.drawDynamic()
       areas.discard.startY + areas.discard.h - 120 * SCALE_Y,
       areas.discard.w,
       "left"
+    )
+    love.graphics.setFont(previousFont)
+  elseif areas.pool.insufficientRamTimer > 0 then
+    local fadeAlpha   = math.min(1.0, areas.pool.insufficientRamTimer / areas.RAM_FADE_TIME)
+    local previousFont = love.graphics.getFont()
+    love.graphics.setFont(statFont)
+    local ec = Color("#d0be74")
+    love.graphics.setColor(ec[1], ec[2], ec[3], fadeAlpha)
+    love.graphics.printf(
+      "RAM: " .. tostring(#areas.pool.chips),
+      areas.pool.x,
+      areas.pool.y + areas.pool.h / 4,
+      areas.pool.w,
+      "center"
+    )
+    local wc = Color("#FF8C00")
+    love.graphics.setColor(wc[1], wc[2], wc[3], fadeAlpha)
+    love.graphics.printf(
+      "Insufficient RAM",
+      areas.pool.x,
+      areas.pool.y + areas.pool.h / 4 + 100 * SCALE_Y,
+      areas.pool.w,
+      "center"
     )
     love.graphics.setFont(previousFont)
   end
