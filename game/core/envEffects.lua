@@ -165,6 +165,38 @@ local function drawIcon(img, x, y, scale, glowColor, isActive)
   love.graphics.draw(img, x, y, 0, SCALE_X * scale, SCALE_Y * scale, iw / 2, ih / 2)
 end
 
+-- Returns glow/image data for a single env effect icon (for hover glows).
+function EnvEffects.getSingleIconGlowData(index)
+  local img, glowColor
+  if index == "negative" then
+    img = _negative; glowColor = Palette.danger
+  elseif index == 1 then
+    img = EnvEffects.isActive(1) and _positive or _positiveInactive; glowColor = Palette.positive
+  elseif index == 2 then
+    img = EnvEffects.isActive(2) and _positive or _positiveInactive; glowColor = Palette.positive
+  end
+  if not img then return nil end
+  local x, y = EnvEffects.getPosition(index)
+  return { img = img, x = x, y = y, glowColor = glowColor, isActive = EnvEffects.isActive(index) }
+end
+
+-- Returns hit bounds for an env effect icon in game space (center + half-extents, 1.3x padding).
+function EnvEffects.getIconHitBounds(index)
+  local img
+  if     index == "negative" then img = _negative
+  elseif index == 1          then img = _positive
+  elseif index == 2          then img = _positive
+  end
+  if not img then return nil end
+  local cx, cy = EnvEffects.getPosition(index)
+  return {
+    cx = cx,
+    cy = cy,
+    hw = img:getWidth()  / 2 * SCALE_X * 1.3,
+    hh = img:getHeight() / 2 * SCALE_Y * 1.3,
+  }
+end
+
 -- Returns per-icon glow data for all env effect icons.
 -- animAlpha is pre-computed so callers don't need to know ANIM_PEAK.
 function EnvEffects.getIconGlowData()

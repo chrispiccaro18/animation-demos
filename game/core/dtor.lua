@@ -325,6 +325,11 @@ function Dtor.getTextCenter()
   return _text.x + _text.w / 2, _text.y + _text.h / 2
 end
 
+-- Returns the text area bounding rect (always valid after load, even when invisible).
+function Dtor.getTextBounds()
+  return { x = _text.x, y = _text.y, w = _text.w, h = _text.h }
+end
+
 -- Returns glow data for the text area, or nil when nothing is displayed.
 function Dtor.getTextGlowData()
   if not _text.segments or _text.alpha <= 0.01 then return nil end

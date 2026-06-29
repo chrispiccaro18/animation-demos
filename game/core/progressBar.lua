@@ -46,7 +46,7 @@ function ProgressBar.load()
 end
 
 function ProgressBar.reset()
-  _count    = 0
+  _count    = 2
   _popScale = 1.0
 end
 
@@ -96,6 +96,23 @@ function ProgressBar.getTickData()
   return ticks
 end
 
+-- Returns the center positions and assets for the two env-effect threshold indicators.
+-- cx/cy are the visual centers (x,y passed to draw, with ox/oy = iw/2, ih/2).
+-- iw/ih are the actual asset pixel dimensions for hit-zone and glow sizing.
+function ProgressBar.getEnvIndicatorPositions()
+  if not (_activeIndAsset and _inactiveIndAsset) then return {} end
+  local iw, ih = _activeIndAsset:getDimensions()
+  local x1 = _x + 1 * _gapX + _w / 2 + 5 * SCALE_X
+  local x2 = _x + 5 * _gapX + _w / 2 + 5 * SCALE_X
+  local y  = _y - 30 * SCALE_Y
+  return {
+    { envIndex = 1, cx = x1, cy = y, iw = iw, ih = ih,
+      asset = _count >= 2 and _activeIndAsset or _inactiveIndAsset },
+    { envIndex = 2, cx = x2, cy = y, iw = iw, ih = ih,
+      asset = _count >= 6 and _activeIndAsset or _inactiveIndAsset },
+  }
+end
+
 function ProgressBar.draw()
   if not _asset then return end
   local pulseA = pulse.valueFrom(2.0, 0.0, 0.8, _negPulseStartT)
@@ -111,13 +128,10 @@ function ProgressBar.draw()
   end
   love.graphics.setColor(1, 1, 1, 1)
 
-  if _activeIndAsset and _inactiveIndAsset then
-    local x1 = _x + 1 * _gapX + _w / 2 - 5 * SCALE_X
-    local a1 = _count >= 2 and _activeIndAsset or _inactiveIndAsset
-    love.graphics.draw(a1, x1, _y, 0, SCALE_X, SCALE_Y, aw / 2, ah / 2)
-    local x2 = _x + 5 * _gapX + _w / 2 - 4 * SCALE_X
-    local a2 = _count >= 6 and _activeIndAsset or _inactiveIndAsset
-    love.graphics.draw(a2, x2, _y, 0, SCALE_X, SCALE_Y, aw / 2, ah / 2)
+  for _, ind in ipairs(ProgressBar.getEnvIndicatorPositions()) do
+    local iw_ind, ih_ind = ind.asset:getDimensions()
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(ind.asset, ind.cx, ind.cy, 0, SCALE_X, SCALE_Y, iw_ind / 2, ih_ind / 2)
   end
 
   if _font then

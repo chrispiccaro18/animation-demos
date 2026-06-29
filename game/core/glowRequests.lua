@@ -1,4 +1,5 @@
 local areas       = require("core.areas")
+local hover       = require("core.hover")
 local Dtor        = require("core.dtor")
 local Palette     = require("lib.palette")
 local pulse       = require("lib.pulse")
@@ -584,6 +585,7 @@ function M.collectAll(glow, hand, deck)
   M.requestThreatGlows(glow)
   M.requestEnvGlows(glow)
   M.requestDtorTextGlow(glow)
+  hover.collectGlowRequests(glow)
 
   -- Post-rejection insufficient RAM feedback.
   if areas.pool.insufficientRamTimer > 0 then

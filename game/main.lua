@@ -32,6 +32,8 @@ local Glow         = require("lib.glow.Glow")
 local glowRequests = require("core.glowRequests")
 local pulse        = require("lib.pulse")
 
+local hover        = require("core.hover")
+
 local glow = nil
 
 local touches = {}
@@ -100,6 +102,7 @@ local function resetGame()
 
   hand = NewHand.new()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
+  hover.setDeck(deck)
   sequences.setDeck(deck)
   sequences.setHand(hand)
 
@@ -159,6 +162,7 @@ function love.load()
 
   Card.load(dissolveShader, tiltShader)
   areas.load()
+  hover.load()
   message.load()
   particles.load()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
@@ -290,6 +294,11 @@ function love.update(dt)
   if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y, nil, scannerRemaining(areas.scanner.right), areas.scanner.right.direction) end
   events.updateAll()
   actionQueue.update()
+  if hand:isDragging() then
+    hover.update(-9999, -9999)
+  else
+    hover.update(mouseX, mouseY)
+  end
   collectGlowRequests()
   glow:update(realDt)
 end

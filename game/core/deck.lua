@@ -107,4 +107,17 @@ function Deck:centerPosition()
   }
 end
 
+-- Returns center + half-extents in game space for hover hit testing.
+function Deck:getHitBounds()
+  if not self.backAsset then return nil end
+  local iw, ih = self.backAsset:getDimensions()
+  local sc = (507 / ih) / 2 * SCALE_Y
+  return {
+    cx = self.x,
+    cy = self.y,
+    hw = iw * sc / 2,
+    hh = ih * sc / 2,
+  }
+end
+
 return Deck
