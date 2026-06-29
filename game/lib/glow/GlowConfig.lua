@@ -8,7 +8,7 @@ GlowConfig.maxItems = 32
 GlowConfig.maxPersistentItems = 16
 
 GlowConfig.fadeInSpeed  = 8.0
-GlowConfig.fadeOutSpeed = 5.0
+GlowConfig.fadeOutSpeed = 24.0
 GlowConfig.removeAlphaThreshold = 0.01
 
 GlowConfig.pulse = {
@@ -27,7 +27,7 @@ GlowConfig.defaults = {
     textScale    = 1.0,
 }
 
-local defaultBlurRadius = 2
+local defaultBlurRadius = 1
 -- Scale is relative to canvasW x canvasH (the fixed game canvas), not the window.
 -- gammacorrect = false in conf.lua — if that ever changes, additive blend math changes too.
 GlowConfig.quality = {
@@ -71,6 +71,17 @@ GlowConfig.quality = {
         compositeBlend   = "alpha",
         useShaderBlur    = false,
     },
+}
+
+GlowConfig.light = {
+    enabled          = true,
+    darkOverlayAlpha = 0.1,
+    -- "alwaysOn"  – overlay whenever glow renders
+    -- "alwaysOff" – never draw overlay
+    -- "glowOn"    – overlay when any glow item is visible
+    -- "lightOn"   – overlay only when a light-spec item is visible
+    darkOverlayMode  = "glowOn",
+    -- darkOverlayMode  = "lightOn",
 }
 
 GlowConfig.fakeGlow = {

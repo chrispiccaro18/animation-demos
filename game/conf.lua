@@ -31,6 +31,7 @@ function love.conf(t)
   t.accelerometerjoystick = false
   t.externalstorage       = false
   t.gammacorrect          = false
+  -- t.gammacorrect          = true
 
   t.audio.mic             = product_config["AUDIO_MIC"]
   t.audio.mixwithsystem   = false

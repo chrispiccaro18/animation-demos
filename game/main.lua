@@ -26,9 +26,10 @@ local CardData     = require("data.cards")
 local AssetManifest = require("assets.manifest")
 local Audio = require("assets.audio")
 
-local Color   = require("lib.color")
-local Palette = require("lib.palette")
-local Glow    = require("lib.glow.Glow")
+local Color        = require("lib.color")
+local Palette      = require("lib.palette")
+local Glow         = require("lib.glow.Glow")
+local glowRequests = require("core.glowRequests")
 
 local glow = nil
 
@@ -206,15 +207,16 @@ function love.draw()
   areas.drawScanners()
   areas.drawDynamic()
   hand:draw()
+  -- glow:render()
   Dtor.drawAll()
   particles.draw()
   Token.drawAll()
   message.draw()
 
-  glow:render()
   -- if camera then camera:draw() end
   -- if camera then camera:drawScannerLines(areas.scanner) end
   hand:drawDragged()
+  glow:render()
   love.graphics.pop()
 
   overlayStats.draw()
@@ -253,18 +255,18 @@ local function collectGlowRequests()
   -- Drop zone highlight while dragging
   if draggingCard then
     -- if draggingCard.zoneState == "play" then
-      glow:request("drop-zone:play", {
-        kind      = "rect",
-        x         = areas.play.x,
-        y         = areas.play.y,
-        w         = areas.play.w,
-        h         = areas.play.h,
-        color     = {0.2, 1.0, 0.5, 1.0},
-        alpha     = 0.5,
-        radius    = 14,
-        lineWidth = 4,
-        pulse     = { speed = 2.0, min = 0.70, max = 1.0 },
-      })
+      -- glow:request("drop-zone:play", {
+      --   kind      = "rect",
+      --   x         = areas.play.x,
+      --   y         = areas.play.y,
+      --   w         = areas.play.w,
+      --   h         = areas.play.h,
+      --   color     = {0.2, 1.0, 0.5, 1.0},
+      --   alpha     = 0.5,
+      --   radius    = 14,
+      --   lineWidth = 4,
+      --   pulse     = { speed = 2.0, min = 0.70, max = 1.0 },
+      -- })
       glow:request("drop-zone-text:play", {
         kind  = "callback",
         color = {1.0, 1.0, 1.0, 1.0},
@@ -283,19 +285,19 @@ local function collectGlowRequests()
         end,
       })
     -- elseif draggingCard.zoneState == "discard" then
-      glow:request("drop-zone:discard", {
-        kind      = "rect",
-        x         = areas.discard.x,
-        y         = areas.discard.startY,
-        w         = areas.discard.w,
-        h         = areas.discard.h,
-        color     = {1.0, 0.4, 0.2, 1.0},
-        alpha     = 0.5,
-        radius    = 14,
-        lineWidth = 4,
-        -- luminescence = 2.0,
-        pulse     = { speed = 2.0, min = 0.70, max = 1.0 },
-      })
+      -- glow:request("drop-zone:discard", {
+      --   kind      = "rect",
+      --   x         = areas.discard.x,
+      --   y         = areas.discard.startY,
+      --   w         = areas.discard.w,
+      --   h         = areas.discard.h,
+      --   color     = {1.0, 0.4, 0.2, 1.0},
+      --   alpha     = 0.5,
+      --   radius    = 14,
+      --   lineWidth = 4,
+      --   -- luminescence = 2.0,
+      --   pulse     = { speed = 2.0, min = 0.70, max = 1.0 },
+      -- })
       glow:request("drop-zone-text:discard", {
         kind  = "callback",
         color = {1.0, 1.0, 1.0, 1.0},
@@ -332,6 +334,10 @@ local function collectGlowRequests()
     )
         end,
       })
+    if draggingCard.zoneState == "play" then
+      glowRequests.requestPlayZoneGlows(glow, draggingCard, deck)
+    end
+
     -- end
   end
 end

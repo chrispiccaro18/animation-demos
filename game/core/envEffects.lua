@@ -69,6 +69,7 @@ function EnvEffects.register(index, threshold, sourceFn)
 end
 
 function EnvEffects.isActive(index)
+  if index == "negative" then return true end
   local e = _effects[index]
   if not e then return false end
   return e.source() >= e.threshold
@@ -158,7 +159,7 @@ function EnvEffects.update(dt)
   end
 end
 
-local function drawIcon(img, x, y, scale, glowColor)
+local function drawIcon(img, x, y, scale, glowColor, isActive)
   local iw = img:getWidth()
   local ih = img:getHeight()
   love.graphics.setColor(1, 1, 1, 1)
@@ -177,6 +178,25 @@ local function drawIcon(img, x, y, scale, glowColor)
       ox = iw / 2, oy = ih / 2,
       color = glowColor,
       alpha = alpha * 0.9,
+      light = {
+        radius = 100 * SCALE_X,
+        alpha = 0.35,
+      },
+    })
+  elseif glow and isActive then
+    glow:request("env-anim-" .. tostring(img) .. "-" .. tostring(x) .. "-" .. tostring(y), {
+      kind  = "image",
+      image = img,
+      x = x, y = y,
+      sx = SCALE_X * (scale),
+      sy = SCALE_Y * (scale),
+      ox = iw / 2, oy = ih / 2,
+      color = glowColor,
+      alpha = 0.35,
+      light = {
+        radius = 100 * SCALE_X,
+        alpha = 0.35,
+      },
     })
   end
 end
@@ -199,7 +219,8 @@ function EnvEffects.draw()
     local animScale   = _anims[item.index].scale
     local threshAnim  = _thresholdAnims[item.index]
     local scale       = threshAnim and math.max(animScale, threshAnim.scale) or animScale
-    drawIcon(item.img, x, y, scale, item.glowColor)
+    local isActive    = EnvEffects.isActive(item.index)
+    drawIcon(item.img, x, y, scale, item.glowColor, isActive)
   end
 
   love.graphics.setColor(1, 1, 1, 1)

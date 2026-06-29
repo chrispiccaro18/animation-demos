@@ -35,7 +35,7 @@ function ProgressBar.load()
 end
 
 function ProgressBar.reset()
-  _count    = 1
+  _count    = 0
   _popScale = 1.0
 end
 
@@ -77,6 +77,10 @@ function ProgressBar.draw()
         ox = aw / 2, oy = ah / 2,
         color = Palette.positive,
         alpha = 0.7,
+        light = {
+          radius = 100 * SCALE_X,
+          alpha = 0.15,
+        },
       })
     end
   end

@@ -33,7 +33,7 @@ function ThreatBar.load()
 end
 
 function ThreatBar.reset()
-  _count    = 1
+  _count    = 0
   _popScale = 1.0
 end
 
@@ -75,6 +75,10 @@ function ThreatBar.draw()
         ox = aw / 2, oy = ah / 2,
         color = Palette.danger,
         alpha = 0.7,
+        light = {
+          radius = 100 * SCALE_X,
+          alpha = 0.45,
+        },
       })
     end
   end

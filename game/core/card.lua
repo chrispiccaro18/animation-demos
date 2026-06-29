@@ -354,6 +354,32 @@ function Card:getZoneSlotPositions(zone)
   return result
 end
 
+function Card:getSlotCanvasRect(zone, index)
+  local part = self:getPartById(zone)
+  if not part or not part.slotCenters then return nil end
+  local sc = part.slotCenters[index]
+  if not sc then return nil end
+
+  local wxs = SCALE_X
+  local wys = SCALE_Y
+  local cs  = self.current.scale
+  local px  = part.origin.x - self.offsetX + sc.dx + part.current.dx
+  local py  = part.origin.y - self.offsetY + sc.dy + part.current.dy
+  local sx  = px * cs * wxs
+  local sy  = py * cs * wys
+  local r   = self.current.r
+
+  local holePW = part.tokenSlotW or _assets.tokenHole:getWidth()
+  local holePH = part.tokenSlotH or _assets.tokenHole:getHeight()
+
+  return {
+    cx = self.current.x + sx * math.cos(r) - sy * math.sin(r),
+    cy = self.current.y + sx * math.sin(r) + sy * math.cos(r),
+    w  = holePW * cs * wxs,
+    h  = holePH * cs * wys,
+  }
+end
+
 function Card:fillSlot(zone, index, tokenType, instant)
   local zoneSlots = self._slots[zone]
   if zoneSlots and zoneSlots[index] then

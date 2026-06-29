@@ -16,6 +16,8 @@ function GlowRenderer.new(config, canvasW, canvasH)
     self.outWriteIdx  = 1
     self.canvasW = 0
     self.canvasH = 0
+    self.lightCanvas    = nil
+    self._gradientCache = {}
 
     self:_allocateCanvases()
     self:_loadShader()
@@ -47,6 +49,8 @@ function GlowRenderer:_allocateCanvases()
         love.graphics.newCanvas(w, h, {format = fmt}),
     }
     self.outWriteIdx   = 1   -- which outputBuf we write to this frame
+    self.lightCanvas   = love.graphics.newCanvas(self.fullW, self.fullH, {format = fmt})
+    self._gradientCache = {}
 end
 
 function GlowRenderer:_loadShader()
@@ -74,10 +78,16 @@ end
 function GlowRenderer:render(items, time)
     local prevCanvas = love.graphics.getCanvas()
     local q = self.quality
+    local hasLights = self.config.light.enabled and self:_hasLightItems(items)
+    local drawOverlay = self:_shouldDrawOverlay(hasLights, items)
 
     if self.config.debug.directDraw then
         self:_renderDirect(items, time)
         return
+    end
+
+    if hasLights then
+        self:_drawLightCanvas(items, time)
     end
 
     if q.useShaderBlur and self.blurShader then
@@ -96,8 +106,11 @@ function GlowRenderer:render(items, time)
         love.graphics.setCanvas(prevCanvas)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.setShader()
+        if drawOverlay then self:_compositeLights(hasLights) end
         self:_composite(self.outputBufs[readIdx])
     else
+        love.graphics.setCanvas(prevCanvas)
+        if drawOverlay then self:_compositeLights(hasLights) end
         self:_renderFake(items, time)
     end
 
@@ -140,12 +153,34 @@ function GlowRenderer:_drawSourceItem(item, time)
     local kind = spec.kind
     if kind == "rect" then
         love.graphics.setLineWidth(spec.lineWidth or self.config.defaults.lineWidth)
-        local r = spec.radius or self.config.defaults.radius
-        love.graphics.rectangle("line", spec.x, spec.y, spec.w, spec.h, r, r)
+        local r   = spec.radius or self.config.defaults.radius
+        local rot = spec.rotation or 0
+        if rot ~= 0 then
+            local cx = spec.x + (spec.w or 0) * 0.5
+            local cy = spec.y + (spec.h or 0) * 0.5
+            love.graphics.push()
+            love.graphics.translate(cx, cy)
+            love.graphics.rotate(rot)
+            love.graphics.rectangle("line", -(spec.w or 0) * 0.5, -(spec.h or 0) * 0.5, spec.w or 0, spec.h or 0, r, r)
+            love.graphics.pop()
+        else
+            love.graphics.rectangle("line", spec.x, spec.y, spec.w, spec.h, r, r)
+        end
 
     elseif kind == "filledRect" then
-        local r = spec.radius or self.config.defaults.radius
-        love.graphics.rectangle("fill", spec.x, spec.y, spec.w, spec.h, r, r)
+        local r   = spec.radius or self.config.defaults.radius
+        local rot = spec.rotation or 0
+        if rot ~= 0 then
+            local cx = spec.x + (spec.w or 0) * 0.5
+            local cy = spec.y + (spec.h or 0) * 0.5
+            love.graphics.push()
+            love.graphics.translate(cx, cy)
+            love.graphics.rotate(rot)
+            love.graphics.rectangle("fill", -(spec.w or 0) * 0.5, -(spec.h or 0) * 0.5, spec.w or 0, spec.h or 0, r, r)
+            love.graphics.pop()
+        else
+            love.graphics.rectangle("fill", spec.x, spec.y, spec.w, spec.h, r, r)
+        end
 
     elseif kind == "circle" then
         love.graphics.setLineWidth(spec.lineWidth or self.config.defaults.lineWidth)
@@ -262,6 +297,132 @@ function GlowRenderer:_renderFake(items, time)
     end
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setLineWidth(1)
+end
+
+function GlowRenderer:_hasLightItems(items)
+    local threshold = self.config.removeAlphaThreshold
+    for _, item in pairs(items) do
+        if item.spec.light and item.alpha > threshold then
+            return true
+        end
+    end
+    return false
+end
+
+function GlowRenderer:_shouldDrawOverlay(hasLights, items)
+    local mode = self.config.light.darkOverlayMode
+    if mode == "alwaysOff" then return false end
+    if mode == "alwaysOn"  then return true  end
+    if mode == "lightOn"   then return hasLights end
+    -- "glowOn": true if any item is visible
+    if mode == "glowOn" then
+        local threshold = self.config.removeAlphaThreshold
+        for _, item in pairs(items) do
+            if item.alpha > threshold then return true end
+        end
+        return false
+    end
+    return hasLights
+end
+
+local function _smoothstep(edge0, edge1, x)
+    local t = math.max(0, math.min(1, (x - edge0) / (edge1 - edge0)))
+    return t * t * (3 - 2 * t)
+end
+
+function GlowRenderer:_makeGradientImage(size)
+    local data = love.image.newImageData(size, size)
+    local cx = (size - 1) / 2
+    local cy = (size - 1) / 2
+    local maxRadius = size / 2
+    data:mapPixel(function(x, y)
+        local dx = x - cx
+        local dy = y - cy
+        local d = math.sqrt(dx * dx + dy * dy)
+        local alpha = 1.0 - _smoothstep(0, maxRadius, d)
+        return 1, 1, 1, alpha
+    end)
+    return love.graphics.newImage(data)
+end
+
+function GlowRenderer:_getGradient(radius)
+    local size = radius * 2
+    if not self._gradientCache[size] then
+        self._gradientCache[size] = self:_makeGradientImage(size)
+    end
+    return self._gradientCache[size]
+end
+
+function GlowRenderer:_drawLightCanvas(items, time)
+    love.graphics.setCanvas(self.lightCanvas)
+    love.graphics.clear(0, 0, 0, 0)
+    love.graphics.push()
+    love.graphics.origin()
+    love.graphics.setBlendMode("add")
+
+    for _, item in pairs(items) do
+        local spec  = item.spec
+        local light = spec.light
+        local alpha = light and self:_computeAlpha(item, time)
+
+        if light and alpha > 0 then
+            local lightAlpha = (light.alpha or 0.35) * alpha
+            local radius = light.radius or 80 * SCALE_X
+            local img = self:_getGradient(radius)
+            local color = spec.color or self.config.defaults.color
+
+            -- position + ellipse extents resolved together:
+            -- light.x/y overrides position; light.w/h triggers ellipse for callbacks
+            -- rect/filledRect derive both from spec geometry automatically
+            local cx, cy, halfW, halfH
+            if light.x and light.y then
+                cx, cy = light.x, light.y
+                if light.w and light.h then
+                    halfW = light.w * 0.5 + radius
+                    halfH = light.h * 0.5 + radius
+                else
+                    halfW = radius
+                    halfH = radius
+                end
+            elseif spec.kind == "circle" then
+                cx, cy  = spec.cx, spec.cy
+                halfW   = radius
+                halfH   = radius
+            elseif spec.kind == "rect" or spec.kind == "filledRect" then
+                cx      = spec.x + (spec.w or 0) * 0.5
+                cy      = spec.y + (spec.h or 0) * 0.5
+                halfW   = (spec.w or 0) * 0.5 + radius
+                halfH   = (spec.h or 0) * 0.5 + radius
+            else
+                cx, cy  = spec.x or 0, spec.y or 0
+                halfW   = radius
+                halfH   = radius
+            end
+
+            love.graphics.setColor(color[1], color[2], color[3], lightAlpha)
+            love.graphics.draw(img, cx, cy, spec.rotation or 0, halfW / radius, halfH / radius, radius, radius)
+        end
+    end
+
+    love.graphics.pop()
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+function GlowRenderer:_compositeLights(hasLights)
+    local cfg = self.config.light
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(0, 0, 0, cfg.darkOverlayAlpha)
+    love.graphics.rectangle("fill", 0, 0, self.fullW, self.fullH)
+
+    if hasLights then
+        love.graphics.setBlendMode("add", "premultiplied")
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(self.lightCanvas)
+    end
+
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function GlowRenderer:_computeAlpha(item, time)
