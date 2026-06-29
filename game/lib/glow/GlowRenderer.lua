@@ -1,3 +1,5 @@
+local animation = require("lib.animation")
+
 local GlowRenderer = {}
 GlowRenderer.__index = GlowRenderer
 
@@ -453,7 +455,7 @@ function GlowRenderer:_computeAlpha(item, time)
         pmax  = pulse.max   or pmax
     end
 
-    local t      = math.sin(time * speed + (item.phaseOffset or 0)) * 0.5 + 0.5
+    local t      = animation.pulseValue(time * speed + (item.phaseOffset or 0))
     local factor = pmin + (pmax - pmin) * t
     return item.alpha * factor
 end
