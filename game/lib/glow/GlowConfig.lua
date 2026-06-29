@@ -23,7 +23,7 @@ GlowConfig.defaults = {
     alpha        = 1.0,
     luminescence = 1.0,
     radius       = 8,
-    lineWidth    = 12,
+    lineWidth    = 8,
     textScale    = 1.0,
 }
 

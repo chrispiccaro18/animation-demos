@@ -152,39 +152,41 @@ function GlowRenderer:_drawSourceItem(item, time)
 
     local kind = spec.kind
     if kind == "rect" then
-        love.graphics.setLineWidth(spec.lineWidth or self.config.defaults.lineWidth)
+        local previousLineWidth = love.graphics.getLineWidth()
+        local lineWidth = (spec.lineWidth or self.config.defaults.lineWidth) * SCALE_X
+        love.graphics.setLineWidth(lineWidth)
         local r   = spec.radius or self.config.defaults.radius
         local rot = spec.rotation or 0
         if rot ~= 0 then
-            local cx = spec.x + (spec.w or 0) * 0.5
-            local cy = spec.y + (spec.h or 0) * 0.5
             love.graphics.push()
-            love.graphics.translate(cx, cy)
+            love.graphics.translate(spec.cx, spec.cy)
             love.graphics.rotate(rot)
             love.graphics.rectangle("line", -(spec.w or 0) * 0.5, -(spec.h or 0) * 0.5, spec.w or 0, spec.h or 0, r, r)
             love.graphics.pop()
         else
-            love.graphics.rectangle("line", spec.x, spec.y, spec.w, spec.h, r, r)
+            love.graphics.rectangle("line", spec.cx - (spec.w or 0) * 0.5, spec.cy - (spec.h or 0) * 0.5, spec.w or 0, spec.h or 0, r, r)
         end
+        love.graphics.setLineWidth(previousLineWidth)
 
     elseif kind == "filledRect" then
         local r   = spec.radius or self.config.defaults.radius
         local rot = spec.rotation or 0
         if rot ~= 0 then
-            local cx = spec.x + (spec.w or 0) * 0.5
-            local cy = spec.y + (spec.h or 0) * 0.5
             love.graphics.push()
-            love.graphics.translate(cx, cy)
+            love.graphics.translate(spec.cx, spec.cy)
             love.graphics.rotate(rot)
             love.graphics.rectangle("fill", -(spec.w or 0) * 0.5, -(spec.h or 0) * 0.5, spec.w or 0, spec.h or 0, r, r)
             love.graphics.pop()
         else
-            love.graphics.rectangle("fill", spec.x, spec.y, spec.w, spec.h, r, r)
+            love.graphics.rectangle("fill", spec.cx - (spec.w or 0) * 0.5, spec.cy - (spec.h or 0) * 0.5, spec.w or 0, spec.h or 0, r, r)
         end
 
     elseif kind == "circle" then
-        love.graphics.setLineWidth(spec.lineWidth or self.config.defaults.lineWidth)
+        local previousLineWidth = love.graphics.getLineWidth()
+        local lineWidth = (spec.lineWidth or self.config.defaults.lineWidth) * SCALE_X
+        love.graphics.setLineWidth(lineWidth)
         love.graphics.circle("line", spec.cx, spec.cy, spec.r)
+        love.graphics.setLineWidth(previousLineWidth)
 
     elseif kind == "text" then
       if spec.drawFunc then
@@ -270,7 +272,7 @@ function GlowRenderer:_renderDirect(items, time)
         local r     = spec.radius or self.config.defaults.radius
         love.graphics.setColor(color[1] * a, color[2] * a, color[3] * a, 1.0)
         love.graphics.setLineWidth(spec.lineWidth or self.config.defaults.lineWidth)
-        love.graphics.rectangle("line", spec.x, spec.y, spec.w, spec.h, r, r)
+        love.graphics.rectangle("line", spec.cx - spec.w * 0.5, spec.cy - spec.h * 0.5, spec.w, spec.h, r, r)
     end
     love.graphics.setBlendMode("alpha")
     love.graphics.setColor(1, 1, 1, 1)
@@ -288,11 +290,11 @@ function GlowRenderer:_renderFake(items, time)
 
             love.graphics.setColor(color[1], color[2], color[3], fake.outerAlpha * a)
             love.graphics.setLineWidth(fake.outerLineWidth)
-            love.graphics.rectangle("line", spec.x, spec.y, spec.w, spec.h, r, r)
+            love.graphics.rectangle("line", spec.cx - spec.w * 0.5, spec.cy - spec.h * 0.5, spec.w, spec.h, r, r)
 
             love.graphics.setColor(color[1], color[2], color[3], fake.innerAlpha * a)
             love.graphics.setLineWidth(fake.innerLineWidth)
-            love.graphics.rectangle("line", spec.x, spec.y, spec.w, spec.h, r, r)
+            love.graphics.rectangle("line", spec.cx - spec.w * 0.5, spec.cy - spec.h * 0.5, spec.w, spec.h, r, r)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
@@ -389,8 +391,8 @@ function GlowRenderer:_drawLightCanvas(items, time)
                 halfW   = radius
                 halfH   = radius
             elseif spec.kind == "rect" or spec.kind == "filledRect" then
-                cx      = spec.x + (spec.w or 0) * 0.5
-                cy      = spec.y + (spec.h or 0) * 0.5
+                cx      = spec.cx
+                cy      = spec.cy
                 halfW   = (spec.w or 0) * 0.5 + radius
                 halfH   = (spec.h or 0) * 0.5 + radius
             else
@@ -445,7 +447,7 @@ function GlowRenderer:_computeAlpha(item, time)
         pmax  = pulse.max   or pmax
     end
 
-    local t      = math.sin(time * speed) * 0.5 + 0.5
+    local t      = math.sin(time * speed + (item.phaseOffset or 0)) * 0.5 + 0.5
     local factor = pmin + (pmax - pmin) * t
     return item.alpha * factor
 end

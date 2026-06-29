@@ -134,16 +134,24 @@ function Camera:update(dt, mouseX, mouseY, scanners)
   self:_applyOffsets(dt, targetOffsetX, targetOffsetY)
 end
 
+local function lineXAtY(line, y)
+  local t = (y - line.y1) / (line.y2 - line.y1)
+  t = math.max(0, math.min(1, t))
+  return line.x1 + t * (line.x2 - line.x1)
+end
+
 function Camera:drawScannerLines(scanners)
   local lensX, lensY = self:getLensPosition()
   for _, s in pairs(scanners) do
     if s.active then
+      local x1 = s.boundSide == "x1" and lineXAtY(s.boundLine, s.y) or s.x1
+      local x2 = s.boundSide == "x2" and lineXAtY(s.boundLine, s.y) or s.x2
       love.graphics.setColor(s.color[1], s.color[2], s.color[3], 0.4)
       love.graphics.setLineWidth(1.5)
-      love.graphics.line(lensX, lensY, s.x1, s.y)
-      love.graphics.line(lensX, lensY, s.x2, s.y)
+      love.graphics.line(lensX, lensY, x1, s.y)
+      love.graphics.line(lensX, lensY, x2, s.y)
       for _ = 1, 4 do
-        local rx = s.x1 + math.random() * (s.x2 - s.x1)
+        local rx = x1 + math.random() * (x2 - x1)
         love.graphics.setColor(s.color[1], s.color[2], s.color[3], math.random() * 0.25)
         love.graphics.line(lensX, lensY, rx, s.y)
       end

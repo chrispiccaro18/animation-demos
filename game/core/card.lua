@@ -103,6 +103,7 @@ local function buildParts(data)
       local slotCenters  = {}
       local groupOriginX, groupOriginY
       local tokenSlotW, tokenSlotH
+      local bgW, bgH
 
       local zoneCy = (zone.id == "dtorEffect" and not hasDiscard) and DTOR_CENTERED_CY or ZONES[zone.id].cy
 
@@ -116,10 +117,14 @@ local function buildParts(data)
         for i = 1, n do
           slotCenters[i] = { dx = (i - 0.5) * slotW, dy = holePH / 2 }
         end
+        bgW = holePW
+        bgH = holePH
       else
         local totalW = n * holePW + (n - 1) * gap
         groupOriginX = ZONES[zone.id].cx - totalW / 2
         groupOriginY = zoneCy - holePH / 2
+        tokenSlotW   = holePW
+        tokenSlotH   = holePH
         for i = 1, n do
           local offsetX = (i - 1) * (holePW + gap)
           slotCenters[i] = { dx = offsetX + holePW / 2, dy = holePH / 2 }
@@ -134,6 +139,8 @@ local function buildParts(data)
         slotCenters = slotCenters,
         tokenSlotW  = tokenSlotW,
         tokenSlotH  = tokenSlotH,
+        bgW         = bgW,
+        bgH         = bgH,
         hidden      = zone.hidden or false,
       })
     end
@@ -271,6 +278,8 @@ function Card:_setParts(config)
       slotCenters  = p.slotCenters,
       tokenSlotW   = p.tokenSlotW,
       tokenSlotH   = p.tokenSlotH,
+      bgW          = p.bgW,
+      bgH          = p.bgH,
       origin       = p.origin or { x = 0, y = 0 },
       initialScale = initialScale,
       current      = { dx = dx,               dy = dy,               dr = dr,               scale = initialScale, alpha = initialAlpha },
@@ -377,6 +386,27 @@ function Card:getSlotCanvasRect(zone, index)
     cy = self.current.y + sx * math.sin(r) + sy * math.cos(r),
     w  = holePW * cs * wxs,
     h  = holePH * cs * wys,
+  }
+end
+
+-- Returns world-space center + full dimensions for a singleBackground zone (e.g. dtorEffect).
+-- Returns nil if the zone doesn't exist or has no bgW stored.
+function Card:getZoneCanvasRect(zone)
+  local part = self:getPartById(zone)
+  if not part or not part.bgW then return nil end
+  local wxs = SCALE_X
+  local wys = SCALE_Y
+  local cs  = self.current.scale
+  local px  = part.origin.x - self.offsetX + part.bgW / 2 + part.current.dx
+  local py  = part.origin.y - self.offsetY + part.bgH / 2 + part.current.dy
+  local sx  = px * cs * wxs
+  local sy  = py * cs * wys
+  local r   = self.current.r
+  return {
+    cx = self.current.x + sx * math.cos(r) - sy * math.sin(r),
+    cy = self.current.y + sx * math.sin(r) + sy * math.cos(r),
+    w  = part.bgW * cs * wxs,
+    h  = part.bgH * cs * wys,
   }
 end
 

@@ -74,13 +74,19 @@ function Glow:update(realDt)
     end
 
     for id, item in pairs(self.items) do
-        local visible = item.seenThisFrame or item.persistent
-        local target  = visible and item.targetAlpha or 0
-        local speed   = target > item.alpha
-            and self.config.fadeInSpeed
-            or  self.config.fadeOutSpeed
+        local visible  = item.seenThisFrame or item.persistent
+        local target   = visible and item.targetAlpha or 0
+        local spec     = item.spec
+        local fadingIn = target > item.alpha
+        local fadeCtrl = fadingIn and spec.fadeIn or spec.fadeOut
 
-        item.alpha = animation.expDecay(item.alpha, target, speed, realDt)
+        if fadeCtrl == false then
+            item.alpha = target
+        else
+            local defaultSpeed = fadingIn and self.config.fadeInSpeed or self.config.fadeOutSpeed
+            local speed = type(fadeCtrl) == "number" and fadeCtrl or defaultSpeed
+            item.alpha = animation.expDecay(item.alpha, target, speed, realDt)
+        end
 
         if not visible and item.alpha <= self.config.removeAlphaThreshold then
             self.items[id] = nil
@@ -116,11 +122,23 @@ function Glow:clearAll()
 end
 
 function Glow:_newItem(id, spec)
+    local targetAlpha = spec.alpha or self.config.defaults.alpha
+    local startAlpha  = 0
+    local phaseOffset = 0
+
+    if spec.pulse then
+        -- new pulse items snap to full brightness and align phase to max — no fade-in from nothing
+        local speed  = (type(spec.pulse) == "table" and spec.pulse.speed) or self.config.pulse.speed
+        startAlpha   = targetAlpha
+        phaseOffset  = math.pi * 0.5 - self.time * speed
+    end
+
     return {
         id            = id,
         spec          = spec,
-        alpha         = 0,
-        targetAlpha   = spec.alpha or self.config.defaults.alpha,
+        alpha         = startAlpha,
+        targetAlpha   = targetAlpha,
+        phaseOffset   = phaseOffset,
         persistent    = false,
         seenThisFrame = false,
     }

@@ -8,7 +8,7 @@ local TOKEN_PALETTE_KEYS = {
   progress         = "positive",
   progressNegative = "positiveNeg",
   threat           = "danger",
-  threatNegative   = "dangerNeg",
+  threatNegative   = "danger",
   nullify          = "nullify",
   ram              = "energy",
   drawToHand       = "draw",
@@ -19,8 +19,9 @@ local TOKEN_PALETTE_KEYS = {
 
 -- Emits a border-rect glow for each occupied slot in `zone` on `card`.
 -- `keyPrefix` becomes the glow item key (e.g. "card-slot-play").
+-- `extraRotation` (optional) is added to card.current.r — use math.pi/4 for diamond slots.
 -- Returns seenTypes { [tokenType] = true } for use with requestTerminalGlows.
-function M.requestSlotGlows(glow, card, zone, keyPrefix)
+function M.requestSlotGlows(glow, card, zone, keyPrefix, extraRotation)
   local n = card._slotCounts and card._slotCounts[zone] or 0
   local seenTypes = {}
   for i = 1, n do
@@ -28,14 +29,18 @@ function M.requestSlotGlows(glow, card, zone, keyPrefix)
     local slot      = card._slots[zone] and card._slots[zone][i]
     local tokenType = slot and slot.token and slot.token.token_type
     local color     = Palette[TOKEN_PALETTE_KEYS[tokenType]] or Palette.accent
+    local scale = 1.0
+    if tokenType =="ram" then
+      scale = 0.8
+    end
     if rect then
       glow:request(keyPrefix .. ":" .. i, {
         kind     = "rect",
-        x        = rect.cx - rect.w / 2,
-        y        = rect.cy - rect.h / 2,
-        w        = rect.w,
-        h        = rect.h,
-        rotation = card.current.r,
+        cx       = rect.cx,
+        cy       = rect.cy,
+        w        = rect.w * scale,
+        h        = rect.h * scale,
+        rotation = card.current.r + (extraRotation or 0),
         color    = color,
         alpha    = 0.65,
         pulse    = { speed = 2.0, min = 0.0, max = 1.0 },
@@ -56,8 +61,8 @@ function M.requestTerminalGlows(glow, seenTypes, deck)
     local t = seenTypes["progress"] and "progress" or "progressNegative"
     glow:request("terminal:progress", {
       kind  = "rect",
-      x     = areas.progressDestination.x - terminalSize / 2,
-      y     = areas.progressDestination.y - terminalSize / 2,
+      cx    = areas.progressDestination.x,
+      cy    = areas.progressDestination.y,
       w     = terminalSize,
       h     = terminalSize,
       color = Palette[TOKEN_PALETTE_KEYS[t]],
@@ -71,8 +76,8 @@ function M.requestTerminalGlows(glow, seenTypes, deck)
     local t = seenTypes["threat"] and "threat" or "threatNegative"
     glow:request("terminal:threat", {
       kind         = "rect",
-      x            = areas.threatDestination.x - terminalSize / 2,
-      y            = areas.threatDestination.y - terminalSize / 2,
+      cx           = areas.threatDestination.x,
+      cy           = areas.threatDestination.y,
       w            = terminalSize,
       h            = terminalSize,
       color        = Palette[TOKEN_PALETTE_KEYS[t]],
@@ -88,14 +93,14 @@ function M.requestTerminalGlows(glow, seenTypes, deck)
     if slot then
       glow:request("terminal:nullify", {
         kind  = "rect",
-        x     = slot.x - terminalSize / 2,
-        y     = slot.y - terminalSize / 2,
-        w     = Dtor.area.w,
-        h     = terminalSize,
+        cx    = slot.x,
+        cy    = slot.y,
+        w     = Dtor.area.w * 0.8,
+        h     = terminalSize * 1.2,
         color = Palette[TOKEN_PALETTE_KEYS["nullify"]],
         alpha = 0.7,
         pulse = { speed = 2.0, min = 0.0, max = 1.0 },
-        light = { radius = 30 * SCALE_X, alpha = 0.3 },
+        light = { radius = terminalSize * 1.2, alpha = 0.3 },
       })
     end
   end
@@ -103,8 +108,8 @@ function M.requestTerminalGlows(glow, seenTypes, deck)
   if seenTypes["ram"] then
     glow:request("terminal:ram", {
       kind  = "rect",
-      x     = areas.pool.x,
-      y     = areas.pool.y,
+      cx    = areas.pool.x + areas.pool.w * 0.5,
+      cy    = areas.pool.y + areas.pool.h * 0.5,
       w     = areas.pool.w,
       h     = areas.pool.h,
       color = Palette[TOKEN_PALETTE_KEYS["ram"]],
@@ -117,8 +122,8 @@ function M.requestTerminalGlows(glow, seenTypes, deck)
   if seenTypes["drawToHand"] and deck then
     glow:request("terminal:drawToHand", {
       kind  = "rect",
-      x     = deck.x - terminalSize / 2,
-      y     = deck.y - terminalSize / 2,
+      cx    = deck.x,
+      cy    = deck.y,
       w     = deck.w * SCALE_X,
       h     = deck.h * SCALE_Y,
       color = Palette[TOKEN_PALETTE_KEYS["drawToHand"]],
@@ -131,14 +136,14 @@ function M.requestTerminalGlows(glow, seenTypes, deck)
   if seenTypes["dtor"] or seenTypes["shuffle"] or seenTypes["drawToDtor"] then
     glow:request("terminal:dtor", {
       kind  = "rect",
-      x     = Dtor.area.x,
-      y     = Dtor.area.y,
+      cx    = Dtor.area.x + Dtor.area.w * 0.5,
+      cy    = Dtor.area.y + Dtor.area.h * 0.5 - (18 * SCALE_Y),
       w     = Dtor.area.w,
-      h     = Dtor.area.h,
+      h     = Dtor.area.h + (25 * SCALE_Y),
       color = Palette[TOKEN_PALETTE_KEYS["dtor"]],
       alpha = 0.5,
       pulse = { speed = 2.0, min = 0.0, max = 1.0 },
-      -- light = { radius = 30 * SCALE_X, alpha = 0.3 },
+      light = { radius = Dtor.area.w, alpha = 0.3 },
     })
   end
 end
@@ -149,10 +154,34 @@ function M.requestPlayZoneGlows(glow, card, deck)
   M.requestTerminalGlows(glow, seenTypes, deck)
 end
 
--- Slot glows for the discard effect zone + terminal destination glows.
--- No deck needed: drawToHand tokens don't appear on discard-zone cards.
+-- Slot glows for all discard-visible zones (discardEffect, dtorEffect, bottomEnergy)
+-- + terminal destination glows. No deck needed: drawToHand tokens don't appear here.
 function M.requestDiscardZoneGlows(glow, card)
-  local seenTypes = M.requestSlotGlows(glow, card, "discardEffect", "card-slot-discard")
+  local seenTypes = {}
+  local function merge(t) for k, v in pairs(t) do seenTypes[k] = v end end
+
+  merge(M.requestSlotGlows(glow, card, "discardEffect", "card-slot-discard"))
+  merge(M.requestSlotGlows(glow, card, "bottomEnergy",  "card-slot-energy", math.pi / 4))
+
+  -- dtorEffect: one wide rect for the whole background (dtor token as unit), not individual sub-slots.
+  -- The zone always routes to terminal:dtor regardless of the payload types inside.
+  local dtorRect = card:getZoneCanvasRect("dtorEffect")
+  if dtorRect then
+    seenTypes["dtor"] = true
+    glow:request("card-slot-dtor", {
+      kind     = "rect",
+      cx       = dtorRect.cx,
+      cy       = dtorRect.cy,
+      w        = dtorRect.w,
+      h        = dtorRect.h,
+      rotation = card.current.r,
+      color    = Palette.warning,
+      alpha    = 0.65,
+      pulse    = { speed = 2.0, min = 0.0, max = 1.0 },
+      light    = { radius = 30 * SCALE_X, alpha = 0.4 },
+    })
+  end
+
   M.requestTerminalGlows(glow, seenTypes, nil)
 end
 

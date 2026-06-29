@@ -336,6 +336,8 @@ local function collectGlowRequests()
       })
     if draggingCard.zoneState == "play" then
       glowRequests.requestPlayZoneGlows(glow, draggingCard, deck)
+    elseif draggingCard.zoneState == "discard" then
+      glowRequests.requestDiscardZoneGlows(glow, draggingCard)
     end
 
     -- end
