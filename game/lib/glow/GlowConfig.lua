@@ -94,7 +94,7 @@ GlowConfig.fakeGlow = {
 
 GlowConfig.debug = {
     drawSourceCanvas  = false,
-    disableBlur       = false,
+    disableBlur       = true,
     disablePulse      = false,
     directDraw        = false,
     showBounds        = false,

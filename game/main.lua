@@ -34,6 +34,8 @@ local pulse        = require("lib.pulse")
 
 local hover        = require("core.hover")
 local tooltip      = require("core.tooltip")
+local cardTooltip  = require("core.cardTooltip")
+local hoverTooltip = require("core.hoverTooltip")
 
 local glow = nil
 
@@ -162,6 +164,8 @@ function love.load()
   end
 
   Card.load(dissolveShader, tiltShader)
+  cardTooltip.load()
+  hoverTooltip.load()
   areas.load()
   hover.load()
   message.load()
@@ -224,6 +228,8 @@ function love.draw()
   hand:drawDragged()
   glow:renderTop()
   tooltip.draw()
+  cardTooltip.draw()
+  hoverTooltip.draw()
   love.graphics.pop()
 
   overlayStats.draw()
@@ -237,6 +243,7 @@ end
 
 local function collectGlowRequests()
   glowRequests.collectAll(glow, hand, deck)
+  cardTooltip.collectGlowRequests(glow)
 end
 
 function love.update(dt)
@@ -297,13 +304,18 @@ function love.update(dt)
   events.updateAll()
   actionQueue.update()
   tooltip.clear()
+  cardTooltip.clear()
+  hoverTooltip.clear()
   hand:collectTooltipRequests()
   if hand:isDragging() then
     hover.update(-9999, -9999)
   else
     hover.update(mouseX, mouseY)
   end
+  hover.collectTooltipRequests(hoverTooltip)
   tooltip.update(mouseX, mouseY)
+  cardTooltip.update(mouseX, mouseY)
+  hoverTooltip.update()
   collectGlowRequests()
   glow:update(realDt)
 end

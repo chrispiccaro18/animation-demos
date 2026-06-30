@@ -46,7 +46,7 @@ function ProgressBar.load()
 end
 
 function ProgressBar.reset()
-  _count    = 2
+  _count    = 0
   _popScale = 1.0
 end
 

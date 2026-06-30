@@ -119,7 +119,8 @@ CardData.startingDeck = {
   {
     topEnergy    = 1,
     bottomEnergy = 1,
-    play    = { { type = "shuffle", value = 1 }, { type = "progressNegative", value = 1 }, { type = "progressNegative", value = 1 }, },
+    play    = { { type = "shuffle", value = 1 }, },
+    -- play    = { { type = "shuffle", value = 1 }, { type = "progressNegative", value = 1 }, { type = "progressNegative", value = 1 }, },
     -- discard = { { type = "threatNegative", value = 1 } },
     dtor = { { type = "drawToDtor", value = 1 }, },
   },

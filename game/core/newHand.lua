@@ -7,9 +7,9 @@ local laser        = require("core.laser")
 local actionQueue  = require("core.actionQueue")
 local Audio        = require("assets.audio")
 local Palette      = require("lib.palette")
-local AssetManifest = require("assets.manifest")
 local Dtor         = require("core.dtor")
 local tooltip      = require("core.tooltip")
+local cardTooltip  = require("core.cardTooltip")
 
 local Hand      = {}
 Hand.__index    = Hand
@@ -183,42 +183,35 @@ function Hand:update(mouseX, mouseY)
 
   local hoverCandidate = nil
   if not draggingCard then
-    if tooltip.areAnyActive() then
-      print("tooltip active")
-      for i = #self.cards, 1, -1 do
-        local c = self.cards[i]
-        if c.hover.is and not c.drag.is and tooltip.isActive("card:" .. tostring(c.id)) then
-          -- hoverCandidate = nil
-          -- then we need to check if the mouse is over the card or the tooltip
-          if c:containsPoint(mouseX, mouseY) or tooltip.isExtendedHover("card:" .. tostring(c.id)) then
-            print("hover candidate is card with tooltip")
-            hoverCandidate = c
-            break
-          end
-          -- print("here")
-          -- hoverCandidate = c
-          -- break
-        end
-      end
-    else
-      for i = #self.cards, 1, -1 do
-        local c = self.cards[i]
-        if c.hover.can and not c.drag.is and c:containsPoint(mouseX, mouseY) and c:isAtTargetHeight() then
-          print("new hover candidate")
-          hoverCandidate = c
-          break
-        end
+    for i = #self.cards, 1, -1 do
+      local c = self.cards[i]
+      if c.hover.can and not c.drag.is and c:containsPoint(mouseX, mouseY) and c:isAtTargetHeight() then
+        hoverCandidate = c
+        break
       end
     end
-  end
 
-        -- if c.hover.can and not c.drag.is and c:isAtTargetHeight() then
-        -- local onCard        = c:containsPoint(mouseX, mouseY)
-        -- local onTooltip     = tooltip.isExtendedHover("card:" .. tostring(c.id))
-        -- if onCard or onTooltip then
-        --   hoverCandidate = c
-        --   break
-        -- end
+    -- Priority 1: keep an already-hovered card sticky if mouse is on it or its tooltip box.
+    -- for i = #self.cards, 1, -1 do
+    --   local c = self.cards[i]
+    --   if c.hover.is and not c.drag.is then
+    --     if c:containsPoint(mouseX, mouseY) or cardTooltip.isExtendedHover(c.id) then
+    --       hoverCandidate = c
+    --       break
+    --     end
+    --   end
+    -- end
+    -- -- Priority 2: normal containsPoint — find topmost card under mouse.
+    -- if not hoverCandidate then
+    --   for i = #self.cards, 1, -1 do
+    --     local c = self.cards[i]
+    --     if c.hover.can and not c.drag.is and c:containsPoint(mouseX, mouseY) and c:isAtTargetHeight() then
+    --       hoverCandidate = c
+    --       break
+    --     end
+    --   end
+    -- end
+  end
 
   for _, card in ipairs(self.cards) do
     -- Release drag
@@ -342,9 +335,8 @@ function Hand:update(mouseX, mouseY)
       card.hover.is     = false
       card.target.scale = card.scales.idle
     elseif card.hover.is then
-      print("also here")
-      card.mouseX       = mouseX
-      card.mouseY       = mouseY
+      card.mouseX = mouseX
+      card.mouseY = mouseY
     end
 
     if card.hover.is then hoveredCard = card end
@@ -421,9 +413,10 @@ function Hand:mousepressed(x, y, button, istouch)
   end
 end
 
+
 local TOKEN_TERMINAL = {
   progress         = function(glow)
-    glow:request("tooltip-child:terminal-progress", {
+    glow:request("card-tooltip:terminal-progress", {
       kind  = "rect",
       cx    = areas.progressDestination.x,
       cy    = areas.progressDestination.y,
@@ -436,7 +429,7 @@ local TOKEN_TERMINAL = {
     })
   end,
   progressNegative = function(glow)
-    glow:request("tooltip-child:terminal-progress", {
+    glow:request("card-tooltip:terminal-progress-neg", {
       kind  = "rect",
       cx    = areas.progressDestination.x,
       cy    = areas.progressDestination.y,
@@ -449,7 +442,7 @@ local TOKEN_TERMINAL = {
     })
   end,
   threat           = function(glow)
-    glow:request("tooltip-child:terminal-threat", {
+    glow:request("card-tooltip:terminal-threat", {
       kind         = "rect",
       cx           = areas.threatDestination.x,
       cy           = areas.threatDestination.y,
@@ -463,7 +456,7 @@ local TOKEN_TERMINAL = {
     })
   end,
   threatNegative   = function(glow)
-    glow:request("tooltip-child:terminal-threat", {
+    glow:request("card-tooltip:terminal-threat-neg", {
       kind         = "rect",
       cx           = areas.threatDestination.x,
       cy           = areas.threatDestination.y,
@@ -479,7 +472,7 @@ local TOKEN_TERMINAL = {
   nullify          = function(glow)
     local slot = Dtor.nextUnnullifiedSlot()
     if not slot then return end
-    glow:request("tooltip-child:terminal-nullify", {
+    glow:request("card-tooltip:terminal-nullify", {
       kind  = "rect",
       cx    = slot.x,
       cy    = slot.y,
@@ -491,6 +484,73 @@ local TOKEN_TERMINAL = {
       light = { radius = 110 * SCALE_X * 1.2, alpha = 0.3 },
     })
   end,
+  ram              = function(glow)
+    glow:request("card-tooltip:terminal-ram", {
+      kind  = "rect",
+      cx    = areas.pool.x + areas.pool.w * 0.5,
+      cy    = areas.pool.y + areas.pool.h * 0.5,
+      w     = areas.pool.w,
+      h     = areas.pool.h,
+      color = Palette.energy,
+      alpha = 0.5,
+      pulse = { speed = 2.0, min = 0.0, max = 1.0 },
+      light = { radius = 30 * SCALE_X, alpha = 0.3 },
+    })
+  end,
+  drawToHand       = function(glow)
+    local deck = sequences.getDeck()
+    if not deck then return end
+    glow:request("card-tooltip:terminal-drawToHand", {
+      kind  = "rect",
+      cx    = deck.x,
+      cy    = deck.y,
+      w     = deck.w * SCALE_X,
+      h     = deck.h * SCALE_Y,
+      color = Palette.draw,
+      alpha = 0.7,
+      pulse = { speed = 2.0, min = 0.0, max = 1.0 },
+      light = { radius = 30 * SCALE_X, alpha = 0.3 },
+    })
+  end,
+  shuffle          = function(glow)
+    glow:request("card-tooltip:terminal-shuffle", {
+      kind  = "rect",
+      cx    = Dtor.area.x + Dtor.area.w * 0.5,
+      cy    = Dtor.area.y + Dtor.area.h * 0.5 - (18 * SCALE_Y),
+      w     = Dtor.area.w,
+      h     = Dtor.area.h + (25 * SCALE_Y),
+      color = Palette.warning,
+      alpha = 0.5,
+      pulse = { speed = 2.0, min = 0.0, max = 1.0 },
+      light = { radius = Dtor.area.w, alpha = 0.3 },
+    })
+  end,
+  drawToDtor       = function(glow)
+    glow:request("card-tooltip:terminal-drawToDtor", {
+      kind  = "rect",
+      cx    = Dtor.area.x + Dtor.area.w * 0.5,
+      cy    = Dtor.area.y + Dtor.area.h * 0.5 - (18 * SCALE_Y),
+      w     = Dtor.area.w,
+      h     = Dtor.area.h + (25 * SCALE_Y),
+      color = Palette.warning,
+      alpha = 0.5,
+      pulse = { speed = 2.0, min = 0.0, max = 1.0 },
+      light = { radius = Dtor.area.w, alpha = 0.3 },
+    })
+  end,
+  dtor             = function(glow)
+    glow:request("card-tooltip:terminal-dtor", {
+      kind  = "rect",
+      cx    = Dtor.area.x + Dtor.area.w * 0.5,
+      cy    = Dtor.area.y + Dtor.area.h * 0.5 - (18 * SCALE_Y),
+      w     = Dtor.area.w,
+      h     = Dtor.area.h + (25 * SCALE_Y),
+      color = Palette.warning,
+      alpha = 0.5,
+      pulse = { speed = 2.0, min = 0.0, max = 1.0 },
+      light = { radius = Dtor.area.w, alpha = 0.3 },
+    })
+  end,
 }
 
 function Hand:collectTooltipRequests()
@@ -498,50 +558,7 @@ function Hand:collectTooltipRequests()
 
   for _, card in ipairs(self.cards) do
     if card.hover.is then
-      local halfW = card.offsetX * card.current.scale * SCALE_X
-      local halfH = card.offsetY * card.current.scale * SCALE_Y
-      local gap   = 16 * SCALE_X
-
-      -- Position tooltip to the right of the card, vertically centered on it.
-      local playFx = type(card.data.play) == "table" and card.data.play or {}
-      local ttH    = (28 + math.max(#playFx > 0 and 2 or 1, 1) * 26 + 80) * SCALE_Y
-      local ttX    = card.current.x + halfW + gap
-      local ttY    = card.current.y - ttH * 0.5
-
-      -- Clamp to canvas top.
-      ttY = math.max(ttY, 10 * SCALE_Y)
-
-      -- Build one child per play-effect slot.
-      local children = {}
-      for i, effect in ipairs(playFx) do
-        local asset      = AssetManifest.get("tokens", effect.type)
-        local terminalFn = TOKEN_TERMINAL[effect.type]
-        if asset and terminalFn then
-          children[#children + 1] = {
-            id     = tostring(card) .. "-play-" .. i,
-            localX = 20 + (i - 1) * 60,
-            localY = (math.max(#playFx > 0 and 2 or 1, 1) * 26 + 28 + 34),
-            radius = 22,
-            asset  = asset,
-            glows  = terminalFn,
-          }
-        end
-      end
-
-      local lines = { "RAM: " .. tostring(card.energy) }
-      if #playFx > 0 then
-        local parts = {}
-        for _, e in ipairs(playFx) do parts[#parts + 1] = e.type end
-        lines[#lines + 1] = "Play: " .. table.concat(parts, "  ")
-      end
-
-      tooltip.request("card:" .. tostring(card.id), {
-        x          = ttX,
-        y          = ttY,
-        extendLeft = halfW * 2 + gap,  -- covers full card width + gap back to left edge
-        lines      = lines,
-        children   = children,
-      })
+      cardTooltip.request(card.id, card, TOKEN_TERMINAL)
     end
   end
 end

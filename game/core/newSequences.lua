@@ -21,6 +21,7 @@ local sequences = {}
 
 local _deck = nil
 function sequences.setDeck(d) _deck = d end
+function sequences.getDeck()   return _deck  end
 
 local _hand = nil
 function sequences.setHand(h) _hand = h end

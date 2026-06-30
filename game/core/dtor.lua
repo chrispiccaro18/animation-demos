@@ -290,6 +290,41 @@ function Dtor.topSlot()
   return { x = dq.x + dq.w / 2, y = dq.y + (1 - 0.5) * slotH, index = 1 }
 end
 
+function Dtor.queueLength()
+  return #_queue
+end
+
+-- Returns tooltip data for the slot at slotIndex, or nil if empty/unoccupied.
+-- { effects = {...}, nullified = bool }
+function Dtor.getSlotTooltipData(slotIndex)
+  local slot = Dtor.area.slots[slotIndex]
+  if not slot or (not slot.occupied and not slot.nullified) then return nil end
+  for _, entry in ipairs(_queue) do
+    for _, idx in ipairs(entry.slotIndices) do
+      if idx == slotIndex then
+        return {
+          effects  = entry.card.data.dtor or {},
+          nullified = slot.nullified,
+        }
+      end
+    end
+  end
+  -- Pre-nullified empty slot (no queue entry)
+  if slot.nullified then
+    return { effects = {}, nullified = true }
+  end
+  return nil
+end
+
+-- Returns tooltip data for the front-of-queue entry (shown in dtor text area).
+function Dtor.getFrontEntryTooltipData()
+  if #_queue == 0 then return nil end
+  return {
+    effects   = _queue[1].card.data.dtor or {},
+    nullified = Dtor.isEntryNullified(1),
+  }
+end
+
 ------------------------------------------------------------------------
 -- Text visibility
 ------------------------------------------------------------------------

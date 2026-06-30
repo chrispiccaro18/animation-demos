@@ -20,6 +20,19 @@ local Dtor        = require("core.dtor")
 local ProgressBar = require("core.progressBar")
 local Palette     = require("lib.palette")
 
+local TOKEN_NAME = {
+  progress         = "Progress",
+  threat           = "Threat",
+  nullify          = "Nullify",
+  shuffle          = "Shuffle",
+  progressNegative = "Neg. Progress",
+  threatNegative   = "Neg. Threat",
+  drawToHand       = "Draw to Hand",
+  drawToDtor       = "Draw to Dtor",
+  dtor             = "Dtor",
+  ram              = "RAM",
+}
+
 local M = {}
 
 local _zones = {}  -- { id, test, glows }
@@ -319,6 +332,116 @@ function M.collectGlowRequests(glow)
     if _state[z.id] and z.glows then
       z.glows(glow)
     end
+  end
+end
+
+-- Issue tooltip requests for all currently-hovered static zones.
+-- Call after hover.update() and before hoverTooltip.update().
+--
+-- Shared tooltips (same ID = same fade state, one box regardless of which
+-- linked zone is hovered):
+--   env:N  + progress-ind:N  → "tt:env:N"   anchored at env icon right edge
+--   dtor:slot-1 + dtor:text  → "tt:dtor:front" anchored at dtor column left / slot-1 Y
+function M.collectTooltipRequests(ht)
+  -- Env icons and their linked progress-bar indicators share a tooltip anchored
+  -- at the env icon so the box never jumps between zones.
+  for _, idx in ipairs({ "negative", 1, 2 }) do
+    local envZone = "env:" .. tostring(idx)
+    local indZone = "progress-ind:" .. tostring(idx)
+    if _state[envZone] or _state[indZone] then
+      local d = EnvEffects.getTooltipData(idx)
+      if d then
+        local b     = EnvEffects.getIconHitBounds(idx)
+        local lines = {}
+        if d.desc and d.desc ~= "" then
+          lines[#lines + 1] = d.desc
+        end
+        if d.threshold then
+          local status = d.isActive and "Active" or "Inactive"
+          lines[#lines + 1] = "Threshold: " .. d.threshold .. " progress"
+          lines[#lines + 1] = "Status: " .. status
+            .. " (" .. tostring(d.current) .. "/" .. d.threshold .. ")"
+        end
+        -- anchorY = visual top of the icon (remove the 1.3× hit-padding factor)
+        local iconTop = b.cy - b.hh / 1.3
+        local titleColor = Palette.muted
+        if d.isNegative then
+          titleColor = Palette.danger
+        elseif d.isActive then
+          titleColor = Palette.positive
+        end
+        ht.request("tt:env:" .. tostring(idx), {
+          side       = "right",
+          anchorX    = b.cx + b.hw,
+          anchorY    = iconTop,
+          title      = d.name,
+          titleColor = titleColor,
+          lines      = lines,
+          arrowYOffset = (60 * SCALE_Y)
+        })
+      end
+    end
+  end
+
+  -- Dtor front entry: slot-1 and the text area share one tooltip at a fixed
+  -- anchor (dtor column left edge, slot-1 centre Y) so it doesn't jump.
+  local dq    = Dtor.area
+  local slotH = dq.h / dq.maxSlots
+  local frontShown = false
+  if _state["dtor:slot-1"] or _state["dtor:text"] then
+    local td = Dtor.getFrontEntryTooltipData()
+    if td then
+      frontShown = true
+      local titleStr = "Next Dtor Effect"
+      if td.nullified then titleStr = titleStr .. "  [Nullified]" end
+      ht.request("tt:dtor:front", {
+        side       = "left",
+        anchorX    = dq.x,
+        anchorY    = dq.y,
+        title      = titleStr,
+        titleColor = td.nullified and Palette.warning or Palette.draw,
+        effects    = td.effects,
+      })
+    end
+  end
+
+  -- Individual dtor slots 2..maxSlots (each keeps its own anchor Y)
+  local anySlotShown = frontShown
+  for i = 2, dq.maxSlots do
+    local zoneId = "dtor:slot-" .. i
+    if _state[zoneId] then
+      local td = Dtor.getSlotTooltipData(i)
+      if td then
+        anySlotShown = true
+        local titleStr = "Dtor Slot " .. i
+        if td.nullified then titleStr = titleStr .. "  [Nullified]" end
+        ht.request("tt:dtor:slot-" .. i, {
+          side       = "left",
+          anchorX    = dq.x,
+          anchorY    = dq.y + (i - 1) * slotH,
+          title      = titleStr,
+          titleColor = td.nullified and Palette.warning or Palette.draw,
+          effects    = td.effects,
+        })
+      end
+    end
+  end
+
+  -- Dtor column fallback: suppressed whenever any slot or the text area is hovered
+  if _state["dtor:area"] and not anySlotShown and not _state["dtor:text"] then
+    local n = Dtor.queueLength()
+    ht.request("tt:dtor:area", {
+      side       = "left",
+      anchorX    = dq.x,
+      anchorY    = dq.y,
+      title      = "Destructor Queue",
+      titleColor = Palette.warning,
+      lines      = {
+        n > 0 and (n .. " effect" .. (n == 1 and "" or "s") .. " queued")
+              or "Empty",
+        "Triggers at end of turn",
+      },
+    })
   end
 end
 

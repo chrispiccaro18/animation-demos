@@ -63,8 +63,35 @@ end
 
 -- Register a conditional effect at `index`.
 -- isActive(index) returns true when sourceFn() >= threshold.
-function EnvEffects.register(index, threshold, sourceFn)
-  _effects[index] = { threshold = threshold, source = sourceFn }
+-- info (optional): { name = string, desc = string } for tooltip display.
+function EnvEffects.register(index, threshold, sourceFn, info)
+  _effects[index] = { threshold = threshold, source = sourceFn, info = info or {} }
+end
+
+-- Returns tooltip display data for an env effect icon.
+-- Returns nil for index "negative" (handled separately).
+function EnvEffects.getTooltipData(index)
+  if index == "negative" then
+    return {
+      name      = "Negative Effects",
+      desc      = "Environmental hazards",
+      threshold = nil,
+      current   = nil,
+      isActive  = true,
+      isNegative = true,
+    }
+  end
+  local e = _effects[index]
+  if not e then return nil end
+  local current  = e.source and e.source() or 0
+  local isActive = current >= e.threshold
+  return {
+    name      = e.info.name or ("Env Effect " .. tostring(index)),
+    desc      = e.info.desc or "",
+    threshold = e.threshold,
+    current   = current,
+    isActive  = isActive,
+  }
 end
 
 function EnvEffects.isActive(index)

@@ -43,7 +43,7 @@ local _variants = {
     tooltipBorder = Color("#d8d8d8"),
     tooltipBG = Color("#212121"),
     tooltipBaseText = Color("#dddddd"),
-    tooltipSecondaryText = Color("#c1c1c1"), 
+    tooltipSecondaryText = Color("#c1c1c1"),
   },
 
   -- Deuteranopia / protanopia: replaces red/green distinction with
