@@ -1,5 +1,6 @@
 local areas       = require("core.areas")
 local hover       = require("core.hover")
+local tooltip     = require("core.tooltip")
 local Dtor        = require("core.dtor")
 local Palette     = require("lib.palette")
 local pulse       = require("lib.pulse")
@@ -313,7 +314,23 @@ function M.requestRamCostGlows(glow, card)
     end
   else
     areas.pool.insufficientRam = true
-    local belowRamText = areas.pool.y + areas.pool.h / 4 + 100 * SCALE_Y
+    local aboveRamText = areas.pool.y + areas.pool.h / 4 - 100 * SCALE_Y
+    glow:request("ram-zone-text:ram", {
+      kind  = "callback",
+      color = Palette.warning,
+      alpha = 0.9,
+      pulse = { speed = 3.0, min = 0.5, max = 1.0 },
+      draw  = function(alpha, time, spec)
+        love.graphics.setFont(AssetManifest.getFont(72))
+        love.graphics.printf(
+          "RAM: " .. tostring(#areas.pool.chips),
+          areas.pool.x,
+          areas.pool.y + areas.pool.h / 4,
+          areas.pool.w,
+          "center"
+        )
+      end,
+    })
     glow:request("ram-zone-text:insufficient", {
       kind  = "callback",
       color = Palette.warning,
@@ -322,9 +339,9 @@ function M.requestRamCostGlows(glow, card)
       draw  = function(alpha, time, spec)
         love.graphics.setFont(AssetManifest.getFont(72))
         love.graphics.printf(
-          "Insufficient RAM",
+          "INSUFFICIENT",
           areas.pool.x,
-          belowRamText,
+          aboveRamText,
           areas.pool.w,
           "center"
         )
@@ -514,7 +531,7 @@ local function requestDragZoneGlows(glow, draggingCard, deck)
 
   glow:request("ram-zone-text:ram", {
     kind   = "callback",
-    color  = { 1.0, 1.0, 1.0, 1.0 },
+    color  = Palette.energy,
     alpha  = 0.5,
     radius = 14,
     pulse  = { speed = 2.0, min = 0.20, max = 1.0 },
@@ -586,11 +603,28 @@ function M.collectAll(glow, hand, deck)
   M.requestEnvGlows(glow)
   M.requestDtorTextGlow(glow)
   hover.collectGlowRequests(glow)
+  tooltip.collectGlowRequests(glow)
 
   -- Post-rejection insufficient RAM feedback.
   if areas.pool.insufficientRamTimer > 0 then
     areas.pool.insufficientRam = true
     local fadeAlpha = math.min(1.0, areas.pool.insufficientRamTimer / areas.RAM_FADE_TIME)
+    glow:request("ram-zone-text:ram", {
+      kind  = "callback",
+      color = Palette.warning,
+      alpha = 0.9 * fadeAlpha,
+      pulse = { speed = 3.0, min = 0.5, max = 1.0 },
+      draw  = function(alpha, time, spec)
+        love.graphics.setFont(AssetManifest.getFont(72))
+        love.graphics.printf(
+          "RAM: " .. tostring(#areas.pool.chips),
+          areas.pool.x,
+          areas.pool.y + areas.pool.h / 4,
+          areas.pool.w,
+          "center"
+        )
+      end,
+    })
     glow:request("ram-zone-text:insufficient", {
       kind  = "callback",
       color = Palette.warning,
@@ -599,9 +633,9 @@ function M.collectAll(glow, hand, deck)
       draw  = function(alpha, time, spec)
         love.graphics.setFont(AssetManifest.getFont(72))
         love.graphics.printf(
-          "Insufficient RAM",
+          "INSUFFICIENT",
           areas.pool.x,
-          areas.pool.y + areas.pool.h / 4 + 100 * SCALE_Y,
+          areas.pool.y + areas.pool.h / 4 - 100 * SCALE_Y,
           areas.pool.w,
           "center"
         )

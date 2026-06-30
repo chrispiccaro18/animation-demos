@@ -8,6 +8,14 @@ local damping   = 10
 local influence = 0.001
 local BUFFER    = 20
 
+local nextId = (function()
+  local id = 0
+  return function()
+    id = id + 1
+    return id
+  end
+end)()
+
 local _assets  = {}
 local _shaders = {}
 
@@ -249,6 +257,7 @@ end
 function Card.new(x, y, data)
   local self      = setmetatable({}, Card)
   local baseAsset = _assets.base
+  self.id         = nextId()
   self.asset      = baseAsset
   self.offsetX    = baseAsset:getWidth()  / 2
   self.offsetY    = baseAsset:getHeight() / 2

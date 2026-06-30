@@ -38,6 +38,12 @@ local _variants = {
 
     -- Environment
     void     = Color("#12131A"),        -- game background fill
+
+    -- tooltip
+    tooltipBorder = Color("#d8d8d8"),
+    tooltipBG = Color("#212121"),
+    tooltipBaseText = Color("#dddddd"),
+    tooltipSecondaryText = Color("#c1c1c1"), 
   },
 
   -- Deuteranopia / protanopia: replaces red/green distinction with

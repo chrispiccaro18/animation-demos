@@ -1,6 +1,7 @@
 local AssetManifest = require("assets.manifest")
 local Audio          = require("assets.audio")
-local Color      = require("lib.color")
+local Palette     = require("lib.palette")
+-- local Color      = require("lib.color")
 local progressBar = require("core.progressBar")
 local threatBar   = require("core.threatBar")
 local envEffects  = require("core.envEffects")
@@ -364,7 +365,10 @@ end
 
 function areas.drawDynamic()
   if areas.pool.showText then
-    love.graphics.setColor(Color("#d0be74"))
+    love.graphics.setColor(Palette.energy)
+    if areas.pool.insufficientRam then
+      love.graphics.setColor(Palette.warning)
+    end
     local previousFont = love.graphics.getFont()
     love.graphics.setFont(statFont)
     love.graphics.printf(
@@ -375,11 +379,11 @@ function areas.drawDynamic()
       "center"
     )
     if areas.pool.insufficientRam then
-      love.graphics.setColor(Color("#FF8C00"))
+      love.graphics.setColor(Palette.warning)
       love.graphics.printf(
-        "Insufficient RAM",
+        "INSUFFICIENT",
         areas.pool.x,
-        areas.pool.y + areas.pool.h / 4 + 100 * SCALE_Y,
+        areas.pool.y + areas.pool.h / 4 - 100 * SCALE_Y,
         areas.pool.w,
         "center"
       )
@@ -406,7 +410,7 @@ function areas.drawDynamic()
     local fadeAlpha   = math.min(1.0, areas.pool.insufficientRamTimer / areas.RAM_FADE_TIME)
     local previousFont = love.graphics.getFont()
     love.graphics.setFont(statFont)
-    local ec = Color("#d0be74")
+    local ec = Palette.warning
     love.graphics.setColor(ec[1], ec[2], ec[3], fadeAlpha)
     love.graphics.printf(
       "RAM: " .. tostring(#areas.pool.chips),
@@ -415,12 +419,12 @@ function areas.drawDynamic()
       areas.pool.w,
       "center"
     )
-    local wc = Color("#FF8C00")
+    local wc = Palette.warning
     love.graphics.setColor(wc[1], wc[2], wc[3], fadeAlpha)
     love.graphics.printf(
-      "Insufficient RAM",
+      "INSUFFICIENT",
       areas.pool.x,
-      areas.pool.y + areas.pool.h / 4 + 100 * SCALE_Y,
+      areas.pool.y + areas.pool.h / 4 - 100 * SCALE_Y,
       areas.pool.w,
       "center"
     )

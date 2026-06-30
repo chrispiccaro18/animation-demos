@@ -14,6 +14,12 @@ Manifest.board = {
   }
 }
 
+Manifest.tooltip = {
+  arrow = {
+    path = basePath .. "proto/tooltip-arrow.png"
+  }
+}
+
 Manifest.card = {
   back = {
     path = basePath .. "proto/kilo-card-back.png"

@@ -33,6 +33,7 @@ local glowRequests = require("core.glowRequests")
 local pulse        = require("lib.pulse")
 
 local hover        = require("core.hover")
+local tooltip      = require("core.tooltip")
 
 local glow = nil
 
@@ -222,6 +223,7 @@ function love.draw()
   glow:renderMid()
   hand:drawDragged()
   glow:renderTop()
+  tooltip.draw()
   love.graphics.pop()
 
   overlayStats.draw()
@@ -294,11 +296,14 @@ function love.update(dt)
   if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y, nil, scannerRemaining(areas.scanner.right), areas.scanner.right.direction) end
   events.updateAll()
   actionQueue.update()
+  tooltip.clear()
+  hand:collectTooltipRequests()
   if hand:isDragging() then
     hover.update(-9999, -9999)
   else
     hover.update(mouseX, mouseY)
   end
+  tooltip.update(mouseX, mouseY)
   collectGlowRequests()
   glow:update(realDt)
 end
