@@ -1,7 +1,6 @@
 local AssetManifest = require("assets.manifest")
 local Token     = require("core.token")
 local animation = require("lib.animation")
-local Color     = require("lib.color")
 local Palette   = require("lib.palette")
 local RichText  = require("core.richText")
 

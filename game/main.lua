@@ -216,11 +216,12 @@ function love.draw()
   love.graphics.pop()
 
 
-  if not tutorialActive then
-    -- love.graphics.setColor(0, 0, 0, 0.2)
-    -- love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    -- love.graphics.setColor(1, 1, 1, 1)
-  end
+  -- if not tutorialActive then
+    love.graphics.setColor(0, 0, 0, 0.2)
+    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    love.graphics.setColor(1, 1, 1, 1)
+  -- end
+
   love.graphics.setCanvas(gameCanvas)
   love.graphics.clear(0, 0, 0, 0)
   love.graphics.push()

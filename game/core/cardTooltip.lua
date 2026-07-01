@@ -40,15 +40,15 @@ local TOKEN_NAME = {
 }
 
 local TOKEN_DESC = {
-  progress         = "Increase system progress",
+  progress         = "Increase progress level",
   threat           = "Increase threat level",
-  nullify          = "Nullify Dtor effect",
-  shuffle          = "Shuffle Dtor",
-  progressNegative = "Decrease system progress",
+  nullify          = "Nullify DTOR effect",
+  shuffle          = "Shuffle DTOR",
+  progressNegative = "Decrease progress level",
   threatNegative   = "Decrease threat level",
   drawToHand       = "Draw a card to hand",
-  drawToDtor       = "Draw a card to Dtor",
-  dtor             = "Trigger Dtor effects",
+  drawToDtor       = "Draw a card to DTOR",
+  dtor             = "Trigger DTOR effects",
   ram              = "RAM cost",
 }
 

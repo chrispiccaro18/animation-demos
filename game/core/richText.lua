@@ -3,6 +3,8 @@
 -- Syntax:
 --   {tokenType}             token sprite          e.g. {progress}
 --   {tokenType:colorHint}   tinted token sprite   e.g. {progress:danger}
+--   {tokenType*N}           scaled token sprite   e.g. {dtor*2}
+--   {tokenType*N:colorHint} scaled + tinted       e.g. {dtor*2:warning}
 --   {c:colorName|text}      colored text span     e.g. {c:positive|+2}
 --
 -- Color and token tags are atomic (no open/close pairs) so translated strings
@@ -30,7 +32,7 @@ RichText.defaultColors = Palette.colors
 -- Segment shapes:
 --   { type = "text",  content = string }
 --   { type = "span",  content = string, color = colorName }
---   { type = "token", tokenType = string, colorHint = colorName|nil }
+--   { type = "token", tokenType = string, scale = number|nil, colorHint = colorName|nil }
 function RichText.parse(str)
   local segments = {}
   local i = 1
@@ -64,13 +66,31 @@ function RichText.parse(str)
     if colorName then
       table.insert(segments, { type = "span", content = spanText, color = colorName })
     else
-      -- {tokenType} or {tokenType:colorHint}
-      local tokenType, colorHint = tag:match("^([%w_]+):([%w_]+)$")
+      -- Token tags: {tokenType}, {tokenType:colorHint}, {tokenType*N}, {tokenType*N:colorHint}
+      local tokenType, scale, colorHint
+
+      -- {tokenType*N:colorHint}
+      tokenType, scale, colorHint = tag:match("^([%w_]+)%*([%d%.]+):([%w_]+)$")
       if not tokenType then
+        -- {tokenType*N}
+        tokenType, scale = tag:match("^([%w_]+)%*([%d%.]+)$")
+      end
+      if not tokenType then
+        -- {tokenType:colorHint}
+        tokenType, colorHint = tag:match("^([%w_]+):([%w_]+)$")
+      end
+      if not tokenType then
+        -- {tokenType}
         tokenType = tag:match("^([%w_]+)$")
       end
+
       if tokenType then
-        table.insert(segments, { type = "token", tokenType = tokenType, colorHint = colorHint })
+        table.insert(segments, {
+          type      = "token",
+          tokenType = tokenType,
+          scale     = scale and tonumber(scale) or nil,
+          colorHint = colorHint,
+        })
       else
         -- unrecognized — preserve the literal braces
         table.insert(segments, { type = "text", content = "{" .. tag .. "}" })
@@ -99,7 +119,7 @@ function RichText.measure(segments, font, spriteSize, gap)
       local skipGap = not next or (
         (next.type == "text" or next.type == "span") and next.content:sub(1, 1):match("%s")
       )
-      w = w + spriteSize + (skipGap and 0 or gap)
+      w = w + spriteSize * (seg.scale or 1) + (skipGap and 0 or gap)
     end
   end
   return w
@@ -155,11 +175,12 @@ function RichText.draw(segments, x, y, opts)
     elseif seg.type == "token" then
       local img = tokens[seg.tokenType]
       if img then
-        local iw, ih = img:getDimensions()
-        local s      = spriteSize / math.max(iw, ih)
-        local drawW  = iw * s
-        local drawH  = ih * s
-        local drawY  = y + (lineH - drawH) / 2   -- vertically center on line
+        local iw, ih    = img:getDimensions()
+        local thisSize  = spriteSize * (seg.scale or 1)
+        local s         = thisSize / math.max(iw, ih)
+        local drawW     = iw * s
+        local drawH     = ih * s
+        local drawY     = y + (lineH - drawH) / 2   -- vertically center on line
         love.graphics.setColor(resolveColor(seg.colorHint or "default"))
         love.graphics.draw(img, cx, drawY, 0, s, s)
         -- Skip gap when the next segment already starts with whitespace,

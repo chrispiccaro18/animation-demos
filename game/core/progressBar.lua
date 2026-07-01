@@ -1,4 +1,5 @@
 local AssetManifest = require("assets.manifest")
+local Palette  = require("lib.palette")
 local animation     = require("lib.animation")
 local pulse         = require("lib.pulse")
 
@@ -22,7 +23,7 @@ end
 local _x, _y, _w, _h, _gapX
 local _textArea = {}
 local _asset, _activeIndAsset, _inactiveIndAsset
-local _font
+local _font, _titleFont
 
 function ProgressBar.load()
   _x    = 873 * SCALE_X
@@ -43,6 +44,7 @@ function ProgressBar.load()
   _activeIndAsset  = AssetManifest.get("envEffects", "indicatorActive")
   _inactiveIndAsset = AssetManifest.get("envEffects", "indicatorInactive")
   _font            = AssetManifest.getFont(72)
+  _titleFont       = AssetManifest.getFont(38)
 end
 
 function ProgressBar.reset()
@@ -134,7 +136,7 @@ function ProgressBar.draw()
     love.graphics.draw(ind.asset, ind.cx, ind.cy, 0, SCALE_X, SCALE_Y, iw_ind / 2, ih_ind / 2)
   end
 
-  if _font then
+  if _font and _titleFont then
     love.graphics.setColor(1, 1, 1, 1)
     local prevFont = love.graphics.getFont()
     love.graphics.setFont(_font)
@@ -142,7 +144,19 @@ function ProgressBar.draw()
       string.format("%02d/%02d", _count, _max),
       _textArea.x, _textArea.y, _textArea.w, "right"
     )
+    -- love.graphics.rectangle("line", _textArea.x, _textArea.y, _textArea.w, _textArea.h)
+    love.graphics.setFont(_titleFont)
+    love.graphics.setColor(Palette.positive)
+    love.graphics.printf(
+      "PROGRESS LEVEL",
+      _textArea.x - _textArea.w,
+      _textArea.y - 44 * SCALE_Y,
+      _textArea.w * 2,
+      "right"
+    )
     love.graphics.setFont(prevFont)
+    love.graphics.setColor(1, 1, 1, 1)
+
   end
 end
 

@@ -1,4 +1,5 @@
 local AssetManifest = require("assets.manifest")
+local Palette  = require("lib.palette")
 local animation     = require("lib.animation")
 local pulse         = require("lib.pulse")
 
@@ -22,7 +23,7 @@ end
 local _x, _y, _w, _h, _gapX
 local _textArea = {}
 local _asset
-local _font
+local _font, _titleFont
 
 function ThreatBar.load()
   _x    = 2320 * SCALE_X
@@ -41,6 +42,7 @@ function ThreatBar.load()
 
   _asset = AssetManifest.get("ticks", "threat")
   _font  = AssetManifest.getFont(72)
+  _titleFont = AssetManifest.getFont(38)
 end
 
 function ThreatBar.reset()
@@ -109,7 +111,7 @@ function ThreatBar.draw()
   end
   love.graphics.setColor(1, 1, 1, 1)
 
-  if _font then
+  if _font and _titleFont then
     love.graphics.setColor(1, 1, 1, 1)
     local prevFont = love.graphics.getFont()
     love.graphics.setFont(_font)
@@ -117,7 +119,17 @@ function ThreatBar.draw()
       string.format("%02d/%02d", _count, _max),
       _textArea.x, _textArea.y, _textArea.w, "left"
     )
+    love.graphics.setFont(_titleFont)
+    love.graphics.setColor(Palette.danger)
+    love.graphics.printf(
+      "THREAT LEVEL",
+      _textArea.x,
+      _textArea.y - 36 * SCALE_Y,
+      _textArea.w * 2,
+      "left"
+    )
     love.graphics.setFont(prevFont)
+    love.graphics.setColor(1, 1, 1, 1)
   end
 end
 

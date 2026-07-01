@@ -26,23 +26,24 @@ local ARROW = "=>"
 
 local PARAGRAPHS = {
   {
-    "Your goal is to fill {c:positive|PROGRESS} before {c:danger|THREAT}.",
+    "Your goal is to fulfill {c:positive|PROGRESS LEVEL} before {c:danger|THREAT LEVEL}.",
     "{progress} = {c:positive|PROGRESS}, {threat} = {c:danger|THREAT}",
     -- "Your goal is to fill {c:positive|PROGRESS} ({progress} " .. ARROW .. " {progressTick}) before {c:danger|THREAT}  {threat} " .. ARROW .. " {threatTick}.",
   },
   {
-    "{c:draw|DISCARD} cards to gain {c:energy|RAM}.",
-    "{c:draw|PLAY} cards by spending {c:energy|RAM}.",
+    "{c:draw|DISCARD} cards to gain {c:energy|RAM}. {c:draw|PLAY} cards by spending {c:energy|RAM}.",
+    -- "{c:draw|DISCARD} cards to gain {c:energy|RAM}.",
+    -- "{c:draw|PLAY} cards by spending {c:energy|RAM}.",
     "{ram} = {c:energy|RAM}",
   },
   {
     "Discarded cards also add their {c:warning|DTOR} effect to the {c:warning|DTOR} Queue.",
-    "{dtor}",
+    "{dtor*5} = {c:warning|DTOR} effect",
   },
   {
     "When you {c:accent|END TURN}:",
     " - the top {c:warning|DTOR} effect triggers",
-    " - ENV effects trigger",
+    " - active ENV effects trigger",
     " - that {c:warning|DTOR} card returns to the bottom of your draw pile",
     " - your hand refills",
   },

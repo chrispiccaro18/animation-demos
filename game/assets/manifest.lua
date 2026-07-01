@@ -138,7 +138,7 @@ Manifest.envEffects = {
 }
 
 local fontPath = basePath .. "proto/NotoSans-Medium.ttf"
-local fontDesignSizes = { 24, 32, 48, 72, 120, 240 }
+local fontDesignSizes = { 24, 32, 38, 48, 72, 120, 240 }
 
 function Manifest.load()
   local isWeb = love.system.getOS() == "Web"
