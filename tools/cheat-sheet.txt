@@ -44,7 +44,7 @@ bash tools/build.sh html
 # Local HTML test
 # --------------------------------------------------
 
-tools/test-html.sh 
+tools/test-html.sh
 
 
 # --------------------------------------------------

@@ -271,6 +271,8 @@ function love.update(dt)
   for _ in pairs(touches) do touchCount = touchCount + 1 end
   if touchCount == 3 then
     resetGame()
+  elseif touchCount == 2 then
+    tutorialActive = not tutorialActive
   end
   screenshake.update(realDt)
   local mx, my = love.mouse.getPosition()

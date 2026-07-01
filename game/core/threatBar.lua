@@ -26,7 +26,8 @@ local _asset
 local _font, _titleFont
 
 function ThreatBar.load()
-  _x    = 2320 * SCALE_X
+  _x    = 2378 * SCALE_X
+  -- _x    = 2320 * SCALE_X
   _y    = 73   * SCALE_Y
   _w    = 38   * SCALE_X
   _h    = 138  * SCALE_Y

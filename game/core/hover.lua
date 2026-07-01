@@ -356,7 +356,7 @@ function M.collectTooltipRequests(ht)
         local status = (d.isActive or d.isNegative) and "Active" or "Inactive"
         lines[#lines + 1] = "STATUS: " .. status
         if d.threshold then
-          lines[#lines + 1] = "THRESHOLD: " .. d.threshold .. " system progress"
+          lines[#lines + 1] = "THRESHOLD: " .. d.threshold .. " progress level"
         end
         lines[#lines + 1] = "TRIGGER: End Turn"
         -- anchorY = visual top of the icon (remove the 1.3× hit-padding factor)
