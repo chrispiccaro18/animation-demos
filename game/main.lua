@@ -60,6 +60,9 @@ local viewX      = 0
 local viewY      = 0
 local viewScale  = 1
 
+local tutorialActive = true
+local tutorialAsset = nil
+
 local function updateViewport()
   local sw = love.graphics.getWidth()
   local sh = love.graphics.getHeight()
@@ -162,6 +165,8 @@ function love.load()
    tiltShader = nil
   end
 
+  tutorialAsset = AssetManifest.get("board", "fullScreenVignette")
+
   Card.load(dissolveShader, tiltShader)
   cardTooltip.load()
   hoverTooltip.load()
@@ -189,15 +194,14 @@ end
 function love.draw()
   -- Fill full screen to cover letterbox bars
   love.graphics.setColor(Palette.void)
-  -- love.graphics.setColor(hexToRGBA("#20222E"))
   love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(1, 1, 1, 1)
 
   -- Draw all game content into the fixed-resolution canvas
-  love.graphics.setCanvas(gameCanvas)
-  love.graphics.clear(0, 0, 0, 0)
-  love.graphics.setColor(Palette.void)
-  love.graphics.rectangle("fill", 0, 0, canvasW, canvasH)
+  -- love.graphics.setCanvas(gameCanvas)
+  -- love.graphics.clear(0, 0, 0, 0)
+  -- love.graphics.setColor(Palette.void)
+  -- love.graphics.rectangle("fill", 0, 0, canvasW, canvasH)
   love.graphics.setColor(1, 1, 1, 1)
 
   local sx, sy = screenshake.getOffset()
@@ -205,11 +209,23 @@ function love.draw()
   love.graphics.translate(sx, sy)
 
   if boardAsset then
-    love.graphics.draw(boardAsset, 0, 0, 0, SCALE_X, SCALE_Y)
+    love.graphics.draw(boardAsset, viewX, viewY, 0, viewScale * SCALE_X, viewScale * SCALE_Y)
   end
-  love.graphics.setColor(0, 0, 0, 0.2)
+  love.graphics.setColor(0, 0, 0, 0.3)
   love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.pop()
+
+
+  if not tutorialActive then
+    -- love.graphics.setColor(0, 0, 0, 0.2)
+    -- love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    -- love.graphics.setColor(1, 1, 1, 1)
+  end
+  love.graphics.setCanvas(gameCanvas)
+  love.graphics.clear(0, 0, 0, 0)
+  love.graphics.push()
+  love.graphics.translate(sx, sy)
 
   glow:renderBottom()
   areas.drawStatic()
@@ -236,7 +252,19 @@ function love.draw()
 
   -- Blit the canvas onto the screen, centered and letterboxed
   love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setBlendMode("alpha", "premultiplied")
   love.graphics.draw(gameCanvas, viewX, viewY, 0, viewScale, viewScale)
+  love.graphics.setBlendMode("alpha")
+  if tutorialActive and tutorialAsset then
+    local tutorialWidth = tutorialAsset:getWidth()
+    local tutorialHeight = tutorialAsset:getHeight()
+    local screenW = love.graphics.getWidth()
+    local screenH = love.graphics.getHeight()
+    local scaleX = screenW / tutorialWidth
+    local scaleY = screenH / tutorialHeight
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(tutorialAsset, 0, 0, 0, scaleX, scaleY)
+  end
 end
 
 local function collectGlowRequests()
@@ -253,8 +281,12 @@ function love.update(dt)
     resetGame()
   end
   screenshake.update(realDt)
+  local mx, my = love.mouse.getPosition()
+  local mouseX, mouseY = toGame(mx, my)
   Audio.update()
   overlayStats.update(dt)
+  if tutorialActive then return end
+
   pulse.update(realDt)
   message.update(realDt)
   progressBar.update(realDt)
@@ -262,8 +294,6 @@ function love.update(dt)
   envEffects.update(gameDt)
   particles.update(realDt)
   if gameOver then return end
-  local mx, my = love.mouse.getPosition()
-  local mouseX, mouseY = toGame(mx, my)
 
   if camera then camera:update(realDt, mouseX, mouseY, areas.scanner) end
   laser.update(gameDt)
@@ -335,6 +365,13 @@ function love.keypressed(key)
     love.event.quit()
   elseif key == "r" then
     resetGame()
+  elseif key == "return" then
+    if tutorialActive then
+      tutorialActive = false
+    else
+      -- resetGame()
+      tutorialActive = true
+    end
   elseif key == "s" then
     -- screenshake.trigger()
     print(events.get("terminalArrive").isRunning())

@@ -142,12 +142,13 @@ end
 
 function Camera:drawScannerLines(scanners)
   local lensX, lensY = self:getLensPosition()
+  local previousLineWidth = love.graphics.getLineWidth()
+  love.graphics.setLineWidth(2 * SCALE_X)
   for _, s in pairs(scanners) do
     if s.active then
       local x1 = s.boundSide == "x1" and lineXAtY(s.boundLine, s.y) or s.x1
       local x2 = s.boundSide == "x2" and lineXAtY(s.boundLine, s.y) or s.x2
       love.graphics.setColor(s.color[1], s.color[2], s.color[3], 0.4)
-      love.graphics.setLineWidth(1.5)
       love.graphics.line(lensX, lensY, x1, s.y)
       love.graphics.line(lensX, lensY, x2, s.y)
       for _ = 1, 4 do
@@ -158,7 +159,7 @@ function Camera:drawScannerLines(scanners)
     end
   end
   love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.setLineWidth(1)
+  love.graphics.setLineWidth(previousLineWidth)
 end
 
 function Camera:draw()

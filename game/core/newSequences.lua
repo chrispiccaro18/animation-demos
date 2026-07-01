@@ -538,8 +538,11 @@ function sequences.restoreCard(card)
   })
   events.push({
     fn = function()
-    local handSize = _hand:handSize()
-      local toDeal = math.min(4 - handSize, 4)
+      local handSize = _hand:handSize()
+      local handMax = 5
+      local toDeal = math.min(handMax - handSize, 4)
+      if toDeal < 0 then toDeal = 0 end
+      -- local toDeal = 4
       for _ = 1, toDeal do
         sequences.dealCardToHand()
       end
