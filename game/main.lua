@@ -35,6 +35,7 @@ local pulse        = require("lib.pulse")
 local hover        = require("core.hover")
 local cardTooltip  = require("core.cardTooltip")
 local hoverTooltip = require("core.hoverTooltip")
+local tutorial     = require("core.tutorial")
 
 local glow = nil
 
@@ -61,7 +62,6 @@ local viewY      = 0
 local viewScale  = 1
 
 local tutorialActive = true
-local tutorialAsset = nil
 
 local function updateViewport()
   local sw = love.graphics.getWidth()
@@ -165,11 +165,10 @@ function love.load()
    tiltShader = nil
   end
 
-  tutorialAsset = AssetManifest.get("board", "fullScreenVignette")
-
   Card.load(dissolveShader, tiltShader)
   cardTooltip.load()
   hoverTooltip.load()
+  tutorial.load()
   areas.load()
   hover.load()
   message.load()
@@ -246,6 +245,8 @@ function love.draw()
   hoverTooltip.draw()
   love.graphics.pop()
 
+  if tutorialActive then tutorial.draw() end
+
   overlayStats.draw()
   speedControl.draw()
   love.graphics.setCanvas()
@@ -255,16 +256,6 @@ function love.draw()
   love.graphics.setBlendMode("alpha", "premultiplied")
   love.graphics.draw(gameCanvas, viewX, viewY, 0, viewScale, viewScale)
   love.graphics.setBlendMode("alpha")
-  if tutorialActive and tutorialAsset then
-    local tutorialWidth = tutorialAsset:getWidth()
-    local tutorialHeight = tutorialAsset:getHeight()
-    local screenW = love.graphics.getWidth()
-    local screenH = love.graphics.getHeight()
-    local scaleX = screenW / tutorialWidth
-    local scaleY = screenH / tutorialHeight
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(tutorialAsset, 0, 0, 0, scaleX, scaleY)
-  end
 end
 
 local function collectGlowRequests()

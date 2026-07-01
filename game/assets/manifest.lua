@@ -75,6 +75,9 @@ Manifest.tokens = {
   dtor = {
     path = basePath .. "proto/dtor-token.png"
   },
+  dtorExample = {
+    path = basePath .. "proto/dtor-example.png"
+  },
   drawToDtor = {
     path = basePath .. "proto/draw-to-dtor.png"
   },

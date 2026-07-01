@@ -91,11 +91,15 @@ function RichText.measure(segments, font, spriteSize, gap)
   gap        = gap or 0
   spriteSize = spriteSize or font:getHeight()
   local w = 0
-  for _, seg in ipairs(segments) do
+  for i, seg in ipairs(segments) do
     if seg.type == "text" or seg.type == "span" then
       w = w + font:getWidth(seg.content)
     elseif seg.type == "token" then
-      w = w + spriteSize + gap
+      local next = segments[i + 1]
+      local skipGap = not next or (
+        (next.type == "text" or next.type == "span") and next.content:sub(1, 1):match("%s")
+      )
+      w = w + spriteSize + (skipGap and 0 or gap)
     end
   end
   return w
@@ -137,7 +141,7 @@ function RichText.draw(segments, x, y, opts)
 
   local cx = x
 
-  for _, seg in ipairs(segments) do
+  for i, seg in ipairs(segments) do
     if seg.type == "text" then
       love.graphics.setColor(resolveColor(defaultKey))
       love.graphics.print(seg.content, cx, y)
@@ -158,7 +162,13 @@ function RichText.draw(segments, x, y, opts)
         local drawY  = y + (lineH - drawH) / 2   -- vertically center on line
         love.graphics.setColor(resolveColor(seg.colorHint or "default"))
         love.graphics.draw(img, cx, drawY, 0, s, s)
-        cx = cx + drawW + gap
+        -- Skip gap when the next segment already starts with whitespace,
+        -- or when there is no next segment (trailing gap is wasted).
+        local next = segments[i + 1]
+        local skipGap = not next or (
+          (next.type == "text" or next.type == "span") and next.content:sub(1, 1):match("%s")
+        )
+        cx = cx + drawW + (skipGap and 0 or gap)
       end
     end
   end
