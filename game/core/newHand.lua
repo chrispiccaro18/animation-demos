@@ -8,7 +8,6 @@ local actionQueue  = require("core.actionQueue")
 local Audio        = require("assets.audio")
 local Palette      = require("lib.palette")
 local Dtor         = require("core.dtor")
-local tooltip      = require("core.tooltip")
 local cardTooltip  = require("core.cardTooltip")
 
 local Hand      = {}

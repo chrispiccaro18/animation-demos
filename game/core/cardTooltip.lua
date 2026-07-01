@@ -20,7 +20,8 @@ local PAD_X       = 20     -- design units: horizontal padding inside box
 local PAD_Y       = 18     -- design units: vertical padding inside box
 local LINE_GAP    = 10     -- design units: extra vertical space between each text line
 local ENTRY_GAP   = 14     -- design units: extra space below each token entry
-local CORNER_R    = 8      -- design units: box rounded-corner radius
+local LINE_WIDTH  = 4
+local CORNER_R    = 24      -- design units: box rounded-corner radius
 local FONT_SIZE   = 48     -- design font size (must be in Manifest.fonts)
 
 -- ── Token data ────────────────────────────────────────────────────────────────
@@ -55,11 +56,11 @@ local TOKEN_COLOR = {
   progress         = "positive",
   threat           = "danger",
   nullify          = "nullify",
-  shuffle          = "draw",
+  shuffle          = "warning",
   progressNegative = "positiveNeg",
   threatNegative   = "threatNeg",
   drawToHand       = "draw",
-  drawToDtor       = "draw",
+  drawToDtor       = "warning",
   dtor             = "warning",
   ram              = "energy",
 }
@@ -187,7 +188,7 @@ local function computeLayout(card, glowFns, alpha)
     padY     = padY,
     arrowImg = arrowImg,
     arrowX   = ox - arrowW_s,
-    arrowY   = oy,
+    arrowY   = oy + (30 * SCALE_Y),
     arrowW   = arrowW_s,
     arrowH   = arrowH_s,
     arrowIW  = aiw,
@@ -305,10 +306,13 @@ function M.draw()
       CORNER_R * SCALE_X, CORNER_R * SCALE_Y)
 
     -- Border
+    local previousLineWidth = love.graphics.getLineWidth()
+    love.graphics.setLineWidth(LINE_WIDTH * SCALE_X)
     local border = Palette.tooltipBorder
     love.graphics.setColor(border[1], border[2], border[3], (border[4] or 1) * alpha)
     love.graphics.rectangle("line", L.ox, L.oy, L.bw, L.bh,
       CORNER_R * SCALE_X, CORNER_R * SCALE_Y)
+    love.graphics.setLineWidth(previousLineWidth)
 
     local tc = Palette.tooltipBaseText
 

@@ -73,7 +73,7 @@ end
 function EnvEffects.getTooltipData(index)
   if index == "negative" then
     return {
-      name      = "Negative Effects",
+      name      = "Negative Env Effect",
       desc      = "Environmental hazards",
       threshold = nil,
       current   = nil,
@@ -86,7 +86,8 @@ function EnvEffects.getTooltipData(index)
   local current  = e.source and e.source() or 0
   local isActive = current >= e.threshold
   return {
-    name      = e.info.name or ("Env Effect " .. tostring(index)),
+    name      = "Positive Env Effect " .. tostring(index),
+    -- name      = e.info.name or ("Positive Env Effect " .. tostring(index)),
     desc      = e.info.desc or "",
     threshold = e.threshold,
     current   = current,

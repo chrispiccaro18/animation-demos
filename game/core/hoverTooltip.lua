@@ -43,7 +43,8 @@ local TITLE_BODY_GAP = 6     -- design units: gap between title and first conten
 local ENTRY_LINE_GAP = 10    -- design units: extra leading between lines within an entry
 local ENTRY_GAP      = 14    -- design units: extra space after each token entry
 local BODY_LEAD      = 4     -- design units: extra leading between plain body lines
-local CORNER_R       = 8     -- design units: rounded corner radius
+local LINE_WIDTH  = 4
+local CORNER_R    = 24
 local FONT_SIZE      = 48    -- must be loaded in Manifest.fonts
 local CARD_BASE_W    = 1200  -- native px width of card-base.png (half = minimum box width)
 
@@ -79,11 +80,11 @@ local TOKEN_COLOR = {
   progress         = "positive",
   threat           = "danger",
   nullify          = "nullify",
-  shuffle          = "draw",
+  shuffle          = "warning",
   progressNegative = "positiveNeg",
   threatNegative   = "threatNeg",
   drawToHand       = "draw",
-  drawToDtor       = "draw",
+  drawToDtor       = "warning",
   dtor             = "warning",
   ram              = "energy",
 }
@@ -308,9 +309,12 @@ function M.draw()
       CORNER_R * SCALE_X, CORNER_R * SCALE_Y)
 
     -- Border
+    local previousLineWidth = love.graphics.getLineWidth()
+    love.graphics.setLineWidth(LINE_WIDTH * SCALE_X)
     love.graphics.setColor(border[1], border[2], border[3], (border[4] or 1) * a)
     love.graphics.rectangle("line", L.ox, L.oy, L.bw, L.bh,
       CORNER_R * SCALE_X, CORNER_R * SCALE_Y)
+    love.graphics.setLineWidth(previousLineWidth)
 
     love.graphics.setFont(L.font)
 

@@ -401,6 +401,7 @@ function M.collectTooltipRequests(ht)
         title      = titleStr,
         titleColor = td.nullified and Palette.warning or Palette.draw,
         effects    = td.effects,
+        arrowYOffset = 65 * SCALE_Y
       })
     end
   end
@@ -422,6 +423,7 @@ function M.collectTooltipRequests(ht)
           title      = titleStr,
           titleColor = td.nullified and Palette.warning or Palette.draw,
           effects    = td.effects,
+          arrowYOffset = 65 * SCALE_Y
         })
       end
     end
@@ -434,13 +436,14 @@ function M.collectTooltipRequests(ht)
       side       = "left",
       anchorX    = dq.x,
       anchorY    = dq.y,
-      title      = "Destructor Queue",
+      title      = "Dtor Queue",
       titleColor = Palette.warning,
       lines      = {
         n > 0 and (n .. " effect" .. (n == 1 and "" or "s") .. " queued")
               or "Empty",
         "Triggers at end of turn",
       },
+      arrowYOffset = 30 * SCALE_Y
     })
   end
 end
