@@ -351,17 +351,14 @@ function M.collectTooltipRequests(ht)
     if _state[envZone] or _state[indZone] then
       local d = EnvEffects.getTooltipData(idx)
       if d then
-        local b     = EnvEffects.getIconHitBounds(idx)
+        local b = EnvEffects.getIconHitBounds(idx)
         local lines = {}
-        if d.desc and d.desc ~= "" then
-          lines[#lines + 1] = d.desc
-        end
+        local status = (d.isActive or d.isNegative) and "Active" or "Inactive"
+        lines[#lines + 1] = "STATUS: " .. status
         if d.threshold then
-          local status = d.isActive and "Active" or "Inactive"
-          lines[#lines + 1] = "Threshold: " .. d.threshold .. " progress"
-          lines[#lines + 1] = "Status: " .. status
-            .. " (" .. tostring(d.current) .. "/" .. d.threshold .. ")"
+          lines[#lines + 1] = "THRESHOLD: " .. d.threshold .. " system progress"
         end
+        lines[#lines + 1] = "TRIGGER: End Turn"
         -- anchorY = visual top of the icon (remove the 1.3× hit-padding factor)
         local iconTop = b.cy - b.hh / 1.3
         local titleColor = Palette.muted
@@ -371,13 +368,14 @@ function M.collectTooltipRequests(ht)
           titleColor = Palette.positive
         end
         ht.request("tt:env:" .. tostring(idx), {
-          side       = "right",
-          anchorX    = b.cx + b.hw,
-          anchorY    = iconTop,
-          title      = d.name,
-          titleColor = titleColor,
-          lines      = lines,
-          arrowYOffset = (60 * SCALE_Y)
+          side         = "right",
+          anchorX      = b.cx + b.hw,
+          anchorY      = iconTop,
+          title        = d.name,
+          titleColor   = titleColor,
+          effects      = d.effects,
+          lines        = lines,
+          arrowYOffset = (60 * SCALE_Y),
         })
       end
     end
@@ -399,7 +397,8 @@ function M.collectTooltipRequests(ht)
         anchorX    = dq.x,
         anchorY    = dq.y,
         title      = titleStr,
-        titleColor = td.nullified and Palette.warning or Palette.draw,
+        titleColor = Palette.warning,
+        -- titleColor = td.nullified and Palette.warning or Palette.draw,
         effects    = td.effects,
         arrowYOffset = 65 * SCALE_Y
       })
@@ -421,7 +420,8 @@ function M.collectTooltipRequests(ht)
           anchorX    = dq.x,
           anchorY    = dq.y + (i - 1) * slotH,
           title      = titleStr,
-          titleColor = td.nullified and Palette.warning or Palette.draw,
+          titleColor = Palette.warning,
+          -- titleColor = td.nullified and Palette.warning or Palette.draw,
           effects    = td.effects,
           arrowYOffset = 65 * SCALE_Y
         })
@@ -441,7 +441,7 @@ function M.collectTooltipRequests(ht)
       lines      = {
         n > 0 and (n .. " effect" .. (n == 1 and "" or "s") .. " queued")
               or "Empty",
-        "Triggers at end of turn",
+        "Top triggers at end turn",
       },
       arrowYOffset = 30 * SCALE_Y
     })

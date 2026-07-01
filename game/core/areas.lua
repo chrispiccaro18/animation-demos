@@ -95,8 +95,8 @@ function areas.load()
   progressBar.load()
   threatBar.load()
   envEffects.load(areas.leftLine)
-  envEffects.register(1, 2, progressBar.getCount, { name = "Env Effect 1", desc = "Activates at progress 2" })
-  envEffects.register(2, 6, progressBar.getCount, { name = "Env Effect 2", desc = "Activates at progress 6" })
+  envEffects.register(1, 2, progressBar.getCount, { effects = { { type = "drawToHand" } } })
+  envEffects.register(2, 6, progressBar.getCount, { effects = { { type = "ram" } } })
 
   areas.endTurn = {
     x          = 3136 * SCALE_X,

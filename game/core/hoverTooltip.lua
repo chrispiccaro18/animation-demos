@@ -73,7 +73,7 @@ local TOKEN_DESC = {
   drawToHand       = "Draw a card to hand",
   drawToDtor       = "Draw a card to Dtor",
   dtor             = "Trigger Dtor effects",
-  ram              = "RAM cost",
+  ram              = "Used to play cards",
 }
 
 local TOKEN_COLOR = {
@@ -147,6 +147,7 @@ local function computeLayout(data, alpha)
   local entries      = {}   -- token-entry format
   local wrappedLines = {}   -- plain-line format
 
+  -- Effects section (token entries)
   if data.effects and #data.effects > 0 then
     local seen = {}
     for _, eff in ipairs(data.effects) do
@@ -167,14 +168,21 @@ local function computeLayout(data, alpha)
         cursor = cursor + entryH
       end
     end
-  else
-    for _, line in ipairs(data.lines or {}) do
-      for _, seg in ipairs(wrapText(line, font, textW)) do
-        wrappedLines[#wrappedLines + 1] = seg
-      end
-    end
-    cursor = cursor + #wrappedLines * bodyLH
   end
+
+  -- Lines section (plain text, can coexist with effects)
+  -- When lines follow entries, pull back by half of entryG (designed for entry→entry gaps).
+  local linesY = cursor
+  if #entries > 0 and data.lines and #data.lines > 0 then
+    linesY  = cursor - entryG * 0.5
+    cursor  = linesY
+  end
+  for _, line in ipairs(data.lines or {}) do
+    for _, seg in ipairs(wrapText(line, font, textW)) do
+      wrappedLines[#wrappedLines + 1] = seg
+    end
+  end
+  cursor = cursor + #wrappedLines * bodyLH
 
   local bh = cursor + padY
 
@@ -220,7 +228,7 @@ local function computeLayout(data, alpha)
     padX         = padX, padY         = padY,
     titleBodyGap = titleBodyGap,
     title        = data.title, titleColor = data.titleColor,
-    entries      = entries, wrappedLines = wrappedLines,
+    entries      = entries, wrappedLines = wrappedLines, linesY = linesY,
     arrowImg     = arrowImg, arrow        = arrow,
     arrowYOffset = data.arrowYOffset or 0,
   }
@@ -340,10 +348,10 @@ function M.draw()
       end
     end
 
-    -- Plain body lines (lines format)
+    -- Plain body lines (lines format; rendered after effects if both present)
     if #L.wrappedLines > 0 then
       love.graphics.setColor(tc[1], tc[2], tc[3], (tc[4] or 1) * a)
-      local bodyTop = L.oy + L.padY + L.fontH + L.titleBodyGap
+      local bodyTop = L.oy + L.linesY
       for i, line in ipairs(L.wrappedLines) do
         love.graphics.print(line, L.ox + L.padX, bodyTop + (i - 1) * L.bodyLH)
       end
