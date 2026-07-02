@@ -8,6 +8,8 @@ local Manifest = require("assets.manifest")
 
 local M = {}
 
+M.onClose = nil
+
 local FONT_SIZE    = 48
 local BOX_W_D      = 2200
 local PAD_X_D      = 80
@@ -21,6 +23,12 @@ local SPRITE_GAP_D = 8
 
 local _vignette = nil
 local _tokens   = {}
+
+local closeButtonAsset = nil
+local _closeX = 0
+local _closeY = 0
+local _closeR = 0
+local CLOSE_R = 64
 
 local ARROW = "=>"
 
@@ -124,6 +132,7 @@ function M.load()
   tryLoad("threat",       "tokens", "threat")
   tryLoad("ram",          "tokens", "ram")
   tryLoad("dtor",         "tokens", "dtorExample")
+  ok, closeButtonAsset = pcall(Manifest.get, "ui", "closeButton")
   tryLoad("progressTick", "ticks",  "progress")
   tryLoad("threatTick",   "ticks",  "threat")
   tryLoad("ramSlot",      "card",   "ramHole")
@@ -205,7 +214,41 @@ function M.draw()
     end
   end
 
+  -- Close button (sprite at top-right of box)
+  local cr = CLOSE_R * SCALE_X
+  _closeR  = cr
+  _closeX  = boxX + boxW - (8 * SCALE_X)
+  _closeY  = boxY + (8 * SCALE_Y)
+
+  if closeButtonAsset then
+    local iw, ih     = closeButtonAsset:getDimensions()
+    local targetSize = CLOSE_R * 2 * SCALE_X
+    local sx         = targetSize / iw
+    local sy         = targetSize / ih
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(closeButtonAsset, _closeX, _closeY, 0, sx, sy, iw / 2, ih / 2)
+  end
+
   love.graphics.setColor(1, 1, 1, 1)
+end
+
+function M.mousepressed(mx, my, btn)
+  if btn ~= 1 then return false end
+  local dx, dy = mx - _closeX, my - _closeY
+  if dx * dx + dy * dy <= _closeR * _closeR then
+    if M.onClose then M.onClose() end
+    return true
+  end
+  return false
+end
+
+function M.touchpressed(tx, ty)
+  local dx, dy = tx - _closeX, ty - _closeY
+  if dx * dx + dy * dy <= _closeR * _closeR then
+    if M.onClose then M.onClose() end
+    return true
+  end
+  return false
 end
 
 return M

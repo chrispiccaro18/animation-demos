@@ -20,6 +20,12 @@ Manifest.tooltip = {
   }
 }
 
+Manifest.ui = {
+  closeButton = {
+    path = basePath .. "proto/close-button.png"
+  },
+}
+
 Manifest.card = {
   back = {
     path = basePath .. "proto/kilo-card-back.png"

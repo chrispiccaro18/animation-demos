@@ -35,6 +35,8 @@ local _variants = {
 
     -- UI chrome
     accent   = Color("#88EDFF"),        -- scanner lines, camera ring, UI highlights
+    primary = Color("#3b4562"),        -- primary UI background
+    background = Color("#21222e"),     -- game background fill
 
     -- Environment
     void     = Color("#12131A"),        -- game background fill

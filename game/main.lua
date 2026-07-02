@@ -32,14 +32,19 @@ local Glow         = require("lib.glow.Glow")
 local glowRequests = require("core.glowRequests")
 local pulse        = require("lib.pulse")
 
-local hover        = require("core.hover")
-local cardTooltip  = require("core.cardTooltip")
-local hoverTooltip = require("core.hoverTooltip")
-local tutorial     = require("core.tutorial")
+local hover          = require("core.hover")
+local cardTooltip    = require("core.cardTooltip")
+local hoverTooltip   = require("core.hoverTooltip")
+local tutorial       = require("core.tutorial")
+local hud            = require("core.hud")
+local gameOverScreen = require("core.gameOverScreen")
 
 local glow = nil
 
 local touches = {}
+local maxTouches = 0
+local touchStartTime = 0
+local TAP_THRESHOLD = 0.4
 
 local cardBackAsset = nil
 local dissolveShader = nil
@@ -104,6 +109,7 @@ local function resetGame()
   message.current      = { scale = 1 }
   message.target       = { scale = 1 }
   gameOver = nil
+  gameOverScreen.reset()
 
   hand = NewHand.new()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
@@ -150,6 +156,9 @@ function love.load()
 
   AssetManifest.load()
   Audio.load()
+  -- love.audio.setVolume(0.25)
+  love.audio.setVolume(0.5)
+  -- love.audio.setVolume(1.0)
 
   Token.load()
   Dtor.load()
@@ -169,6 +178,7 @@ function love.load()
   cardTooltip.load()
   hoverTooltip.load()
   tutorial.load()
+  tutorial.onClose = function() tutorialActive = false end
   areas.load()
   hover.load()
   message.load()
@@ -186,6 +196,12 @@ function love.load()
   updateViewport()
 
   glow = Glow.load(canvasW, canvasH)
+  hud.load(
+    function() tutorialActive = true end,
+    resetGame,
+    function() love.system.openURL("https://forms.gle/sjbzYgS94u2w27iq5") end
+  )
+  gameOverScreen.load(resetGame)
 
   resetGame()
 end
@@ -242,10 +258,12 @@ function love.draw()
   glow:renderMid()
   hand:drawDragged()
   glow:renderTop()
+  gameOverScreen.draw()
   cardTooltip.draw()
   hoverTooltip.draw()
   love.graphics.pop()
 
+  hud.draw()
   if tutorialActive then tutorial.draw() end
 
   overlayStats.draw()
@@ -267,13 +285,6 @@ end
 function love.update(dt)
   realDt = dt
   gameDt = dt * config.speed
-  local touchCount = 0
-  for _ in pairs(touches) do touchCount = touchCount + 1 end
-  if touchCount == 3 then
-    resetGame()
-  elseif touchCount == 2 then
-    tutorialActive = not tutorialActive
-  end
   screenshake.update(realDt)
   local mx, my = love.mouse.getPosition()
   local mouseX, mouseY = toGame(mx, my)
@@ -281,12 +292,14 @@ function love.update(dt)
   overlayStats.update(dt)
   if tutorialActive then return end
 
+  hud.update(mouseX, mouseY)
   pulse.update(realDt)
   message.update(realDt)
   progressBar.update(realDt)
   threatBar.update(realDt)
   envEffects.update(gameDt)
   particles.update(realDt)
+  gameOverScreen.update(realDt, mouseX, mouseY)
   if gameOver then return end
 
   if camera then camera:update(realDt, mouseX, mouseY, areas.scanner) end
@@ -343,7 +356,12 @@ end
 function love.mousepressed(x, y, button, istouch, presses)
   local gx, gy = toGame(x, y)
   if speedControl.mousepressed(gx, gy, button) then return end
-  -- hand:mousepressed(gx, gy, button, true)
+  if tutorialActive then
+    tutorial.mousepressed(gx, gy, button)
+    return
+  end
+  if gameOverScreen.mousepressed(gx, gy, button) then return end
+  if hud.mousepressed(gx, gy, button) then return end
   hand:mousepressed(gx, gy, button, istouch)
 end
 
@@ -429,7 +447,14 @@ function love.resize(w, h)
 end
 
 function love.touchpressed(id, x, y, dx, dy, pressure)
+  if next(touches) == nil then
+    maxTouches = 0
+    touchStartTime = love.timer.getTime()
+  end
   touches[id] = { x = x, y = y }
+  local count = 0
+  for _ in pairs(touches) do count = count + 1 end
+  maxTouches = math.max(maxTouches, count)
   overlayStats.handleTouch(id, x, y, dx, dy, pressure)
 end
 
@@ -440,7 +465,25 @@ function love.touchmoved(id, x, y)
 end
 
 function love.touchreleased(id, x, y, dx, dy, pressure)
-  if touches[id] then
-    touches[id] = nil
+  touches[id] = nil
+  if next(touches) == nil then
+    local elapsed = love.timer.getTime() - touchStartTime
+    if elapsed < TAP_THRESHOLD then
+      if maxTouches == 3 then
+        resetGame()
+      elseif maxTouches == 2 then
+        tutorialActive = not tutorialActive
+      elseif maxTouches == 1 then
+        local gx, gy = toGame(x, y)
+        if tutorialActive then
+          tutorial.touchpressed(gx, gy)
+        elseif gameOverScreen.touchpressed(gx, gy) then
+          -- handled
+        else
+          hud.touchpressed(gx, gy)
+        end
+      end
+    end
+    maxTouches = 0
   end
 end

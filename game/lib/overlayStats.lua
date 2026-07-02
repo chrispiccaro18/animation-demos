@@ -118,13 +118,13 @@ local function toggleVSync()
   print(string.format("VSync %s", overlayStats.vsyncEnabled and "enabled" or "disabled"))
 end
 
----Checks if the given touch position is in the top-right corner activation area
+---Checks if the given touch position is in the top-left corner activation area
 ---@param x number The x-coordinate of the touch
 ---@param y number The y-coordinate of the touch
 ---@return boolean inCorner True if touch is in the activation area
 local function isTouchInCorner(x, y)
   local w, h = love.graphics.getDimensions()
-  return x >= w - overlayStats.touch.cornerSize and y <= overlayStats.touch.cornerSize
+  return x <= overlayStats.touch.cornerSize and y <= overlayStats.touch.cornerSize
 end
 
 ---Checks if the given touch position is inside the overlay area

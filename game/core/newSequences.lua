@@ -370,14 +370,14 @@ local function terminalEvent(tokenType)
         if progressBar.isFull() then
           gameOver = "win"
           message.text          = "SUCCESS"
-          message.subtitle      = "Press R to reset"
+          message.subtitle      = ""
           message.textColor     = { 0.4, 1, 0.6, 1 }
           message.current.scale = 6
           Audio.playSuccess()
         elseif threatBar.isFull() then
           gameOver = "loss"
           message.text          = "FAILURE"
-          message.subtitle      = "Press R to reset"
+          message.subtitle      = ""
           message.current.scale = 6
           message.textColor     = { 1, 0.3, 0.3, 1 }
           Audio.playFailure()
