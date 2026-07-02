@@ -141,9 +141,12 @@ local function resetGame()
 end
 
 function love.load()
-  local s = math.min(love.graphics.getWidth() / 1920, love.graphics.getHeight() / 1080, 1.0)
-  canvasW = math.floor(1920 * s / 2) * 2
-  canvasH = math.floor(1080 * s / 2) * 2
+  local n = math.max(1, math.min(
+    math.floor(love.graphics.getWidth() / 640),
+    math.floor(love.graphics.getHeight() / 360)
+  ))
+  canvasW = n * 640
+  canvasH = n * 360
   SCALE_X = canvasW / 3840
   SCALE_Y = canvasH / 2160
   print(string.format("Canvas: %dx%d  SCALE: %.4f,%.4f  Window: %dx%d",
