@@ -117,8 +117,8 @@ local function resetGame()
   sequences.setDeck(deck)
   sequences.setHand(hand)
 
-  for _, cardData in pairs(CardData.startingDeck) do
-  -- for _, cardData in pairs(CardData.cards) do
+  -- for _, cardData in pairs(CardData.startingDeck) do
+  for _, cardData in pairs(CardData.cards) do
     local card = Card.new(
       canvasW / 2,
       canvasH / 2,
@@ -159,8 +159,8 @@ function love.load()
 
   AssetManifest.load()
   Audio.load()
-  -- love.audio.setVolume(0.25)
-  love.audio.setVolume(0.5)
+  love.audio.setVolume(0.25)
+  -- love.audio.setVolume(0.5)
   -- love.audio.setVolume(1.0)
 
   Token.load()

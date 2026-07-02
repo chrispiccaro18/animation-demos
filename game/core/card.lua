@@ -1,7 +1,8 @@
 local AssetManifest = require("assets.manifest")
 local animation = require("lib.animation")
 local Token     = require("core.token")
-local Color      = require("lib.color")
+local Color     = require("lib.color")
+local Shatter   = require("core.shatter")
 
 local stiffness = 80
 local damping   = 10
@@ -163,6 +164,7 @@ Card.__index = Card
 function Card.load(dissolveShader, tiltShader)
   _shaders.dissolve   = dissolveShader
   _shaders.tilt       = tiltShader
+  Shatter.load()
   _assets.base        = AssetManifest.get("card", "base")
   _assets.ramHole     = AssetManifest.get("card", "ramHole")
   _assets.tokenHole   = AssetManifest.get("card", "tokenHole")
@@ -209,6 +211,10 @@ function Card:_initState(x, y, data)
   self.dissolveTime      = 0
   self.dissolving        = false
   self.reverseDissolving = false
+  self._shatterPending   = false
+  self._shatterPattern   = nil
+  self._shatterEffect    = nil
+  self._shatterReverse   = false
   self.data       = data
   self.energy     = data.topEnergy or 0
   self.decay      = data.decay or 12
@@ -603,6 +609,96 @@ function Card:resetDissolve()
   self.dissolveTime      = 0
 end
 
+function Card:startShatter(pattern)
+  self._shatterPattern = pattern
+  self._shatterPending = true
+  self.dissolving        = false
+  self.reverseDissolving = false
+end
+
+function Card:triggerShatterExplode()
+  if self._shatterEffect then
+    Shatter.triggerExplode(self._shatterEffect)
+  end
+end
+
+function Card:isCrackDone()
+  return self._shatterEffect ~= nil and Shatter.isCrackDone(self._shatterEffect)
+end
+
+function Card:isShatterDone()
+  return self._shatterEffect ~= nil and Shatter.isDone(self._shatterEffect)
+end
+
+function Card:startReverseShatter(pattern)
+  self._shatterPattern   = pattern
+  self._shatterPending   = true
+  self._shatterReverse   = true
+  self.dissolving        = false
+  self.reverseDissolving = false
+end
+
+function Card:isAssembleDone()
+  return self._shatterEffect ~= nil and Shatter.isAssembleDone(self._shatterEffect)
+end
+
+function Card:isReverseShatterDone()
+  return self._shatterEffect ~= nil and Shatter.isDone(self._shatterEffect)
+end
+
+function Card:_captureShatterCanvas()
+  local cw     = self.asset:getWidth()
+  local ch     = self.asset:getHeight()
+  local canvas = love.graphics.newCanvas(cw, ch)
+
+  local prevCanvas = love.graphics.getCanvas()
+  love.graphics.push("all")
+  love.graphics.origin()
+  love.graphics.setCanvas(canvas)
+  love.graphics.clear(0, 0, 0, 0)
+  love.graphics.setBlendMode("alpha")
+
+  -- Card base centered at (offsetX, offsetY) = card center in canvas space
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.draw(self.asset, self.offsetX, self.offsetY, 0, 1, 1, self.offsetX, self.offsetY)
+
+  -- Parts (no slot tokens — those fling as Token objects)
+  love.graphics.push()
+  love.graphics.translate(self.offsetX, self.offsetY)
+  for _, part in ipairs(self.parts) do
+    if not part.hidden and part.current.alpha > 0.001 then
+      love.graphics.setColor(1, 1, 1, part.current.alpha)
+      if part.items then
+        for _, item in ipairs(part.items) do
+          local iw, ih = item.asset:getDimensions()
+          local s = (item.scale or 1) * part.current.scale
+          love.graphics.draw(
+            item.asset,
+            part.origin.x - self.offsetX + item.offsetX + iw / 2 + part.current.dx,
+            part.origin.y - self.offsetY + item.offsetY + ih / 2 + part.current.dy,
+            part.current.dr, s, s, iw / 2, ih / 2
+          )
+        end
+      else
+        local pw, ph = part.asset:getWidth(), part.asset:getHeight()
+        love.graphics.draw(
+          part.asset,
+          part.origin.x - self.offsetX + pw / 2 + part.current.dx,
+          part.origin.y - self.offsetY + ph / 2 + part.current.dy,
+          part.current.dr,
+          part.current.scale, part.current.scale,
+          pw / 2, ph / 2
+        )
+      end
+    end
+  end
+  love.graphics.pop()
+
+  love.graphics.setCanvas(prevCanvas)
+  love.graphics.pop()
+  return canvas
+end
+
 function Card:enterSlot(edgeY)
   local wys = SCALE_Y
   -- default: use the card's current top edge so the full card is visible at entry
@@ -717,6 +813,10 @@ function Card:update()
       self.reverseDissolving = false
     end
   end
+
+  if self._shatterEffect then
+    Shatter.update(self._shatterEffect, gameDt)
+  end
 end
 
 function Card:_applyDissolveUniforms(asset)
@@ -758,6 +858,39 @@ function Card:draw()
   local windowScaleY = SCALE_Y
   local W = SCALE_X * 3840
   local H = SCALE_Y * 2160
+
+  -- Deferred snapshot: capture on the first draw call after startShatter/startReverseShatter
+  if self._shatterPending then
+    self._shatterPending = false
+    local canvas = self:_captureShatterCanvas()
+    if self._shatterReverse then
+      self._shatterReverse = false
+      self._shatterEffect  = Shatter.newReverseEffect(
+        canvas, self._shatterPattern,
+        self.current.x, self.current.y, self.current.scale
+      )
+    else
+      self._shatterEffect = Shatter.newEffect(
+        canvas, self._shatterPattern,
+        self.current.x, self.current.y, self.current.scale
+      )
+    end
+    self._shatterPattern = nil
+  end
+
+  -- Phases where only shards are drawn (card base hidden)
+  if self._shatterEffect then
+    local phase = self._shatterEffect.phase
+    if phase == "exploding" then
+      Shatter.drawShards(self._shatterEffect)
+      return
+    elseif phase == "done" and not self._shatterEffect.reverse then
+      return  -- forward shatter finished: card is gone, draw nothing
+    elseif phase == "assembling" then
+      Shatter.drawReverseShards(self._shatterEffect)
+      return
+    end
+  end
 
   -- Slot entry: clip below slot edge (hide the portion inside the slot)
   if self.slotEdgeY then
@@ -918,6 +1051,16 @@ function Card:draw()
 
   love.graphics.setShader()
   love.graphics.setColor(1, 1, 1, 1)
+
+  -- Crack overlays: drawn after all shaders are cleared
+  if self._shatterEffect then
+    local phase = self._shatterEffect.phase
+    if phase == "growing" then
+      Shatter.drawCracks(self._shatterEffect)
+    elseif phase == "healing" then
+      Shatter.drawHealingCracks(self._shatterEffect)
+    end
+  end
 
   if self.slotEdgeY then love.graphics.setScissor() end
 end

@@ -13,6 +13,7 @@ local Dtor  = require("core.dtor")
 local Audio = require("assets.audio")
 local Deck = require("core.deck")
 local Palette = require("lib.palette")
+local Shatter = require("core.shatter")
 
 local COUNT_MIN = 10
 local COUNT_MAX = 20
@@ -478,7 +479,7 @@ function sequences.restoreCard(card)
       Dtor.setTransitCard(card)
       Audio.playRecombineCard()
       card:restoreAllSlots()
-      card:startReverseDissolve()
+      card:startReverseShatter(Shatter.pickPattern())
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
@@ -486,7 +487,7 @@ function sequences.restoreCard(card)
 
   events.push({
     fn = function()
-      return not card:isDissolving()
+      return card:isAssembleDone()
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "poll",
@@ -600,8 +601,31 @@ function sequences.discard(card, camera)
       Audio.playImpactIn()
       camera:setColor(Color("#D56E6E"))
       laser.hide()
-      card:startDissolve()
+      card:startShatter(Shatter.pickPattern())
       card.target.scale = card.scales.drag
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate"
+  })
+  -- events.push({
+  --   fn = function()
+  --     card:flingZone("bottomEnergy", areas.desk, discardFlingOptions())
+  --     card:flingZone("discardEffect",  areas.desk, discardFlingOptions())
+  --     card:flingZone("dtorEffect",     areas.desk, discardFlingOptions())
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0.15, type = "before"
+  -- })
+  events.push({
+    fn = function()
+      return card:isCrackDone()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll"
+  })
+  events.push({
+    fn = function()
+      card:triggerShatterExplode()
       card:flingZone("bottomEnergy", areas.desk, discardFlingOptions())
       card:flingZone("discardEffect",  areas.desk, discardFlingOptions())
       card:flingZone("dtorEffect",     areas.desk, discardFlingOptions())
@@ -678,7 +702,7 @@ function sequences.discard(card, camera)
       end
       events.push({
         fn = function()
-          return Token.allDone()
+          return Token.allDone() and card:isShatterDone()
         end,
         blocking = true, blockable = true, persistent = false,
         delay = 0, type = "poll"
