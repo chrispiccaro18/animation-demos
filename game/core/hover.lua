@@ -353,12 +353,12 @@ function M.collectTooltipRequests(ht)
       if d then
         local b = EnvEffects.getIconHitBounds(idx)
         local lines = {}
+        lines[#lines + 1] = "TRIGGER: End Turn"
         local status = (d.isActive or d.isNegative) and "Active" or "Inactive"
         lines[#lines + 1] = "STATUS: " .. status
         if d.threshold then
           lines[#lines + 1] = "THRESHOLD: " .. d.threshold .. " progress level"
         end
-        lines[#lines + 1] = "TRIGGER: End Turn"
         -- anchorY = visual top of the icon (remove the 1.3× hit-padding factor)
         local iconTop = b.cy - b.hh / 1.3
         local titleColor = Palette.muted

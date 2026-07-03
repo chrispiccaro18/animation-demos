@@ -19,6 +19,7 @@ local actionQueue  = require("core.actionQueue")
 local Deck         = require("core.deck")
 local Camera       = require("core.camera")
 local Token        = require("core.token")
+local Debris       = require("core.debris")
 local laser        = require("core.laser")
 local Dtor         = require("core.dtor")
 local particles    = require("core.particles")
@@ -86,6 +87,7 @@ local function resetGame()
   events.loadAll()
   actionQueue.reset()
   Token.clearAll()
+  Debris.clearAll()
   Dtor.reset()
   laser.hide()
 
@@ -117,8 +119,8 @@ local function resetGame()
   sequences.setDeck(deck)
   sequences.setHand(hand)
 
-  -- for _, cardData in pairs(CardData.startingDeck) do
-  for _, cardData in pairs(CardData.cards) do
+  for _, cardData in pairs(CardData.startingDeck) do
+  -- for _, cardData in pairs(CardData.cards) do
     local card = Card.new(
       canvasW / 2,
       canvasH / 2,
@@ -247,6 +249,7 @@ function love.draw()
   love.graphics.translate(sx, sy)
 
   glow:renderBottom()
+  Debris.drawAll()
   areas.drawStatic()
   if deck then deck:draw() end
   if camera then camera:draw() end
@@ -302,6 +305,7 @@ function love.update(dt)
   threatBar.update(realDt)
   envEffects.update(gameDt)
   particles.update(realDt)
+  Debris.updateAll(gameDt)
   gameOverScreen.update(realDt, mouseX, mouseY)
   if gameOver then return end
 

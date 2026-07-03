@@ -147,8 +147,18 @@ local function computeLayout(data, alpha)
   local entries      = {}   -- token-entry format
   local wrappedLines = {}   -- plain-line format
 
-  -- Effects section (token entries)
+  -- Lines section (plain text) – positioned first, above token entries
+  local linesY = cursor
+  for _, line in ipairs(data.lines or {}) do
+    for _, seg in ipairs(wrapText(line, font, textW)) do
+      wrappedLines[#wrappedLines + 1] = seg
+    end
+  end
+  cursor = cursor + #wrappedLines * bodyLH
+
+  -- Effects section (token entries) – positioned below lines
   if data.effects and #data.effects > 0 then
+    if #wrappedLines > 0 then cursor = cursor + entryG * 0.5 end
     local seen = {}
     for _, eff in ipairs(data.effects) do
       local t = eff.type
@@ -169,20 +179,6 @@ local function computeLayout(data, alpha)
       end
     end
   end
-
-  -- Lines section (plain text, can coexist with effects)
-  -- When lines follow entries, pull back by half of entryG (designed for entry→entry gaps).
-  local linesY = cursor
-  if #entries > 0 and data.lines and #data.lines > 0 then
-    linesY  = cursor - entryG * 0.5
-    cursor  = linesY
-  end
-  for _, line in ipairs(data.lines or {}) do
-    for _, seg in ipairs(wrapText(line, font, textW)) do
-      wrappedLines[#wrappedLines + 1] = seg
-    end
-  end
-  cursor = cursor + #wrappedLines * bodyLH
 
   local bh = cursor + padY
 
@@ -331,6 +327,15 @@ function M.draw()
     love.graphics.setColor(tc2[1], tc2[2], tc2[3], (tc2[4] or 1) * a)
     love.graphics.print(L.title or "", L.ox + L.padX, L.oy + L.padY)
 
+    -- Plain body lines (lines format; rendered before token entries)
+    if #L.wrappedLines > 0 then
+      love.graphics.setColor(tc[1], tc[2], tc[3], (tc[4] or 1) * a)
+      local bodyTop = L.oy + L.linesY
+      for i, line in ipairs(L.wrappedLines) do
+        love.graphics.print(line, L.ox + L.padX, bodyTop + (i - 1) * L.bodyLH)
+      end
+    end
+
     -- Token entries (effects format)
     for _, entry in ipairs(L.entries) do
       local headerY = L.oy + entry.yOffset
@@ -348,14 +353,6 @@ function M.draw()
       end
     end
 
-    -- Plain body lines (lines format; rendered after effects if both present)
-    if #L.wrappedLines > 0 then
-      love.graphics.setColor(tc[1], tc[2], tc[3], (tc[4] or 1) * a)
-      local bodyTop = L.oy + L.linesY
-      for i, line in ipairs(L.wrappedLines) do
-        love.graphics.print(line, L.ox + L.padX, bodyTop + (i - 1) * L.bodyLH)
-      end
-    end
   end
 
   love.graphics.setColor(1, 1, 1, 1)

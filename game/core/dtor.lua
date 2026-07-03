@@ -31,24 +31,25 @@ local function _updateTextContent()
   local effects = _queue[1].card.data.dtor
   if not effects or #effects == 0 then return end
 
-  local counts = {}
+  -- local counts = {}
   local order  = {}
   for _, effect in ipairs(effects) do
     local t = effect.type
-    if not counts[t] then
-      counts[t] = 0
-      table.insert(order, t)
-    end
-    counts[t] = counts[t] + 1
+    table.insert(order, t)
+    -- if not counts[t] then
+    --   counts[t] = 0
+    --   table.insert(order, t)
+    -- end
+    -- counts[t] = counts[t] + 1
   end
 
   local parts = {}
   for i, t in ipairs(order) do
     if i > 1 then table.insert(parts, " ") end
-    local n = counts[t]
-    if n > 1 then
-      table.insert(parts, "{c:danger|" .. n .. " }")
-    end
+    -- local n = counts[t]
+    -- if n > 1 then
+    --   table.insert(parts, "{c:danger|" .. n .. " }")
+    -- end
     table.insert(parts, "{" .. t .. "}")
   end
 

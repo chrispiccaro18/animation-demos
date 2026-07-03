@@ -107,7 +107,7 @@ function Hand:update(mouseX, mouseY)
   local isDragTouch = draggingCard and draggingCard.drag.isTouch or false
 
   -- Suppress hover on siblings while a card is being dragged
-  areas.pool.showText = draggingCard ~= nil
+  -- areas.pool.showText = draggingCard ~= nil
   if draggingCard then
     for _, card in ipairs(self.cards) do
       if card ~= draggingCard and not card._excluded then
@@ -341,6 +341,12 @@ function Hand:update(mouseX, mouseY)
     if card.hover.is then hoveredCard = card end
 
     card:update()
+  end
+
+  if hoveredCard or draggingCard then
+    areas.pool.showText = true
+  else
+    areas.pool.showText = false
   end
 
   -- Camera state: one decision after all cards are processed

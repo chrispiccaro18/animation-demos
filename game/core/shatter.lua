@@ -25,7 +25,7 @@ local SHARD_SPEED_MAX = 2800
 local ASSEMBLE_TIME     = 0.7   -- s for each shard to travel from start to target
 local ASSEMBLE_STAGGER  = 0.15  -- s of extra delay for innermost shards
 local OFFSCREEN_DIST    = 1600  -- world-px; how far off-screen shards start
-local HEAL_TIME         = 0.45  -- s for healing cracks to sweep closed
+local HEAL_TIME         = 0.15  -- s for healing cracks to sweep closed
 
 local PATTERN_SEEDS = { 42, 137, 271, 589, 1024, 2048, 3141, 9999 }
 
@@ -331,6 +331,21 @@ function Shatter.newReverseEffect(canvas, pattern, worldX, worldY, cardScale)
     })
   end
 
+  -- Map each edge to its nearest shard centroid (for per-shard crack reveal)
+  local edgeShardMap = {}
+  for ei, edge in ipairs(pattern.edges) do
+    local bestIdx  = 1
+    local bestDist = math.huge
+    for si, s in ipairs(pattern.shards) do
+      local dx = edge.midX - s.centroid.x
+      local dy = edge.midY - s.centroid.y
+      local d  = dx * dx + dy * dy
+      if d < bestDist then bestDist = d; bestIdx = si end
+    end
+    edgeShardMap[ei] = bestIdx
+  end
+  effect.edgeShardMap = edgeShardMap
+
   return effect
 end
 
@@ -465,6 +480,47 @@ function Shatter.drawShards(effect)
   love.graphics.setColor(1, 1, 1, 1)
 end
 
+local ARRIVE_THRESHOLD = 0.75  -- shard t at which its edges start appearing
+
+local function drawAssemblingCracks(effect)
+  local edges = effect.pattern.edges
+  if #edges == 0 or not effect.edgeShardMap then return end
+
+  -- Per-shard progress snapshot
+  local shardT = {}
+  for i, shard in ipairs(effect.shards) do
+    local elapsed = math.max(0, effect.assembleTime - shard.delay)
+    shardT[i] = math.min(1, elapsed / ASSEMBLE_TIME)
+  end
+
+  local wx = effect.worldX
+  local wy = effect.worldY
+  local sx = effect.cardScale * SCALE_X
+  local sy = effect.cardScale * SCALE_Y
+  local ac = Palette.accent
+
+  love.graphics.push()
+  love.graphics.translate(wx, wy)
+  love.graphics.scale(sx, sy)
+
+  for ei, edge in ipairs(edges) do
+    local t     = shardT[effect.edgeShardMap[ei]] or 0
+    local alpha = math.max(0, (t - ARRIVE_THRESHOLD) / (1 - ARRIVE_THRESHOLD))
+    if alpha > 0.005 then
+      love.graphics.setLineWidth(CRACK_WIDTH * 1.8 / effect.cardScale)
+      love.graphics.setColor(ac[1], ac[2], ac[3], (ac[4] or 1) * 0.65 * alpha)
+      love.graphics.line(edge.ax, edge.ay, edge.bx, edge.by)
+
+      love.graphics.setLineWidth(CRACK_WIDTH * 0.6 / effect.cardScale)
+      love.graphics.setColor(ac[1], ac[2], ac[3], (ac[4] or 1) * alpha)
+      love.graphics.line(edge.ax, edge.ay, edge.bx, edge.by)
+    end
+  end
+
+  love.graphics.setLineWidth(1)
+  love.graphics.pop()
+end
+
 function Shatter.drawReverseShards(effect)
   if not effect or effect.phase ~= "assembling" then return end
 
@@ -478,6 +534,7 @@ function Shatter.drawReverseShards(effect)
     love.graphics.pop()
   end
 
+  drawAssemblingCracks(effect)
   love.graphics.setColor(1, 1, 1, 1)
 end
 

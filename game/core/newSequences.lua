@@ -14,6 +14,7 @@ local Audio = require("assets.audio")
 local Deck = require("core.deck")
 local Palette = require("lib.palette")
 local Shatter = require("core.shatter")
+local Debris  = require("core.debris")
 
 local COUNT_MIN = 10
 local COUNT_MAX = 20
@@ -250,9 +251,25 @@ local function terminalEvent(tokenType)
               Audio.playImpactIn()
               Camera:setColor(Color("#D56E6E"))
               laser.hide()
-              dtorCard:startDissolve()
+              dtorCard:startShatter(Shatter.pickPattern())
               dtorCard.target.scale = dtorCard.scales.drag
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "immediate",
+          }, "terminalArrive")
+
+          events.push({
+            fn = function()
+              return dtorCard:isCrackDone()
+            end,
+            blocking = true, blockable = true, persistent = false,
+            delay = 0, type = "poll",
+          }, "terminalArrive")
+          events.push({
+            fn = function()
+              dtorCard:triggerShatterExplode()
               dtorCard:flingZone("dtorEffect", areas.desk, discardFlingOptions())
+              Debris.spawn(dtorCard.current.x, dtorCard.current.y, 5)
             end,
             blocking = true, blockable = true, persistent = false,
             delay = 0, type = "immediate",
@@ -480,6 +497,7 @@ function sequences.restoreCard(card)
       Audio.playRecombineCard()
       card:restoreAllSlots()
       card:startReverseShatter(Shatter.pickPattern())
+      Debris.attractAll(card.current.x, card.current.y)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
@@ -629,6 +647,7 @@ function sequences.discard(card, camera)
       card:flingZone("bottomEnergy", areas.desk, discardFlingOptions())
       card:flingZone("discardEffect",  areas.desk, discardFlingOptions())
       card:flingZone("dtorEffect",     areas.desk, discardFlingOptions())
+      Debris.spawn(card.current.x, card.current.y, 5)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate"
