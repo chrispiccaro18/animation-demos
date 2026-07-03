@@ -167,7 +167,7 @@ local function computeLayout(data, alpha)
         local colorKey   = TOKEN_COLOR[t] or "tooltipBaseText"
         local name       = TOKEN_NAME[t] or t
         local desc       = TOKEN_DESC[t] or ""
-        local headerSegs = RichText.parse("{c:" .. colorKey .. "|" .. name .. "} {" .. t .. "}")
+        local headerSegs = RichText.parse("{" .. t .. "} {c:" .. colorKey .. "|" .. name .. "}")
         local descLines  = wrapText(desc, font, textW)
         local entryH     = entryLineH * (1 + #descLines) + entryG
         entries[#entries + 1] = {

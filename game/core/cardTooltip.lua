@@ -146,11 +146,46 @@ local function computeLayout(card, glowFns, alpha)
   local entries = {}
   local cursor  = padY
 
+  -- RAM cost/gain header
+  -- local topE = card.data.topEnergy
+  -- local botE = card.data.bottomEnergy
+  -- if (topE and topE >= 0) or (botE and botE >= 0) then
+  --   local entryH  = lineH + ENTRY_GAP * SCALE_Y
+  --   local playTxt     = "Play -" .. (topE or 0)
+  --   local playSegs = RichText.parse("{ram} {c:energy|" .. playTxt .. "}")
+  --   entries[#entries + 1] = {
+  --     tokenType  = nil,
+  --     headerSegs = playSegs,
+  --     descLines  = {},
+  --     glowFn     = nil,
+  --     yOffset    = cursor,
+  --     entryH     = entryH,
+  --     headerRect = { x = ox + padX, y = oy + cursor, w = bw - padX * 2, h = lineH },
+  --     hovered    = false,
+  --   }
+  --   cursor = cursor + entryH
+
+  --   local discardTxt     = "Discard +" .. (botE or 0)
+  --   local ramSegs = RichText.parse("{ram} {c:energy|" .. discardTxt .. "}")
+  --   -- local entryH  = lineH + ENTRY_GAP * SCALE_Y
+  --   entries[#entries + 1] = {
+  --     tokenType  = nil,
+  --     headerSegs = ramSegs,
+  --     descLines  = {},
+  --     glowFn     = nil,
+  --     yOffset    = cursor,
+  --     entryH     = entryH,
+  --     headerRect = { x = ox + padX, y = oy + cursor, w = bw - padX * 2, h = lineH },
+  --     hovered    = false,
+  --   }
+  --   cursor = cursor + entryH
+  -- end
+
   for _, t in ipairs(types) do
     local colorKey   = TOKEN_COLOR[t] or "tooltipBaseText"
     local name       = TOKEN_NAME[t] or t
     local desc       = TOKEN_DESC[t] or t
-    local headerSegs = RichText.parse("{c:" .. colorKey .. "|" .. name .. "} {" .. t .. "}")
+    local headerSegs = RichText.parse("{" .. t .. "} {c:" .. colorKey .. "|" .. name .. "}")
     local descLines  = wrapText(desc, font, textW)
     local entryH     = lineH * (1 + #descLines) + ENTRY_GAP * SCALE_Y
 

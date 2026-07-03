@@ -25,7 +25,7 @@ local ZONES = {
   playEffect     = { cx = 382, cy = 288 },
   discardEffect  = { cx = 382, cy = 639 },
   dtorEffect     = { cx = 378, cy = 847 },
-  bottomEnergy   = { cx = 378, cy = 858 },
+  bottomEnergy   = { cx = 378, cy = 928 },
 }
 
 local EFFECT_ZONES = {
@@ -33,7 +33,7 @@ local EFFECT_ZONES = {
   { dataKey = "play",         id = "playEffect",     holeKey = "tokenHole", hasTypedTokens = true                                     },
   { dataKey = "discard",      id = "discardEffect",  holeKey = "tokenHole", hasTypedTokens = true                                     },
   { dataKey = "dtor",         id = "dtorEffect",     holeKey = "dtorSlot",  hasTypedTokens = true, singleBackground = true, fixedCount = 3, flingAsUnit = "dtor" },
-  { dataKey = "bottomEnergy", id = "bottomEnergy",   holeKey = "ramHole",   tokenKey = "ramChip", hidden = true                       },
+  { dataKey = "bottomEnergy", id = "bottomEnergy",   holeKey = "ramHole",   tokenKey = "ramChip", hidden = false                       },
 }
 
 local ENERGY_GAP = 16
@@ -42,18 +42,19 @@ local DTOR_CENTERED_CY = 700  -- cy for dtor zone when no discard section presen
 
 local STATE_CONFIG = {
   idle = {
-    line           = { visible = true,  dy = 0 },
-    playLine       = { visible = true,  dy = 0 },
-    discardLine    = { visible = true,  dy = 0 },
+    line           = { visible = true,  dy = 1.3 },
+    playLine       = { visible = true,  dy = 1.4 },
+    discardLine    = { visible = true,  dy = 1.4 },
     topEnergyHoles = { visible = true,  dy = 0 },
     playEffect     = { visible = true,  dy = 0 },
     discardEffect  = { visible = true,  dy = 0 },
     dtorEffect     = { visible = true,  dy = 0 },
-    bottomEnergy   = { visible = false, dy = 0 },
+    bottomEnergy   = { visible = true, dy = 0 },
+    -- bottomEnergy   = { visible = false, dy = 0 },
   },
   play = {
-    line           = { visible = true,  dy = 150,  scale = 1.1  },
-    playLine       = { visible = true,  dy = 150,  scale = 1.25 },
+    line           = { visible = true,  dy = 150,  scale = 1.15  },
+    playLine       = { visible = true,  dy = 150,  scale = 1.4 },
     discardLine    = { visible = false, dy = 150  },
     topEnergyHoles = { visible = true,  dy = 0    },
     playEffect     = { visible = true,  dy = 150  },
@@ -62,14 +63,14 @@ local STATE_CONFIG = {
     bottomEnergy   = { visible = false, dy = 0    },
   },
   discard = {
-    line           = { visible = true,  dy = -250, scale = 1.1  },
+    line           = { visible = true,  dy = -250, scale = 1.15  },
     playLine       = { visible = false, dy = -250 },
-    discardLine    = { visible = true,  dy = -250, scale = 1.25 },
+    discardLine    = { visible = true,  dy = -250, scale = 1.4 },
     topEnergyHoles = { visible = false, dy = 0    },
     playEffect     = { visible = false, dy = -200 },
     discardEffect  = { visible = true,  dy = -250 },
     dtorEffect     = { visible = true,  dy = -250 },
-    bottomEnergy   = { visible = true,  dy = 0    },
+    bottomEnergy   = { visible = true,  dy = -150 },
   },
 }
 

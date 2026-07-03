@@ -19,12 +19,6 @@ local _font             = nil
 -- Layout initialized in Dtor.load()
 local _text = {}
 
-------------------------------------------------------------------------
--- Private: rebuild rich text segments from the current top queue entry.
--- Produces markup like "{c:danger|2 }{threat} {progressNegative}" so that
--- counts render as colored text and each effect type renders as its token
--- sprite. Groups with count > 1 prefix the icon with a number.
-------------------------------------------------------------------------
 local function _updateTextContent()
   _text.segments = nil
   if #_queue == 0 then return end
