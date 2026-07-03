@@ -20,6 +20,10 @@ local ATTRACT_K           = 5
 local ARRIVE_DIST         = 10  -- canvas px
 local FADE_DIST           = 90  -- canvas px; start fading when this close to target
 
+local CLICK_RADIUS        = 100  -- canvas px; resting pieces within this get flung
+local FLING_SPEED         = SPEED_MAX - SPEED_MIN  -- game u/s
+-- local FLING_SPEED         = 4500  -- game u/s
+
 local instances = {}
 local _nextId   = 0
 
@@ -153,6 +157,32 @@ function Debris.drawAll()
     love.graphics.pop()
   end
   love.graphics.setColor(1, 1, 1, 1)
+end
+
+function Debris.mousePressed(mx, my, button)
+  if button ~= 1 then return end
+  for _, p in ipairs(instances) do
+    if p.done then
+      local dx   = p.x - mx
+      local dy   = p.y - my
+      local dist = math.sqrt(dx * dx + dy * dy)
+      if dist < CLICK_RADIUS then
+        local nx, ny
+        if dist < 1 then
+          nx, ny = 0, -1
+        else
+          nx, ny = dx / dist, dy / dist
+        end
+        local speed  = FLING_SPEED * SCALE_X
+        p.vx         = nx * speed
+        p.vy         = ny * speed
+        p.angVel     = (math.random() - 0.5) * 15
+        p.done       = false
+        p.attracting = false
+        p.alpha      = 1
+      end
+    end
+  end
 end
 
 function Debris.clearAll()

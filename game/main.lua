@@ -369,6 +369,7 @@ function love.mousepressed(x, y, button, istouch, presses)
   end
   if gameOverScreen.mousepressed(gx, gy, button) then return end
   if hud.mousepressed(gx, gy, button) then return end
+  Debris.mousePressed(gx, gy, button)
   hand:mousepressed(gx, gy, button, istouch)
 end
 
