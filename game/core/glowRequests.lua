@@ -557,7 +557,7 @@ end
 -- Master orchestrator — call once per frame from love.update
 -- ──────────────────────────────────────────────────────────────────────────────
 
-function M.collectAll(glow, hand, deck)
+function M.collectAll(glow, hand, deck, mx, my)
   areas.pool.insufficientRam = false
 
   -- Find dragging card first so we can gate bar pulsing before emitting glows.
@@ -643,6 +643,37 @@ function M.collectAll(glow, hand, deck)
 
   if draggingCard then
     requestDragZoneGlows(glow, draggingCard, deck)
+  elseif mx and my and areas.mouseInPool(mx, my) then
+    areas.pool.showText = true
+    glow:request("ram-zone-text:ram", {
+      kind   = "callback",
+      color  = Palette.energy,
+      alpha  = 0.5,
+      radius = 14,
+      -- pulse  = { speed = 2.0, min = 0.20, max = 1.0 },
+      draw   = function(alpha, time, spec)
+        love.graphics.setFont(AssetManifest.getFont(72))
+        love.graphics.printf(
+          "RAM: " .. tostring(#areas.pool.chips),
+          areas.pool.x,
+          areas.pool.y + areas.pool.h / 4,
+          areas.pool.w,
+          "center"
+        )
+      end,
+    }, "bottom")
+
+    glow:request("terminal:ram", {
+      kind  = "rect",
+      cx    = areas.pool.x + areas.pool.w * 0.5,
+      cy    = areas.pool.y + areas.pool.h * 0.5,
+      w     = areas.pool.w,
+      h     = areas.pool.h,
+      color = Palette[TOKEN_PALETTE_KEYS["ram"]],
+      alpha = 0.5,
+      -- pulse = { speed = 2.0, min = 0.0, max = 1.0 },
+      light = { radius = 30 * SCALE_X, alpha = 0.3 },
+    }, "bottom")
   end
 end
 

@@ -23,6 +23,17 @@ local endTurnClickAsset = nil
 local statFont          = nil
 local ramTokenAsset     = nil
 
+-- Pool chip interactivity ------------------------------------------------
+-- Toggle CHIP_SPRING_BACK to compare the two feel modes:
+--   true  = chips remember their home position and spring back after scattering
+--   false = chips bounce off the pool walls and come to rest where they stop
+local CHIP_SPRING_BACK  = false
+local CHIP_REPEL_RADIUS = 200    -- game u; scales with SCALE_X at runtime
+local CHIP_REPEL_FORCE  = 1800   -- game u/s²; acceleration at zero distance
+local CHIP_DRAG         = 0.88   -- per-frame @ 60fps
+local CHIP_SPRING_K     = 5      -- spring constant (game u / (s² · canvas px displacement))
+local POOL_DETECTION_BUFFER = 60 -- design px around pool that detects a hover
+
 function areas.load()
   W              = SCALE_X * 3840
   H              = SCALE_Y * 2160
@@ -188,7 +199,7 @@ function areas.load()
 end
 
 function areas.addPoolChip(x, y)
-  table.insert(areas.pool.chips, { x = x, y = y })
+  table.insert(areas.pool.chips, { x = x, y = y, homeX = x, homeY = y, vx = 0, vy = 0 })
 end
 
 function areas.consumePoolChips(n)
@@ -326,6 +337,14 @@ function areas.mouseInEndTurn(x, y)
   return x >= a.x and x <= a.x + a.w and y >= a.y and y <= a.y + a.h
 end
 
+function areas.mouseInPool(x, y)
+  local p = areas.pool
+  return x >= p.x - POOL_DETECTION_BUFFER * SCALE_X
+    and x <= p.x + p.w + POOL_DETECTION_BUFFER * SCALE_X
+    and y >= p.y - POOL_DETECTION_BUFFER * SCALE_Y
+    and y <= p.y + p.h + POOL_DETECTION_BUFFER * SCALE_Y
+end
+
 function areas.cardInPlay(card)
   local a = areas.play
   return card.current.x >= a.x and card.current.x + card.w <= a.x + a.w
@@ -336,6 +355,53 @@ function areas.cardInDiscard(card)
   local a = areas.discard
   return card.current.x >= a.x and card.current.x + card.w <= a.x + a.w
       and card.current.y >= a.startY and card.current.y <= a.startY + a.h
+end
+
+function areas.updatePoolChips(dt, mx, my)
+  local p          = areas.pool
+  local repelR     = CHIP_REPEL_RADIUS * SCALE_X
+  local repelF     = CHIP_REPEL_FORCE  * SCALE_X
+  local springK    = CHIP_SPRING_K     * SCALE_X
+  local frame_drag = CHIP_DRAG ^ (dt * 60)
+
+  for _, chip in ipairs(p.chips) do
+    local dx   = chip.x - mx
+    local dy   = chip.y - my
+    local dist = math.sqrt(dx * dx + dy * dy)
+
+    if dist < repelR and dist > 0.5 then
+      local falloff = 1 - dist / repelR
+      chip.vx = chip.vx + (dx / dist) * repelF * falloff * dt
+      chip.vy = chip.vy + (dy / dist) * repelF * falloff * dt
+    end
+
+    if CHIP_SPRING_BACK then
+      chip.vx = chip.vx + springK * (chip.homeX - chip.x) * dt
+      chip.vy = chip.vy + springK * (chip.homeY - chip.y) * dt
+    end
+
+    chip.vx = chip.vx * frame_drag
+    chip.vy = chip.vy * frame_drag
+    chip.x  = chip.x + chip.vx * dt
+    chip.y  = chip.y + chip.vy * dt
+
+    if not CHIP_SPRING_BACK then
+      if chip.x < p.x then
+        chip.x  = p.x
+        chip.vx = math.abs(chip.vx) * 0.5
+      elseif chip.x > p.x + p.w then
+        chip.x  = p.x + p.w
+        chip.vx = -math.abs(chip.vx) * 0.5
+      end
+      if chip.y < p.y then
+        chip.y  = p.y
+        chip.vy = math.abs(chip.vy) * 0.5
+      elseif chip.y > p.y + p.h then
+        chip.y  = p.y + p.h
+        chip.vy = -math.abs(chip.vy) * 0.5
+      end
+    end
+  end
 end
 
 -- Draw helpers

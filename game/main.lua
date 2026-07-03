@@ -283,8 +283,8 @@ function love.draw()
   love.graphics.setBlendMode("alpha")
 end
 
-local function collectGlowRequests()
-  glowRequests.collectAll(glow, hand, deck)
+local function collectGlowRequests(mx, my)
+  glowRequests.collectAll(glow, hand, deck, mx, my)
   cardTooltip.collectGlowRequests(glow)
 end
 
@@ -315,6 +315,7 @@ function love.update(dt)
   Token.updateAll(realDt, gameDt)
   Dtor.update(realDt)
   areas.updateScanners(gameDt)
+  areas.updatePoolChips(gameDt, mouseX, mouseY)
   if not hand:isDragging() and not areas.endTurn.frozen then
     if areas.updateEndTurn(realDt, mouseX, mouseY) then
       actionQueue.push({
@@ -356,7 +357,7 @@ function love.update(dt)
   hover.collectTooltipRequests(hoverTooltip)
   cardTooltip.update(mouseX, mouseY)
   hoverTooltip.update()
-  collectGlowRequests()
+  collectGlowRequests(mouseX, mouseY)
   glow:update(realDt)
 end
 
