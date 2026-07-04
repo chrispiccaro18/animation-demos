@@ -33,6 +33,7 @@ local TRAIL_RATE         = 120    -- particles per second at peak speed
 local TRAIL_SPEED_THRESH = 150   -- game px/s below which trail is suppressed
 local TRAIL_PEAK_SPEED   = 1500  -- game px/s at which trail rate reaches full intensity
 
+
 local _dtorBounds = nil
 
 function Token.setDtorBounds(x, y, w, h)
@@ -44,6 +45,8 @@ local TOP_SPEED = 20000
 local PULL_SPEED = 10000
 local ACCEL = 5000
 local ATTRACT_DECAY_K = 4
+local CHAIN_SPEED = SPEED
+-- local CHAIN_SPEED = SPEED * 2.5
 
 local DEFAULT_DELAY = 0.2
 local BASE_DELAY = 0.25
@@ -380,6 +383,8 @@ function Token:update(dt, gameDt)
     end
     if self.mode == "fling" then
         if not self.done then self:_update_fling(gameDt) end
+    elseif self.mode == "chain" then
+        if not self.done then self:_update_chain(gameDt) end
     else
         if not self.done then self:_update_attract(gameDt) end
     end
@@ -597,6 +602,167 @@ function Token:_update_attract(dt)
     else
       self.trailAccum = 0
     end
+end
+
+function Token:_update_chain(dt)
+    local chain = self.chain
+    local target = chain.targets[chain.idx]
+
+    if not target then
+        self.done = true
+        if chain.onComplete then chain.onComplete(self) end
+        return
+    end
+
+    local dx   = target.x - self.x
+    local dy   = target.y - self.y
+    local dist = math.sqrt(dx * dx + dy * dy)
+
+    if dist < (self.threshold or 8) then
+        self.x, self.y = target.x, target.y
+        if chain.onVisit then chain.onVisit(self, target) end
+        chain.idx = chain.idx + 1
+        local next = chain.targets[chain.idx]
+        if next then
+            local ndx = next.x - self.x
+            local ndy = next.y - self.y
+            self.target_x     = next.x
+            self.target_y     = next.y
+            self.attract_dist = math.max(math.sqrt(ndx * ndx + ndy * ndy), 1)
+            self.speed        = CHAIN_SPEED * SCALE_X
+            self.start_rotation = self.rotation
+            Audio.playZip(self.token_type)
+        else
+            self.done = true
+            if chain.onComplete then chain.onComplete(self) end
+        end
+        return
+    end
+
+    self.speed = animation.expDecay(self.speed, self.max_speed, ATTRACT_DECAY_K, dt)
+    local nx   = dx / dist
+    local ny   = dy / dist
+    self.x     = self.x + nx * math.min(self.speed * dt, dist)
+    self.y     = self.y + ny * math.min(self.speed * dt, dist)
+
+    local progress  = 1 - math.min(dist / (self.attract_dist or dist + 1), 1)
+    self.rotation   = self.start_rotation + (0 - self.start_rotation) * progress
+    self.scale      = self.target_scale
+
+    local gameSpeed = self.speed / SCALE_X
+    if gameSpeed > TRAIL_SPEED_THRESH then
+        local speedFrac   = math.min(gameSpeed / TRAIL_PEAK_SPEED, 1)
+        local fwdAngle    = math.atan2(dy, dx)
+        local trailPreset = self.token_type and (self.token_type .. "_trail") or "token_trail"
+        self.trailAccum   = (self.trailAccum or 0) + TRAIL_RATE * speedFrac * dt
+        local emitCount   = math.floor(self.trailAccum)
+        if emitCount > 0 then
+            self.trailAccum = self.trailAccum - emitCount
+            if TRAIL_INHERIT_VEL then
+                particles.emitDir(trailPreset, self.x, self.y, emitCount, fwdAngle,           TRAIL_SPREAD, self.speed * TRAIL_VEL_FACTOR)
+            else
+                particles.emitDir(trailPreset, self.x, self.y, emitCount, fwdAngle + math.pi, TRAIL_SPREAD, self.speed * TRAIL_BACK_FACTOR)
+            end
+        end
+    else
+        self.trailAccum = 0
+    end
+end
+
+------------------------------------------------------------------------
+-- Start chain mode on this token — it will zip between each entry in
+-- targets in order, firing options.onVisit(self, target) on arrival at
+-- each, then options.onComplete(self) when the list is exhausted.
+-- targets: array of { x, y, tokenType, ref }
+------------------------------------------------------------------------
+function Token:startChain(targets, options)
+    options = options or {}
+    self.mode     = "chain"
+    self.done     = false
+    self.quiver   = nil
+    self.chain    = {
+        targets    = targets,
+        idx        = 1,
+        onVisit    = options.onVisit,
+        onComplete = options.onComplete,
+    }
+    self.threshold    = 8
+    self.speed        = CHAIN_SPEED * SCALE_X
+    self.initial_speed = self.speed
+    self.max_speed    = TOP_SPEED * SCALE_X
+    self.start_rotation = self.rotation
+    self.target_scale = self.scale
+    self.trailAccum   = 0
+
+    if #targets > 0 then
+        local t   = targets[1]
+        local dx  = t.x - self.x
+        local dy  = t.y - self.y
+        self.target_x     = t.x
+        self.target_y     = t.y
+        self.attract_dist = math.max(math.sqrt(dx * dx + dy * dy), 1)
+        Audio.playZip(self.token_type)
+    else
+        self.done = true
+        if options.onComplete then options.onComplete(self) end
+    end
+end
+
+------------------------------------------------------------------------
+-- Find all done tokens of affectType and run them sequentially through
+-- a chain that visits all done tokens matching targetTypes.
+-- Targets are snapshotted before any chain starts so mutations mid-chain
+-- don't affect the visit list.
+-- onVisit(affectToken, target) fires on each arrival.
+------------------------------------------------------------------------
+function Token.startChainForType(affectType, targetTypes, onVisit)
+    -- snapshot targets once so mutations don't change the list mid-chain
+    local targets = {}
+    for _, token in ipairs(instances) do
+        if token.done and not token.is_terminal then
+            for _, t in ipairs(targetTypes) do
+                if token.token_type == t then
+                    table.insert(targets, { x = token.x, y = token.y, tokenType = t, ref = token })
+                    break
+                end
+            end
+        end
+    end
+
+    -- collect affect tokens
+    local affectTokens = {}
+    for _, token in ipairs(instances) do
+        if token.done and not token.is_terminal and token.token_type == affectType then
+            table.insert(affectTokens, token)
+        end
+    end
+
+    if #affectTokens == 0 then return end
+
+    local function startIdx(i)
+        if i > #affectTokens then return end
+        local at = affectTokens[i]
+        at:startChain(targets, {
+            onVisit = onVisit,
+            onComplete = function(token)
+                token:triggerPop(token.scale * 2, 0.2, function()
+                    token._remove = true
+                    Audio.playImpactIn()
+                end)
+                startIdx(i + 1)
+            end,
+        })
+    end
+    startIdx(1)
+end
+
+------------------------------------------------------------------------
+-- Mutate a single token instance to a new type in-place.
+-- Used by chain onVisit callbacks for flip effects.
+------------------------------------------------------------------------
+function Token.mutateOne(token, newType)
+    token.token_type = newType
+    token.asset      = resolveAsset(newType)
 end
 
 function Token:draw()

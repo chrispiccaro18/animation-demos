@@ -332,34 +332,6 @@ local function terminalEvent(tokenType)
             delay = 0.1, type = "after",
           }, "terminalArrive")
 
-        elseif tokenType == "multiplyAll" then
-          local types = { "progress", "progressNegative", "threat", "threatNegative",
-                          "drawToHand", "drawToDtor", "nullify", "shuffle", "ram" }
-          Token.spawnMultiplied(types, token.value or 2, areas.desk, areas.flingTarget)
-          token:triggerPop(token.scale * 2, 0.2, function()
-            token._remove = true
-            Audio.playImpactIn()
-          end)
-        elseif tokenType == "multiplyThreat" then
-          Token.spawnMultiplied({ "threat", "threatNegative" }, token.value or 2, areas.desk, areas.flingTarget)
-          token:triggerPop(token.scale * 2, 0.2, function()
-            token._remove = true
-            Audio.playImpactIn()
-          end)
-        elseif tokenType == "multiplyProgress" then
-          Token.spawnMultiplied({ "progress", "progressNegative" }, token.value or 2, areas.desk, areas.flingTarget)
-          token:triggerPop(token.scale * 2, 0.2, function()
-            token._remove = true
-            Audio.playImpactIn()
-          end)
-        elseif tokenType == "flip" then
-          Token.swapTypes("progress",       "progressNegative")
-          Token.swapTypes("threat",         "threatNegative")
-          Token.swapTypes("drawToHand",     "drawToDtor")
-          token:triggerPop(token.scale * 2, 0.2, function()
-            token._remove = true
-            Audio.playImpactIn()
-          end)
         elseif tokenType == "shuffle" then
           local moves = Dtor.beginShuffle()
           if not moves then
@@ -462,16 +434,56 @@ end
 -- Order matters: multipliers run before the flipper so counts are resolved first.
 local PRE_TERMINAL_ORDER = { "multiplyAll", "multiplyThreat", "multiplyProgress", "flip" }
 
+local MULTIPLY_ALL_TYPES      = { "progress", "progressNegative", "threat", "threatNegative",
+                                   "drawToHand", "drawToDtor", "nullify", "shuffle", "ram" }
+local MULTIPLY_THREAT_TYPES   = { "threat", "threatNegative" }
+local MULTIPLY_PROGRESS_TYPES = { "progress", "progressNegative" }
+local FLIP_TYPES              = { "progress", "progressNegative", "threat", "threatNegative",
+                                   "drawToHand", "drawToDtor" }
+local FLIP_MAP = {
+  progress         = "progressNegative",
+  progressNegative = "progress",
+  threat           = "threatNegative",
+  threatNegative   = "threat",
+  drawToHand       = "drawToDtor",
+  drawToDtor       = "drawToHand",
+}
+
+local function multiplyOnVisit(affectToken, target)
+  local count = affectToken.value or 2
+  for _ = 1, count - 1 do
+    Token.new_fling(target.x, target.y, areas.desk, {
+      type        = target.tokenType,
+      bounces     = math.random(1, 2),
+      target_rect = areas.flingTarget,
+      base_scale  = 1.25,
+      delay       = false,
+    })
+  end
+  particles.emit(target.tokenType, target.x, target.y, 4, { speed = 400 })
+  screenshake.triggerH(1)
+end
+
+local function flipOnVisit(_, target)
+  if target.ref and not target.ref._remove then
+    local newType = FLIP_MAP[target.ref.token_type]
+    if newType then
+      Token.mutateOne(target.ref, newType)
+      particles.emit(newType, target.x, target.y, 4, { speed = 300 })
+    end
+  end
+end
+
 local function preTerminalAttract(tokenType)
-  local dest = {
-    x = areas.desk.x + areas.desk.w / 2,
-    y = areas.desk.y + areas.desk.h / 2,
-  }
-  Token.attractDone(tokenType, dest, {
-    target_scale = 1.5,
-    terminal     = true,
-    onArrive     = terminalEvent(tokenType),
-  })
+  if tokenType == "multiplyAll" then
+    Token.startChainForType("multiplyAll", MULTIPLY_ALL_TYPES, multiplyOnVisit)
+  elseif tokenType == "multiplyThreat" then
+    Token.startChainForType("multiplyThreat", MULTIPLY_THREAT_TYPES, multiplyOnVisit)
+  elseif tokenType == "multiplyProgress" then
+    Token.startChainForType("multiplyProgress", MULTIPLY_PROGRESS_TYPES, multiplyOnVisit)
+  elseif tokenType == "flip" then
+    Token.startChainForType("flip", FLIP_TYPES, flipOnVisit)
+  end
 end
 
 local function startPreTerminalPipeline()
@@ -482,12 +494,10 @@ local function startPreTerminalPipeline()
       blocking = true, blockable = true, persistent = false,
       delay = 0, type = "immediate",
     })
-    -- wait for the affect token's terminalArrive events to drain and any
-    -- newly spawned tokens (from multipliers) to settle on the desk
+    -- chain tokens set done=false while traveling; spawned flings set done=false
+    -- until settled — allDone() gates the next phase correctly for both
     events.push({
-      fn = function()
-        return not events.isRunning("terminalArrive") and Token.allDone()
-      end,
+      fn = function() return Token.allDone() end,
       blocking = true, blockable = true, persistent = false,
       delay = 0, type = "poll",
     })
