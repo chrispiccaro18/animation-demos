@@ -89,6 +89,18 @@ Manifest.tokens = {
   },
   drawToHand = {
     path = basePath .. "proto/draw-to-hand.png"
+  },
+  flip = {
+    path = basePath .. "proto/flip-token.png"
+  },
+  multiplyAll = {
+    path = basePath .. "proto/multiply-all-token.png"
+  },
+  multiplyProgress = {
+    path = basePath .. "proto/multiply-progress-token.png"
+  },
+  multiplyThreat = {
+    path = basePath .. "proto/multiply-threat-token.png"
   }
 }
 

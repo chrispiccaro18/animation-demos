@@ -25,6 +25,7 @@ local Dtor         = require("core.dtor")
 local particles    = require("core.particles")
 local CardData     = require("data.cards")
 local AssetManifest = require("assets.manifest")
+local RichText      = require("core.richText")
 local Audio = require("assets.audio")
 
 local Color        = require("lib.color")
@@ -67,7 +68,7 @@ local viewX      = 0
 local viewY      = 0
 local viewScale  = 1
 
-local tutorialActive = true
+local tutorialActive = false
 
 local function updateViewport()
   local sw = love.graphics.getWidth()
@@ -119,7 +120,8 @@ local function resetGame()
   sequences.setDeck(deck)
   sequences.setHand(hand)
 
-  for _, cardData in pairs(CardData.startingDeck) do
+  for _, cardData in pairs(CardData.levelThree) do
+  -- for _, cardData in pairs(CardData.startingDeck) do
   -- for _, cardData in pairs(CardData.cards) do
     local card = Card.new(
       canvasW / 2,
@@ -160,6 +162,7 @@ function love.load()
   math.randomseed(seed)
 
   AssetManifest.load()
+  RichText.load()
   Audio.load()
   love.audio.setVolume(0.25)
   -- love.audio.setVolume(0.5)

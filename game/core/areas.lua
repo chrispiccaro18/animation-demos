@@ -194,6 +194,13 @@ function areas.load()
     h = areas.desk.h * 0.4,
   }
 
+  areas.flingTarget = {
+    x = areas.desk.x + areas.desk.w * 0.1,
+    y = areas.desk.y + areas.desk.h * 0.2,
+    w = areas.desk.w * 0.6,
+    h = areas.desk.h * 0.4,
+  }
+
   areas.pool.x = (W - areas.pool.w) / 2
   areas.pool.y = 500 * SCALE_Y
 end

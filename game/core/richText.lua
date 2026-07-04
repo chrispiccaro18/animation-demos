@@ -18,7 +18,8 @@
 -- opts.gap adds a fixed number of canvas px after every token sprite if
 -- you prefer not to rely on string spaces.
 
-local Palette = require("lib.palette")
+local Palette  = require("lib.palette")
+local Manifest = require("assets.manifest")
 
 local RichText = {}
 
@@ -27,6 +28,34 @@ local RichText = {}
 -- Points at Palette.colors (the raw color-only table) so pairs() never
 -- picks up palette methods when building the per-draw merge.
 RichText.defaultColors = Palette.colors
+
+-- Default token image table used when opts.tokens is absent or missing a key.
+-- Populated by RichText.load(); call it once after Manifest.load().
+RichText.tokens = {}
+
+local TOKEN_ASSETS = {
+  progress         = { "tokens", "progress" },
+  progressNegative = { "tokens", "progressNegative" },
+  threat           = { "tokens", "threat" },
+  threatNegative   = { "tokens", "threatNegative" },
+  nullify          = { "tokens", "nullify" },
+  shuffle          = { "tokens", "shuffle" },
+  ram              = { "tokens", "ram" },
+  dtor             = { "tokens", "dtor" },
+  drawToHand       = { "tokens", "drawToHand" },
+  drawToDtor       = { "tokens", "drawToDtor" },
+  multiplyAll      = { "tokens", "multiplyAll" },
+  multiplyProgress = { "tokens", "multiplyProgress" },
+  multiplyThreat   = { "tokens", "multiplyThreat" },
+  flip             = { "tokens", "flip" },
+}
+
+function RichText.load()
+  for key, spec in pairs(TOKEN_ASSETS) do
+    local ok, img = pcall(Manifest.get, spec[1], spec[2])
+    if ok then RichText.tokens[key] = img end
+  end
+end
 
 -- Parse a rich text string into an ordered segment list.
 -- Segment shapes:
@@ -138,7 +167,8 @@ end
 function RichText.draw(segments, x, y, opts)
   opts = opts or {}
   local font        = opts.font
-  local tokens      = opts.tokens or {}
+  local _optTokens  = opts.tokens or {}
+  local tokens = setmetatable(_optTokens, { __index = RichText.tokens })
   local gap         = opts.gap or 0
   local lineH       = font and font:getHeight() or 16
   local spriteSize  = opts.spriteSize or lineH

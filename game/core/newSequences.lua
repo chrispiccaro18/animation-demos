@@ -32,7 +32,7 @@ function sequences.setHand(h) _hand = h end
 local function discardFlingOptions()
   return {
     bounces = math.random(1, 3),
-    target_rect = areas.discardDeskArea,
+    target_rect = areas.flingTarget,
     base_scale = 1.25,
     delay = false,
   }
@@ -40,7 +40,7 @@ end
 local function playFlingOptions()
   return {
     bounces = math.random(1, 3),
-    target_rect = areas.playDeskArea,
+    target_rect = areas.flingTarget,
     delay = false,
     base_scale = 1.25,
     downward = true
@@ -53,7 +53,7 @@ local function endTurnFlingOptions(token_type, direction)
     bounces    = math.random(1, 3),
     base_scale = 1.25,
     delay      = false,
-    target_rect = areas.discardDeskArea,
+    target_rect = areas.flingTarget,
     [flingDirection] = true,
   }
 end
@@ -332,6 +332,34 @@ local function terminalEvent(tokenType)
             delay = 0.1, type = "after",
           }, "terminalArrive")
 
+        elseif tokenType == "multiplyAll" then
+          local types = { "progress", "progressNegative", "threat", "threatNegative",
+                          "drawToHand", "drawToDtor", "nullify", "shuffle", "ram" }
+          Token.spawnMultiplied(types, token.value or 2, areas.desk, areas.flingTarget)
+          token:triggerPop(token.scale * 2, 0.2, function()
+            token._remove = true
+            Audio.playImpactIn()
+          end)
+        elseif tokenType == "multiplyThreat" then
+          Token.spawnMultiplied({ "threat", "threatNegative" }, token.value or 2, areas.desk, areas.flingTarget)
+          token:triggerPop(token.scale * 2, 0.2, function()
+            token._remove = true
+            Audio.playImpactIn()
+          end)
+        elseif tokenType == "multiplyProgress" then
+          Token.spawnMultiplied({ "progress", "progressNegative" }, token.value or 2, areas.desk, areas.flingTarget)
+          token:triggerPop(token.scale * 2, 0.2, function()
+            token._remove = true
+            Audio.playImpactIn()
+          end)
+        elseif tokenType == "flip" then
+          Token.swapTypes("progress",       "progressNegative")
+          Token.swapTypes("threat",         "threatNegative")
+          Token.swapTypes("drawToHand",     "drawToDtor")
+          token:triggerPop(token.scale * 2, 0.2, function()
+            token._remove = true
+            Audio.playImpactIn()
+          end)
         elseif tokenType == "shuffle" then
           local moves = Dtor.beginShuffle()
           if not moves then
@@ -430,6 +458,47 @@ local function terminalAttract()
   startTerminalAttract("drawToHand", _deck:centerPosition(), acc)
 end
 
+-- Affect token types that modify other tokens before regular terminals fire.
+-- Order matters: multipliers run before the flipper so counts are resolved first.
+local PRE_TERMINAL_ORDER = { "multiplyAll", "multiplyThreat", "multiplyProgress", "flip" }
+
+local function preTerminalAttract(tokenType)
+  local dest = {
+    x = areas.desk.x + areas.desk.w / 2,
+    y = areas.desk.y + areas.desk.h / 2,
+  }
+  Token.attractDone(tokenType, dest, {
+    target_scale = 1.5,
+    terminal     = true,
+    onArrive     = terminalEvent(tokenType),
+  })
+end
+
+local function startPreTerminalPipeline()
+  for _, tokenType in ipairs(PRE_TERMINAL_ORDER) do
+    local t = tokenType
+    events.push({
+      fn = function() preTerminalAttract(t) end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "immediate",
+    })
+    -- wait for the affect token's terminalArrive events to drain and any
+    -- newly spawned tokens (from multipliers) to settle on the desk
+    events.push({
+      fn = function()
+        return not events.isRunning("terminalArrive") and Token.allDone()
+      end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "poll",
+    })
+  end
+  events.push({
+    fn = function() terminalAttract() end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+end
+
 function sequences.dealCardToHand(eventType, delay)
   if not eventType then eventType = "default" end
   if not delay then delay = 0.5 end
@@ -483,11 +552,13 @@ function sequences.scan(scanner)
   events.push({
     fn = function()
       Audio.stopScanner()
-      terminalAttract()
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after",
   })
+  -- Push pipeline events here (not inside an fn callback) so they land in the
+  -- queue before any caller-pushed events (e.g. endTurn's poll + restoreCard).
+  startPreTerminalPipeline()
 end
 
 function sequences.restoreCard(card)
@@ -716,9 +787,9 @@ function sequences.discard(card, camera)
 
   events.push({
     fn = function()
-      if Token.count() > 0 then
-        sequences.scan(areas.scanner.right)
-      end
+      -- if Token.count() > 0 then
+      --   sequences.scan(areas.scanner.right)
+      -- end
       events.push({
         fn = function()
           return Token.allDone() and card:isShatterDone()
@@ -884,9 +955,9 @@ function sequences.play(card, camera)
 
   events.push({
     fn = function()
-      if Token.count() > 0 then
-        sequences.scan(areas.scanner.left)
-      end
+      -- if Token.count() > 0 then
+      --   sequences.scan(areas.scanner.left)
+      -- end
       events.push({
         fn = function()
           return Token.allDone()
@@ -963,7 +1034,7 @@ function sequences.endTurn()
         local idx = slotIndices[1]
         Dtor.releaseSlot(idx)
         Dtor.compactSlots()
-        queueEnvEffects()
+        -- queueEnvEffects()
         sequences.scan(areas.scanner.right)
         events.push({
           fn = function()
@@ -976,7 +1047,9 @@ function sequences.endTurn()
       else
         local sx, sy = Dtor.getTextCenter()
         for _, effect in ipairs(card.data.dtor or {}) do
-          Token.new_fling(sx, sy, areas.desk, endTurnFlingOptions(effect.type))
+          local opts = endTurnFlingOptions(effect.type)
+          opts.value = effect.value
+          Token.new_fling(sx, sy, areas.desk, opts)
         end
         Dtor.popEntry()
         local idx = slotIndices[1]
@@ -989,7 +1062,7 @@ function sequences.endTurn()
           blocking = true, blockable = true, persistent = false,
           delay = 0, type = "poll",
         })
-        queueEnvEffects()
+        -- queueEnvEffects()
         sequences.scan(areas.scanner.right)
         events.push({
           fn = function()

@@ -74,6 +74,10 @@ local TOKEN_DESC = {
   drawToDtor       = "Draw a card to DTOR",
   dtor             = "Trigger DTOR effects",
   ram              = "Used to play cards",
+  multiplyAll      = "Double all tokens on desk",
+  multiplyProgress = "Double progress tokens on desk",
+  multiplyThreat   = "Double threat tokens on desk",
+  flip             = "Flip progress/threat/draw tokens",
 }
 
 local TOKEN_COLOR = {
@@ -87,6 +91,10 @@ local TOKEN_COLOR = {
   drawToDtor       = "warning",
   dtor             = "warning",
   ram              = "energy",
+  multiplyAll      = "warning",
+  multiplyProgress = "positive",
+  multiplyThreat   = "danger",
+  flip             = "warning",
 }
 
 -- ── State ─────────────────────────────────────────────────────────────────────

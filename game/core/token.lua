@@ -89,6 +89,10 @@ local threatNegativeAsset = nil
 local shuffleAsset = nil
 local drawToDtorAsset = nil
 local drawToHandAsset = nil
+local multiplyAllAsset      = nil
+local multiplyThreatAsset   = nil
+local multiplyProgressAsset = nil
+local flipAsset             = nil
 
 ------------------------------------------------------------------------
 -- Internal: reflect a point across a rect wall
@@ -206,8 +210,13 @@ local function resolveAsset(token_type)
   elseif token_type == "shuffle" then return shuffleAsset
   elseif token_type == "drawToDtor" then return drawToDtorAsset
   elseif token_type == "drawToHand" then return drawToHandAsset
+  elseif token_type == "multiplyAll"      then return multiplyAllAsset
+  elseif token_type == "multiplyThreat"   then return multiplyThreatAsset
+  elseif token_type == "multiplyProgress" then return multiplyProgressAsset
+  elseif token_type == "flip"             then return flipAsset
   end
 end
+
 
 local function applyFlingPhysics(self, rect, options)
   local n_bounces = options and options.bounces or math.random(0, 3)
@@ -266,6 +275,10 @@ function Token.load()
   shuffleAsset         = AssetManifest.get("tokens", "shuffle")
   drawToDtorAsset      = AssetManifest.get("tokens", "drawToDtor")
   drawToHandAsset      = AssetManifest.get("tokens", "drawToHand")
+  multiplyAllAsset      = AssetManifest.get("tokens", "multiplyAll")
+  multiplyThreatAsset   = AssetManifest.get("tokens", "multiplyThreat")
+  multiplyProgressAsset = AssetManifest.get("tokens", "multiplyProgress")
+  flipAsset             = AssetManifest.get("tokens", "flip")
 end
 
 ------------------------------------------------------------------------
@@ -296,6 +309,7 @@ function Token.new_fling(start_x, start_y, rect, options)
     self.token_type = options.type
     self.asset      = resolveAsset(options.type)
     self.subTokens  = options.subTokens
+    self.value      = options.value
 
     applyFlingPhysics(self, rect, options)
 
@@ -332,6 +346,7 @@ function Token.new_attract(start_x, start_y, target_x, target_y, options)
         self.delay = defaultDelay()
     end
     self.token_type      = options.type
+    self.value           = options.value
     self.start_rotation  = 0
     self.target_rotation = shortest_rotation_target(0, options.target_rotation or 0)
     self.start_scale     = self.base_scale
@@ -693,6 +708,51 @@ function Token.drawAll()
       token:draw()
     end
   -- end
+end
+
+function Token.swapTypes(typeA, typeB)
+  local toA, toB = {}, {}
+  for _, token in ipairs(instances) do
+    if token.done and not token.is_terminal then
+      if token.token_type == typeA then
+        table.insert(toB, token)
+      elseif token.token_type == typeB then
+        table.insert(toA, token)
+      end
+    end
+  end
+  for _, token in ipairs(toB) do
+    token.token_type = typeB
+    token.asset      = resolveAsset(typeB)
+  end
+  for _, token in ipairs(toA) do
+    token.token_type = typeA
+    token.asset      = resolveAsset(typeA)
+  end
+end
+
+function Token.spawnMultiplied(types, count, rect, flingTarget)
+  local toSpawn = {}
+  for _, token in ipairs(instances) do
+    if token.done and not token.is_terminal then
+      for _, t in ipairs(types) do
+        if token.token_type == t then
+          for _ = 1, count - 1 do
+            table.insert(toSpawn, { x = token.x, y = token.y, tokenType = t })
+          end
+        end
+      end
+    end
+  end
+  for _, s in ipairs(toSpawn) do
+    Token.new_fling(s.x, s.y, rect, {
+      type        = s.tokenType,
+      bounces     = math.random(1, 2),
+      target_rect = flingTarget,
+      base_scale  = 1.25,
+      delay       = false,
+    })
+  end
 end
 
 function Token.isActive()

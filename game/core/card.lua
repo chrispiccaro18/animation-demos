@@ -185,6 +185,10 @@ function Card.load(dissolveShader, tiltShader)
     shuffle         = AssetManifest.get("tokens", "shuffle"),
     drawToDtor      = AssetManifest.get("tokens", "drawToDtor"),
     drawToHand      = AssetManifest.get("tokens", "drawToHand"),
+    multiplyAll      = AssetManifest.get("tokens", "multiplyAll"),
+    multiplyThreat   = AssetManifest.get("tokens", "multiplyThreat"),
+    multiplyProgress = AssetManifest.get("tokens", "multiplyProgress"),
+    flip             = AssetManifest.get("tokens", "flip"),
   }
 end
 
@@ -238,7 +242,7 @@ function Card:_initState(x, y, data)
       end
       if zone.hasTypedTokens and type(effects) == "table" then
         for i, effect in ipairs(effects) do
-          self:fillSlot(zone.id, i, effect.type, true)
+          self:fillSlot(zone.id, i, effect.type, true, effect.value)
         end
       elseif zone.tokenKey then
         local tokenType = (zone.tokenKey == "ramChip") and "ram" or zone.tokenKey
@@ -426,11 +430,11 @@ function Card:getZoneCanvasRect(zone)
   }
 end
 
-function Card:fillSlot(zone, index, tokenType, instant)
+function Card:fillSlot(zone, index, tokenType, instant, value)
   local zoneSlots = self._slots[zone]
   if zoneSlots and zoneSlots[index] then
     local slot = zoneSlots[index]
-    slot.token       = { token_type = tokenType }
+    slot.token       = { token_type = tokenType, value = value }
     slot.targetAlpha = 1
     if instant then slot.alpha = 1 end
   end
@@ -510,7 +514,8 @@ function Card:flingZone(zone, rect, options)
         local pos = self:getSlotPosition(zone, i)
         local flingOpts = {}
         for k, v in pairs(options or {}) do flingOpts[k] = v end
-        flingOpts.type = slot.token.token_type
+        flingOpts.type  = slot.token.token_type
+        flingOpts.value = slot.token.value
         if acc then flingOpts = acc:next(flingOpts) end
         Token.new_fling(pos.x, pos.y, rect, flingOpts)
         slot.token       = nil
@@ -722,7 +727,7 @@ function Card:restoreAllSlots()
     if n > 0 and self._slots[zone.id] then
       if zone.hasTypedTokens and type(effects) == "table" then
         for i, effect in ipairs(effects) do
-          self:fillSlot(zone.id, i, effect.type)
+          self:fillSlot(zone.id, i, effect.type, nil, effect.value)
         end
       elseif zone.tokenKey then
         local tokenType = (zone.tokenKey == "ramChip") and "ram" or zone.tokenKey

@@ -9,7 +9,7 @@ local DRAG       = 0.9   -- per-frame @ 60fps
 
 -- Game-unit constants (multiplied by SCALE_X/Y at runtime)
 local SPEED_MIN  = 3600
-local SPEED_MAX  = 8600
+local SPEED_MAX  = 9600
 local SIZE_MIN   = 40
 local SIZE_MAX   = 90
 local MIN_SPEED  = 80    -- game u/s; below this a piece comes to rest
