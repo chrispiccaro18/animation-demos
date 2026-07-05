@@ -37,6 +37,10 @@ local TOKEN_NAME = {
   drawToDtor       = "Draw To Dtor",
   dtor             = "Dtor",
   ram              = "RAM",
+  multiplyAll         = "Multiply All",
+  multiplyProgress    = "Multiply Progress",
+  multiplyThreat      = "Multiply Threat",
+  flip              = "Flip",
 }
 
 local TOKEN_DESC = {
@@ -50,6 +54,10 @@ local TOKEN_DESC = {
   drawToDtor       = "Draw a card to DTOR",
   dtor             = "Trigger DTOR effects",
   ram              = "RAM cost",
+  multiplyAll         = "Multiply all tokens",
+  multiplyProgress    = "Multiply progress tokens",
+  multiplyThreat      = "Multiply threat tokens",
+  flip              = "Flip progress and threat tokens",
 }
 
 local TOKEN_COLOR = {
@@ -63,6 +71,10 @@ local TOKEN_COLOR = {
   drawToDtor       = "warning",
   dtor             = "warning",
   ram              = "energy",
+  multiplyAll         = "danger",
+  multiplyProgress    = "draw",
+  multiplyThreat      = "critical",
+  flip              = "positiveNeg",
 }
 
 -- ── State ─────────────────────────────────────────────────────────────────────

@@ -120,7 +120,7 @@ local function resetGame()
   sequences.setDeck(deck)
   sequences.setHand(hand)
 
-  for _, cardData in pairs(CardData.levelThree) do
+  for _, cardData in pairs(CardData.levelTwo) do
   -- for _, cardData in pairs(CardData.startingDeck) do
   -- for _, cardData in pairs(CardData.cards) do
     local card = Card.new(
@@ -347,6 +347,7 @@ function love.update(dt)
   end
   if areas.scanner.left.active  then Token.triggerQuiverNear(areas.scanner.left.y,  nil, scannerRemaining(areas.scanner.left),  areas.scanner.left.direction)  end
   if areas.scanner.right.active then Token.triggerQuiverNear(areas.scanner.right.y, nil, scannerRemaining(areas.scanner.right), areas.scanner.right.direction) end
+  if areas.scanner.both.active then Token.triggerQuiverNear(areas.scanner.both.y, nil, scannerRemaining(areas.scanner.both), areas.scanner.both.direction) end
   events.updateAll()
   actionQueue.update()
   cardTooltip.clear()

@@ -390,7 +390,7 @@ function M.collectTooltipRequests(ht)
     local td = Dtor.getFrontEntryTooltipData()
     if td then
       frontShown = true
-      local titleStr = "Next DTOR Effect"
+      local titleStr = "Next Queued Effect"
       if td.nullified then titleStr = titleStr .. "  [Nullified]" end
       ht.request("tt:dtor:front", {
         side       = "left",
@@ -413,7 +413,7 @@ function M.collectTooltipRequests(ht)
       local td = Dtor.getSlotTooltipData(i)
       if td then
         anySlotShown = true
-        local titleStr = "DTOR Slot " .. i
+        local titleStr = "Queue Slot " .. i
         if td.nullified then titleStr = titleStr .. "  [Nullified]" end
         ht.request("tt:dtor:slot-" .. i, {
           side       = "left",
@@ -436,7 +436,7 @@ function M.collectTooltipRequests(ht)
       side       = "left",
       anchorX    = dq.x,
       anchorY    = dq.y,
-      title      = "DTOR Queue",
+      title      = "End Turn Queue",
       titleColor = Palette.warning,
       lines      = {
         n > 0 and (n .. " effect" .. (n == 1 and "" or "s") .. " queued")

@@ -9,6 +9,8 @@ local envEffects  = require("core.envEffects")
 local AssetManifest = require("assets.manifest")
 local ActionQueue = require("core.actionQueue")
 
+local _endTurnGlowDismissed = false
+
 local M = {}
 
 -- Start times for negative-tick pulse — reset when the negative state begins so
@@ -639,6 +641,43 @@ function M.collectAll(glow, hand, deck, mx, my)
         )
       end,
     })
+  end
+
+  -- End-turn nudge glow: pulse when queue is empty and hand is empty.
+  -- Dismissed by clicking the button; resets once conditions become false.
+  local handEmpty  = hand:handSize() == 0
+  local queueEmpty = not ActionQueue.isRunning()
+  if handEmpty and queueEmpty then
+    if areas.endTurn.state == "click" then
+      _endTurnGlowDismissed = true
+    end
+    if not _endTurnGlowDismissed then
+      local et  = areas.endTurn
+      local img = AssetManifest.get("endTurn", "idle")
+      glow:request("endturn-nudge", {
+        kind  = "image",
+        image = img,
+        x     = et.x,
+        y     = et.y,
+        sx    = SCALE_X,
+        sy    = SCALE_Y,
+        ox    = 0,
+        oy    = 0,
+        color = Palette.accent,
+        alpha = 0.55,
+        pulse = { speed = 1.5, min = 0.2, max = 1.0 },
+        light = {
+          x      = et.x + et.w * 0.5,
+          y      = et.y + et.h * 0.5,
+          w      = et.w,
+          h      = et.h,
+          radius = 80 * SCALE_X,
+          alpha  = 0.4,
+        },
+      }, "top")
+    end
+  else
+    _endTurnGlowDismissed = false
   end
 
   if draggingCard then

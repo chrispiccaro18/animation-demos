@@ -58,26 +58,30 @@ local TOKEN_NAME = {
   progressNegative = "Negative Progress",
   threatNegative   = "Negative Threat",
   drawToHand       = "Draw To Hand",
-  drawToDtor       = "Draw To Dtor",
+  drawToDtor       = "Draw To Queue",
   dtor             = "Dtor",
   ram              = "RAM",
+  multiplyAll         = "Multiply All",
+  multiplyProgress    = "Multiply Progress",
+  multiplyThreat      = "Multiply Threat",
+  flip              = "Flip",
 }
 
 local TOKEN_DESC = {
   progress         = "Increase progress level",
   threat           = "Increase threat level",
-  nullify          = "Nullify DTOR effect",
-  shuffle          = "Shuffle DTOR",
+  nullify          = "Nullify Queue effect",
+  shuffle          = "Shuffle Queue",
   progressNegative = "Decrease progress level",
   threatNegative   = "Decrease threat level",
   drawToHand       = "Draw a card to hand",
-  drawToDtor       = "Draw a card to DTOR",
-  dtor             = "Trigger DTOR effects",
+  drawToDtor       = "Draw a card to Queue",
+  dtor             = "Trigger Queue effects",
   ram              = "Used to play cards",
-  multiplyAll      = "Double all tokens on desk",
-  multiplyProgress = "Double progress tokens on desk",
-  multiplyThreat   = "Double threat tokens on desk",
-  flip             = "Flip progress/threat/draw tokens",
+  multiplyAll         = "Multiply all tokens",
+  multiplyProgress    = "Multiply progress tokens",
+  multiplyThreat      = "Multiply threat tokens",
+  flip              = "Flip progress and threat tokens",
 }
 
 local TOKEN_COLOR = {
@@ -91,10 +95,10 @@ local TOKEN_COLOR = {
   drawToDtor       = "warning",
   dtor             = "warning",
   ram              = "energy",
-  multiplyAll      = "warning",
-  multiplyProgress = "positive",
-  multiplyThreat   = "danger",
-  flip             = "warning",
+  multiplyAll         = "danger",
+  multiplyProgress    = "draw",
+  multiplyThreat      = "critical",
+  flip              = "positiveNeg",
 }
 
 -- ── State ─────────────────────────────────────────────────────────────────────

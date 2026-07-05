@@ -162,8 +162,7 @@ function areas.load()
       color       = { 0, 1, 0.4 },
       trailLength = 1000 * SCALE_Y,
       segments    = 48,
-      boundLine   = areas.leftLine,
-      boundSide   = "x1",
+      boundX1     = areas.leftLine,
     },
     right = {
       x1          = dk.x + dk.w / 2,
@@ -175,9 +174,21 @@ function areas.load()
       color       = { 1, 0.2, 0.2 },
       trailLength = 1000 * SCALE_Y,
       segments    = 48,
-      boundLine   = areas.rightLine,
-      boundSide   = "x2",
+      boundX2     = areas.rightLine,
     },
+    both = {
+      x1          = dk.x,
+      x2          = dk.x + dk.w,
+      y           = dk.y,
+      direction   = 1,
+      speed       = scannerSpeed,
+      active      = false,
+      color       = { 0.2, 0.8, 1 },
+      trailLength = 1000 * SCALE_Y,
+      segments    = 48,
+      boundX1     = areas.leftLine,
+      boundX2     = areas.rightLine,
+    }
   }
 
   areas.discardDeskArea = {
@@ -242,11 +253,11 @@ local function lineXAtY(line, y)
 end
 
 local function scannerX1(s, y)
-  return s.boundSide == "x1" and lineXAtY(s.boundLine, y) or s.x1
+  return s.boundX1 and lineXAtY(s.boundX1, y) or s.x1
 end
 
 local function scannerX2(s, y)
-  return s.boundSide == "x2" and lineXAtY(s.boundLine, y) or s.x2
+  return s.boundX2 and lineXAtY(s.boundX2, y) or s.x2
 end
 
 function areas.drawScanners()
