@@ -1,3 +1,25 @@
+fire immediately: 
+chain tokens 
+nullify
+draw
+shuffle
+
+multiply all does ram too?
+
+nullify next queue slot
+
+env pops
+turn off positive particle effect
+turn on negative particle effect for beginning of turn
+
+starting deck and pool
+
+simplier tutorial
+acutal menu with
+  reset
+  tutorial
+  feedback
+
 dtor handle more than 6? in stack
 amount of ram text
 highlight ram when hovering? dragging card over play area?

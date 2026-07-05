@@ -1,6 +1,7 @@
 https = nil
 SCALE_X = 0
 SCALE_Y = 0
+POSITIVE_ENV_EFFECTS = false
 local overlayStats   = require("lib.overlayStats")
 local speedControl   = require("lib.speedControl")
 local runtimeLoader = require("runtime.loader")
@@ -39,7 +40,9 @@ local cardTooltip    = require("core.cardTooltip")
 local hoverTooltip   = require("core.hoverTooltip")
 local tutorial       = require("core.tutorial")
 local hud            = require("core.hud")
-local gameOverScreen = require("core.gameOverScreen")
+local gameOverScreen  = require("core.gameOverScreen")
+local Run             = require("core.run")
+local cardPickScreen  = require("core.cardPickScreen")
 
 local glow = nil
 
@@ -68,7 +71,8 @@ local viewX      = 0
 local viewY      = 0
 local viewScale  = 1
 
-local tutorialActive = false
+local tutorialActive      = false
+local _levelCompleteTimer = nil
 
 local function updateViewport()
   local sw = love.graphics.getWidth()
@@ -84,7 +88,13 @@ local function toGame(x, y)
   return (x - viewX) / viewScale, (y - viewY) / viewScale
 end
 
-local function resetGame()
+local resetGame   -- forward declaration (cardPickScreen needs the reference before definition)
+local function fullReset()
+  Run.newRun()
+  resetGame()
+end
+
+resetGame = function()
   events.loadAll()
   actionQueue.reset()
   Token.clearAll()
@@ -106,12 +116,13 @@ local function resetGame()
   areas.scanner.right.active = false
   areas.scanner.right.y = areas.desk.y
   areas.pool.chips = {}
-  message.text         = ""
-  message.subtitle     = ""
-  message.textColor    = { 1, 1, 1, 1 }
-  message.current      = { scale = 1 }
-  message.target       = { scale = 1 }
-  gameOver = nil
+  message.text          = ""
+  message.subtitle      = ""
+  message.textColor     = { 1, 1, 1, 1 }
+  message.current       = { scale = 1, alpha = 1.0 }
+  message.target        = { scale = 1, alpha = 1.0 }
+  gameOver              = nil
+  _levelCompleteTimer   = nil
   gameOverScreen.reset()
 
   hand = NewHand.new()
@@ -120,24 +131,32 @@ local function resetGame()
   sequences.setDeck(deck)
   sequences.setHand(hand)
 
-  for _, cardData in pairs(CardData.levelTwo) do
-  -- for _, cardData in pairs(CardData.startingDeck) do
-  -- for _, cardData in pairs(CardData.cards) do
-    local card = Card.new(
-      canvasW / 2,
-      canvasH / 2,
-      cardData
-    )
+  for _, cardData in ipairs(Run.getCurrentDeckData()) do
+    local card = Card.new(canvasW / 2, canvasH / 2, cardData)
     deck:add(card)
   end
   deck:shuffle()
 
-  for _ = 1, 4 do
-    sequences.dealCardToHand()
-  end
+  sequences.beginTurn()
 
   camera:setIdle()
 
+  message.text          = "LEVEL 0 START"
+  message.textColor     = Palette.accent
+  -- message.textColor     = { 0.9, 0.9, 1.0, 1.0 }
+  message.current.scale = 1.5
+  message.target.scale  = 1.0
+  message.current.alpha = 1.0
+  message.target.alpha  = 0.0
+  events.push({
+    fn = function()
+      message.text          = ""
+      message.current.alpha = 1.0
+      message.target.alpha  = 1.0
+    end,
+    blocking = false, blockable = false, persistent = false,
+    delay = 1.5, type = "before",
+  })
   -- local ram1X, ram1Y = areas.randomPoolPosition()
   -- areas.addPoolChip(ram1X, ram1Y)
   -- local ram2X, ram2Y = areas.randomPoolPosition()
@@ -206,11 +225,13 @@ function love.load()
   glow = Glow.load(canvasW, canvasH)
   hud.load(
     function() tutorialActive = true end,
-    resetGame,
+    fullReset,
     function() love.system.openURL("https://forms.gle/sjbzYgS94u2w27iq5") end
   )
-  gameOverScreen.load(resetGame)
+  gameOverScreen.load(fullReset)
+  cardPickScreen.load(resetGame)
 
+  Run.newRun()
   resetGame()
 end
 
@@ -266,10 +287,11 @@ function love.draw()
   message.draw()
   glow:renderMid()
   hand:drawDragged()
-  glow:renderTop()
   gameOverScreen.draw()
-  cardTooltip.draw()
+  cardPickScreen.draw()
+  glow:renderTop()
   hoverTooltip.draw()
+  cardTooltip.draw()
   love.graphics.pop()
 
   hud.draw()
@@ -289,6 +311,7 @@ end
 local function collectGlowRequests(mx, my)
   glowRequests.collectAll(glow, hand, deck, mx, my)
   cardTooltip.collectGlowRequests(glow)
+  cardPickScreen.collectGlowRequests(glow)
 end
 
 function love.update(dt)
@@ -304,6 +327,31 @@ function love.update(dt)
   hud.update(mouseX, mouseY)
   pulse.update(realDt)
   message.update(realDt)
+
+  -- Level complete: show celebration message, then transition to card pick screen
+  if gameOver == "levelComplete" then
+    _levelCompleteTimer = (_levelCompleteTimer or 0) + realDt
+    if _levelCompleteTimer >= 1.5 then
+      gameOver              = nil
+      _levelCompleteTimer   = nil
+      cardPickScreen.show(Run.getOfferCards())
+    end
+    return
+  end
+
+  -- Card pick screen: handle its own update + tooltips
+  if cardPickScreen.isActive() then
+    cardPickScreen.update(realDt, mouseX, mouseY)
+    cardTooltip.clear()
+    hoverTooltip.clear()
+    cardPickScreen.collectTooltipRequests()
+    cardTooltip.update(mouseX, mouseY)
+    hoverTooltip.update()
+    collectGlowRequests(mouseX, mouseY)
+    glow:update(realDt)
+    return
+  end
+
   progressBar.update(realDt)
   threatBar.update(realDt)
   envEffects.update(gameDt)
@@ -327,6 +375,7 @@ function love.update(dt)
         fn       = function()
           hand:setActiveCardDraw(false)
           sequences.endTurn()
+          Run.save()
         end,
         onReject = function(_item)
           areas.endTurn.frozen    = false
@@ -372,6 +421,10 @@ function love.mousepressed(x, y, button, istouch, presses)
     tutorial.mousepressed(gx, gy, button)
     return
   end
+  if cardPickScreen.isActive() then
+    cardPickScreen.mousepressed(gx, gy, button)
+    return
+  end
   if gameOverScreen.mousepressed(gx, gy, button) then return end
   if hud.mousepressed(gx, gy, button) then return end
   Debris.mousePressed(gx, gy, button)
@@ -389,7 +442,7 @@ function love.keypressed(key)
   if key == "escape" and love.system.getOS() ~= "Web" then
     love.event.quit()
   elseif key == "r" then
-    resetGame()
+    fullReset()
   elseif key == "return" then
     if tutorialActive then
       tutorialActive = false
@@ -483,13 +536,15 @@ function love.touchreleased(id, x, y, dx, dy, pressure)
     local elapsed = love.timer.getTime() - touchStartTime
     if elapsed < TAP_THRESHOLD then
       if maxTouches == 3 then
-        resetGame()
+        fullReset()
       elseif maxTouches == 2 then
         tutorialActive = not tutorialActive
       elseif maxTouches == 1 then
         local gx, gy = toGame(x, y)
         if tutorialActive then
           tutorial.touchpressed(gx, gy)
+        elseif cardPickScreen.isActive() then
+          cardPickScreen.touchpressed(gx, gy)
         elseif gameOverScreen.touchpressed(gx, gy) then
           -- handled
         else

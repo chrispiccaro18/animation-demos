@@ -153,8 +153,8 @@ end
 
 function EnvEffects.update(dt)
   local total = ANIM_IN + ANIM_OUT
-  for _, a in pairs(_anims) do
-    if a.active then
+  for k, a in pairs(_anims) do
+    if (POSITIVE_ENV_EFFECTS or k == "negative") and a.active then
       a.t = a.t + dt
       if a.t >= total then
         a.scale  = 1.0
@@ -170,7 +170,7 @@ function EnvEffects.update(dt)
 
   local tTotal = THRESH_IN + THRESH_OUT
   for _, a in pairs(_thresholdAnims) do
-    if a.active then
+    if POSITIVE_ENV_EFFECTS and a.active then
       a.t = a.t + dt
       if a.t >= tTotal then
         a.scale  = 1.0
@@ -197,9 +197,9 @@ function EnvEffects.getSingleIconGlowData(index)
   local img, glowColor
   if index == "negative" then
     img = _negative; glowColor = Palette.danger
-  elseif index == 1 then
+  elseif POSITIVE_ENV_EFFECTS and index == 1 then
     img = EnvEffects.isActive(1) and _positive or _positiveInactive; glowColor = Palette.positive
-  elseif index == 2 then
+  elseif POSITIVE_ENV_EFFECTS and index == 2 then
     img = EnvEffects.isActive(2) and _positive or _positiveInactive; glowColor = Palette.positive
   end
   if not img then return nil end
@@ -228,11 +228,11 @@ end
 -- animAlpha is pre-computed so callers don't need to know ANIM_PEAK.
 function EnvEffects.getIconGlowData()
   if not (_positive and _positiveInactive and _negative) then return {} end
-  local defs = {
-    { index = "negative", img = _negative,                                                 glowColor = Palette.danger   },
-    { index = 1,          img = EnvEffects.isActive(1) and _positive or _positiveInactive, glowColor = Palette.positive },
-    { index = 2,          img = EnvEffects.isActive(2) and _positive or _positiveInactive, glowColor = Palette.positive },
-  }
+  local defs = { { index = "negative", img = _negative, glowColor = Palette.danger } }
+  if POSITIVE_ENV_EFFECTS then
+    defs[#defs + 1] = { index = 1, img = EnvEffects.isActive(1) and _positive or _positiveInactive, glowColor = Palette.positive }
+    defs[#defs + 1] = { index = 2, img = EnvEffects.isActive(2) and _positive or _positiveInactive, glowColor = Palette.positive }
+  end
   local result = {}
   for _, def in ipairs(defs) do
     local x, y      = EnvEffects.getPosition(def.index)
@@ -257,11 +257,11 @@ end
 function EnvEffects.draw()
   if not (_positive and _positiveInactive and _negative) then return end
 
-  local items = {
-    { index = "negative", img = _negative,                                                 glowColor = Palette.danger   },
-    { index = 1,          img = EnvEffects.isActive(1) and _positive or _positiveInactive, glowColor = Palette.positive },
-    { index = 2,          img = EnvEffects.isActive(2) and _positive or _positiveInactive, glowColor = Palette.positive },
-  }
+  local items = { { index = "negative", img = _negative, glowColor = Palette.danger } }
+  if POSITIVE_ENV_EFFECTS then
+    items[#items + 1] = { index = 1, img = EnvEffects.isActive(1) and _positive or _positiveInactive, glowColor = Palette.positive }
+    items[#items + 1] = { index = 2, img = EnvEffects.isActive(2) and _positive or _positiveInactive, glowColor = Palette.positive }
+  end
 
   table.sort(items, function(a, b)
     return (not _anims[a.index].active) and _anims[b.index].active

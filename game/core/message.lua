@@ -2,12 +2,12 @@ local AssetManifest = require("assets.manifest")
 local animation     = require("lib.animation")
 
 local message = {
-  text         = "",
-  subtitle     = "",
-  textColor    = { 1, 1, 1, 1 },
+  text          = "",
+  subtitle      = "",
+  textColor     = { 1, 1, 1, 1 },
   subtitleColor = { 1, 1, 1, 0.7 },
-  current      = { scale = 1 },
-  target       = { scale = 1 },
+  current       = { scale = 1, alpha = 1.0 },
+  target        = { scale = 1, alpha = 1.0 },
 }
 
 local messageFont  = nil
@@ -23,6 +23,7 @@ end
 
 function message.update(dt)
   message.current.scale = animation.expDecay(message.current.scale, message.target.scale, 18, dt)
+  message.current.alpha = animation.expDecay(message.current.alpha, message.target.alpha, 2, dt)
 end
 
 function message.draw()
@@ -32,15 +33,18 @@ function message.draw()
   love.graphics.setFont(messageFont)
   local textW = messageFont:getWidth(message.text)
   local textH = messageFont:getHeight()
+  local alpha = message.current.alpha
   love.graphics.push()
   love.graphics.translate(W / 2, H / 2)
   love.graphics.scale(s, s)
-  love.graphics.setColor(message.textColor)
+  local tc = message.textColor
+  love.graphics.setColor(tc[1], tc[2], tc[3], (tc[4] or 1) * alpha)
   love.graphics.print(message.text, -textW / 2, -textH / 2)
   if subtitleFont and message.subtitle ~= "" then
     love.graphics.setFont(subtitleFont)
     local subW = subtitleFont:getWidth(message.subtitle)
-    love.graphics.setColor(message.subtitleColor)
+    local sc   = message.subtitleColor
+    love.graphics.setColor(sc[1], sc[2], sc[3], (sc[4] or 1) * alpha)
     love.graphics.print(message.subtitle, -subW / 2, textH / 2 + 20)
   end
   love.graphics.pop()

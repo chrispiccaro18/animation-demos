@@ -43,7 +43,7 @@ function M.reset()
 end
 
 function M.update(dt, mx, my)
-  if gameOver and not _prevGameOver then
+  if gameOver == "loss" and not _prevGameOver then
     _prevGameOver = true
     _timer        = 0
     _ready        = false

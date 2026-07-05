@@ -130,11 +130,11 @@ function ProgressBar.draw()
   end
   love.graphics.setColor(1, 1, 1, 1)
 
-  for _, ind in ipairs(ProgressBar.getEnvIndicatorPositions()) do
-    local iw_ind, ih_ind = ind.asset:getDimensions()
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(ind.asset, ind.cx, ind.cy, 0, SCALE_X, SCALE_Y, iw_ind / 2, ih_ind / 2)
-  end
+  -- for _, ind in ipairs(ProgressBar.getEnvIndicatorPositions()) do
+  --   local iw_ind, ih_ind = ind.asset:getDimensions()
+  --   love.graphics.setColor(1, 1, 1, 1)
+  --   love.graphics.draw(ind.asset, ind.cx, ind.cy, 0, SCALE_X, SCALE_Y, iw_ind / 2, ih_ind / 2)
+  -- end
 
   if _font and _titleFont then
     love.graphics.setColor(1, 1, 1, 1)

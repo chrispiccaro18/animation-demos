@@ -3,6 +3,7 @@ local particles     = require("core.particles")
 local areas         = require("core.areas")
 local progressBar   = require("core.progressBar")
 local threatBar     = require("core.threatBar")
+local Run           = require("core.run")
 local envEffects    = require("core.envEffects")
 local message       = require("core.message")
 local Token         = require("core.token")
@@ -386,11 +387,14 @@ local function terminalEvent(tokenType)
           end
         end
         if progressBar.isFull() then
-          gameOver = "win"
-          message.text          = "SUCCESS"
+          gameOver              = "levelComplete"
+          Run.levelComplete()
+          message.text          = "LEVEL COMPLETE"
           message.subtitle      = ""
           message.textColor     = { 0.4, 1, 0.6, 1 }
           message.current.scale = 6
+          message.current.alpha = 1.0
+          message.target.alpha  = 1.0
           Audio.playSuccess()
         elseif threatBar.isFull() then
           gameOver = "loss"
@@ -616,7 +620,6 @@ function sequences.restoreCard(card)
       _deck:add(card)
       Camera:setIdle()
       -- Dtor.compactSlots()
-      areas.endTurn.frozen = false
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.1, type = "after",
@@ -635,20 +638,6 @@ function sequences.restoreCard(card)
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
-  })
-  events.push({
-    fn = function()
-      local handSize = _hand:handSize()
-      local handMax = 5
-      local toDeal = math.min(handMax - handSize, 4)
-      if toDeal < 0 then toDeal = 0 end
-      -- local toDeal = 4
-      for _ = 1, toDeal do
-        sequences.dealCardToHand()
-      end
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0.1, type = "after",
   })
 end
 
@@ -990,18 +979,67 @@ function sequences.play(card, camera)
   })
 end
 
-function sequences.endTurn()
+function sequences.beginTurn()
+  local level = Run.getLevel()
 
+  events.push({
+    fn = function() areas.endTurn.frozen = true end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  })
+
+  if level > 0 then
+    for i = 1, level do
+      pushAnimAndFling("negative", "threat", i > 1)
+    end
+    -- events.push({
+    --   fn = function() return Token.allDone() end,
+    --   blocking = true, blockable = true, persistent = false,
+    --   delay = 0, type = "poll",
+    -- })
+    -- sequences.scan(areas.scanner.both)
+    -- events.push({
+    --   fn = function()
+    --     return Token.allDone() and not events.isRunning("terminalArrive")
+    --   end,
+    --   blocking = true, blockable = true, persistent = false,
+    --   delay = 0, type = "poll",
+    -- })
+  end
+
+  events.push({
+    fn = function()
+      local toDeal = math.min(5 - _hand:handSize(), 4)
+      if toDeal < 0 then toDeal = 0 end
+      for _ = 1, toDeal do
+        sequences.dealCardToHand()
+      end
+      events.push({
+        fn = function() areas.endTurn.frozen = false end,
+        blocking = true, blockable = true, persistent = false,
+        delay = 0, type = "immediate",
+      })
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0.25, type = "before",
+  })
+end
+
+function sequences.endTurn()
   if not Dtor.hasEntry() then
-    Camera:setIdle()
-    areas.endTurn.frozen = false
+    events.push({
+      fn = function() Camera:setIdle() end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "immediate",
+    })
+    sequences.beginTurn()
     return
   end
 
   local entry = Dtor.peekEntry()
   if not entry then
     Camera:setIdle()
-    areas.endTurn.frozen = false
+    sequences.beginTurn()
     return
   end
 
@@ -1012,15 +1050,11 @@ function sequences.endTurn()
     fn = function()
       local cx = SCALE_X * 1920
       local cy = SCALE_Y * 1080
-      -- local cx = love.graphics.getWidth() / 2
-      -- local cy = love.graphics.getHeight() / 2
-      -- local cx = Dtor.area.x + Dtor.area.w / 2
-      -- local cy = Dtor.area.y + Dtor.area.h / 2
       card:setZoneState("idle")
       card.current.x = cx
       card.current.y = cy
-      card.target.x = cx
-      card.target.y = cy
+      card.target.x  = cx
+      card.target.y  = cy
       Camera:lookAt(card)
     end,
     blocking = true, blockable = true, persistent = false,
@@ -1044,9 +1078,7 @@ function sequences.endTurn()
         local idx = slotIndices[1]
         Dtor.releaseSlot(idx)
         Dtor.compactSlots()
-        -- queueEnvEffects()
         sequences.scan(areas.scanner.both)
-        -- sequences.scan(areas.scanner.right)
         events.push({
           fn = function()
             return Token.allDone() and not events.isRunning("terminalArrive")
@@ -1073,9 +1105,7 @@ function sequences.endTurn()
           blocking = true, blockable = true, persistent = false,
           delay = 0, type = "poll",
         })
-        -- queueEnvEffects()
         sequences.scan(areas.scanner.both)
-        -- sequences.scan(areas.scanner.right)
         events.push({
           fn = function()
             return Token.allDone() and not events.isRunning("terminalArrive")
@@ -1085,6 +1115,7 @@ function sequences.endTurn()
         })
         sequences.restoreCard(card)
       end
+      sequences.beginTurn()
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.1, type = "after",

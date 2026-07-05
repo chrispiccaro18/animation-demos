@@ -215,7 +215,8 @@ function M.load()
   _state = {}
 
   -- Env effect icons (negative, 1, 2) — mutually exclusive; see M.update()
-  for _, idx in ipairs({ "negative", 1, 2 }) do
+  for _, idx in ipairs({ "negative" }) do
+  -- for _, idx in ipairs({ "negative", 1, 2 }) do
     local b = EnvEffects.getIconHitBounds(idx)
     if b then
       local cx, cy, hw, hh = b.cx, b.cy, b.hw, b.hh
@@ -229,19 +230,19 @@ function M.load()
   end
 
   -- Progress bar env-threshold indicators (bidirectional link to env icons)
-  local inds = ProgressBar.getEnvIndicatorPositions()
-  for _, ind in ipairs(inds) do
-    local cx   = ind.cx
-    local cy   = ind.cy
-    local hw   = ind.iw * SCALE_X / 2 * 1.4
-    local hh   = ind.ih * SCALE_Y / 2 * 1.4
-    local envI = ind.envIndex
-    addZone(
-      "progress-ind:" .. envI,
-      function(mx, my) return hitRect(mx, my, cx, cy, hw, hh) end,
-      function(glow)   glowEnvIcon(glow, envI) end
-    )
-  end
+  -- local inds = ProgressBar.getEnvIndicatorPositions()
+  -- for _, ind in ipairs(inds) do
+  --   local cx   = ind.cx
+  --   local cy   = ind.cy
+  --   local hw   = ind.iw * SCALE_X / 2 * 1.4
+  --   local hh   = ind.ih * SCALE_Y / 2 * 1.4
+  --   local envI = ind.envIndex
+  --   addZone(
+  --     "progress-ind:" .. envI,
+  --     function(mx, my) return hitRect(mx, my, cx, cy, hw, hh) end,
+  --     function(glow)   glowEnvIcon(glow, envI) end
+  --   )
+  -- end
 
   -- Dtor column area (fallback — before slot zones so slot zones can suppress it)
   local dq = Dtor.area
@@ -353,9 +354,14 @@ function M.collectTooltipRequests(ht)
       if d then
         local b = EnvEffects.getIconHitBounds(idx)
         local lines = {}
-        lines[#lines + 1] = "TRIGGER: End Turn"
-        local status = (d.isActive or d.isNegative) and "Active" or "Inactive"
-        lines[#lines + 1] = "STATUS: " .. status
+        lines[#lines + 1] = "TRIGGER: Beginning of Turn"
+        -- local status = (d.isActive or d.isNegative) and "Active" or "Inactive"
+        -- lines[#lines + 1] = "STATUS: " .. status
+        local Run = require("core.run")
+        local level = Run.getLevel()
+        if level then
+          lines[#lines + 1] = "Current Level: " .. level
+        end
         if d.threshold then
           lines[#lines + 1] = "THRESHOLD: " .. d.threshold .. " progress level"
         end
@@ -371,7 +377,8 @@ function M.collectTooltipRequests(ht)
           side         = "right",
           anchorX      = b.cx + b.hw,
           anchorY      = iconTop,
-          title        = d.name,
+          title        = "Threat per Level",
+          -- title        = d.name,
           titleColor   = titleColor,
           effects      = d.effects,
           lines        = lines,
