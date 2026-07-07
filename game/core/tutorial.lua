@@ -18,7 +18,7 @@ local EXTRA_LEAD_D = 14
 local PARA_GAP_D   = 44
 local CORNER_R_D   = 28
 local LINE_W_D     = 4
-local BG_ALPHA     = 0.90
+local BG_ALPHA     = 1.0
 local SPRITE_GAP_D = 8
 
 local _vignette = nil
@@ -34,26 +34,27 @@ local ARROW = "=>"
 
 local PARAGRAPHS = {
   {
-    "Your goal is to fulfill {c:positive|PROGRESS LEVEL} before {c:danger|THREAT LEVEL}.",
+    "Your goal is to fill the {c:positive|PROGRESS LEVEL} before the {c:danger|THREAT LEVEL}.",
     "{progress} = {c:positive|PROGRESS}, {threat} = {c:danger|THREAT}",
     -- "Your goal is to fill {c:positive|PROGRESS} ({progress} " .. ARROW .. " {progressTick}) before {c:danger|THREAT}  {threat} " .. ARROW .. " {threatTick}.",
   },
   {
-    "{c:draw|DISCARD} cards to gain {c:energy|RAM}. {c:draw|PLAY} cards by spending {c:energy|RAM}.",
+    "Drag cards to the RIGHT to {c:draw|DISCARD} and gain {c:energy|ENERGY}.",
+    "Drag cards to the LEFT to {c:draw|PLAY} which spends {c:energy|ENERGY} and adds the card's tokens to the desk.",
     -- "{c:draw|DISCARD} cards to gain {c:energy|RAM}.",
     -- "{c:draw|PLAY} cards by spending {c:energy|RAM}.",
-    "{ram} = {c:energy|RAM}",
+    "{ram} = {c:energy|ENERGY}",
   },
   {
-    "Discarded cards also add their {c:warning|DTOR} effect to the {c:warning|DTOR} Queue.",
-    "{dtor*5} = {c:warning|DTOR} effect",
+    "Discarded cards also add tokens to the {c:accent|END TURN} {c:warning|QUEUE}.",
+    "{dtor*5} = {c:accent|END TURN} {c:warning|QUEUE} tokens",
   },
   {
     "When you {c:accent|END TURN}:",
-    " - the top {c:warning|DTOR} effect triggers",
-    " - active ENV effects trigger",
-    " - that {c:warning|DTOR} card returns to the bottom of your draw pile",
-    " - your hand refills",
+    " - the top {c:warning|QUEUE} tokens are added to the desk",
+    " - tokens on the desk are scored",
+    -- " - that {c:warning|DTOR} card returns to the bottom of your draw pile",
+    -- " - your hand refills",
   },
   {
     '"R" or three finger tap on touch resets the game. Feel free to experiment!',

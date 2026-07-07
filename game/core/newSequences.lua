@@ -47,13 +47,28 @@ local function playFlingOptions()
     downward = true
   }
 end
-local function endTurnFlingOptions(token_type, direction)
+
+local function endTurnFlingOptions(token_type, direction, acc)
   local flingDirection = direction or "downward"
+
   return {
     type       = token_type,
     bounces    = math.random(1, 3),
     base_scale = 1.25,
-    delay      = false,
+    delay      = acc and acc:nextDelay() or false,
+    target_rect = areas.flingTarget,
+    [flingDirection] = true,
+  }
+end
+
+local function beginningOfTurnFlingOptions(token_type, direction, acc)
+  local flingDirection = direction or "downward"
+
+  return {
+    type       = token_type,
+    bounces    = math.random(1, 3),
+    base_scale = 1.25,
+    delay      = acc and acc:nextDelay() or false,
     target_rect = areas.flingTarget,
     [flingDirection] = true,
   }
@@ -61,28 +76,28 @@ end
 
 local ENV_EFFECT_DELAY = 0.35
 
-local function pushAnimAndFling(index, tokenType, withDelay)
-  events.push({
-    fn = function() envEffects.triggerAnim(index) end,
-    blocking = true, blockable = true, persistent = false,
-    delay = withDelay and ENV_EFFECT_DELAY or 0,
-    type  = withDelay and "after" or "immediate",
-  })
-  events.push({
-    fn = function() return envEffects.animDone(index) end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll",
-  })
-  events.push({
-    fn = function()
-      local x, y = envEffects.getPosition(index)
-      Token.new_fling(x, y, areas.desk, endTurnFlingOptions(tokenType, "rightward"))
-      Audio.playImpactIn()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate",
-  })
-end
+-- local function pushAnimAndFling(index, tokenType, withDelay)
+--   events.push({
+--     fn = function() envEffects.triggerAnim(index) end,
+--     blocking = false, blockable = true, persistent = false,
+--     delay = withDelay and ENV_EFFECT_DELAY or 0,
+--     type  = withDelay and "after" or "immediate",
+--   })
+--   -- events.push({
+--   --   fn = function() return envEffects.animDone(index) end,
+--   --   blocking = true, blockable = true, persistent = false,
+--   --   delay = 0, type = "poll",
+--   -- })
+--   events.push({
+--     fn = function()
+--       local x, y = envEffects.getPosition(index)
+--       Token.new_fling(x, y, areas.desk, endTurnFlingOptions(tokenType, "rightward"))
+--       Audio.playImpactIn()
+--     end,
+--     blocking = false, blockable = true, persistent = false,
+--     delay = 0, type = "immediate",
+--   })
+-- end
 
 local function queueEnvEffects()
   pushAnimAndFling("negative", "threat",     false)
@@ -124,7 +139,7 @@ local function terminalEvent(tokenType)
       fn = function()
         if tokenType == "progress" then
           progressBar.increment()
-          fireEnvThresholdCeremony()
+          -- fireEnvThresholdCeremony()
           local pbCount = math.floor(8 + 12 * (progressBar.getCount() / progressBar.getMax()))
           particles.emit("progress", areas.progressDestination.x, areas.progressDestination.y, pbCount, {
             lifetimeMin   = 0.25,
@@ -139,7 +154,7 @@ local function terminalEvent(tokenType)
           screenshake.trigger(5, 0.2)
         elseif tokenType == "progressNegative" then
           progressBar.decrement()
-          fireEnvThresholdCeremony()
+          -- fireEnvThresholdCeremony()
           local pbCount = math.floor(8 + 12 * (progressBar.getCount() / progressBar.getMax()))
           particles.emit("progressNegative", areas.progressDestination.x, areas.progressDestination.y, pbCount, {
             lifetimeMin   = 0.25,
@@ -515,7 +530,7 @@ end
 
 function sequences.dealCardToHand(eventType, delay)
   if not eventType then eventType = "default" end
-  if not delay then delay = 0.5 end
+  if not delay then delay = 0.25 end
   events.push({
     fn = function()
       local card = _deck:deal()
@@ -869,14 +884,14 @@ function sequences.play(card, camera)
   })
   events.push({
     fn = function()
-      card.decay = 8
+      -- card.decay = 8
       card:enterSlot(471 * SCALE_Y)
       card.target.y = 440 * SCALE_Y + (card.h / 2) * SCALE_Y
       card.target.x = card.current.x + 50 * SCALE_X
       card.target.y = 471 * SCALE_Y
     end,
     blocking = true, blockable = true, persistent = false,
-    delay = 0.5, type = "before"
+    delay = 0.25, type = "before"
   })
   events.push({
     fn = function()
@@ -902,7 +917,7 @@ function sequences.play(card, camera)
   -- })
   events.push({
     fn = function()
-      card.decay = 12
+      -- card.decay = 12
       card:clearZone("topEnergyHoles")
       card:flingZone("playEffect", areas.desk, playFlingOptions())
     end,
@@ -989,8 +1004,35 @@ function sequences.beginTurn()
   })
 
   if level > 0 then
+
+    local flingAcc = Token.makeCascadeAccumulator()
+    -- Pre-compute each token's launch delay so the env anim can hold at peak
+    -- until the final token is flung. The last delay is the time (from the
+    -- first fling) until the last token launches.
+    local flingDelays = {}
+    for i = 1, level do flingDelays[i] = flingAcc:nextDelay() end
+    local holdDuration = flingDelays[level] or 0
+
+    -- Trigger the anim once, pinned at full scale for the whole cascade.
+    events.push({
+      fn = function() envEffects.triggerAnim("negative", holdDuration) end,
+      blocking = false, blockable = true, persistent = false,
+      delay = 0, type = "immediate",
+    })
+
     for i = 1, level do
-      pushAnimAndFling("negative", "threat", i > 1)
+      local d = flingDelays[i]
+      events.push({
+        fn = function()
+          local x, y = envEffects.getPosition("negative")
+          local opts = endTurnFlingOptions("threat", "rightward")
+          opts.delay = d
+          Token.new_fling(x, y, areas.desk, opts)
+          Audio.playImpactIn()
+        end,
+        blocking = false, blockable = true, persistent = false,
+        delay = 0, type = "immediate",
+      })
     end
     -- events.push({
     --   fn = function() return Token.allDone() end,
@@ -1032,13 +1074,29 @@ function sequences.endTurn()
       blocking = true, blockable = true, persistent = false,
       delay = 0, type = "immediate",
     })
+    sequences.scan(areas.scanner.both)
+      events.push({
+        fn = function()
+          return Token.allDone() and not events.isRunning("terminalArrive")
+        end,
+        blocking = true, blockable = true, persistent = false,
+        delay = 0, type = "poll",
+      })
     sequences.beginTurn()
     return
   end
 
   local entry = Dtor.peekEntry()
   if not entry then
-    Camera:setIdle()
+    -- Camera:setIdle()
+    sequences.scan(areas.scanner.both)
+      events.push({
+        fn = function()
+          return Token.allDone() and not events.isRunning("terminalArrive")
+        end,
+        blocking = true, blockable = true, persistent = false,
+        delay = 0, type = "poll",
+      })
     sequences.beginTurn()
     return
   end
@@ -1089,8 +1147,9 @@ function sequences.endTurn()
         sequences.restoreCard(card)
       else
         local sx, sy = Dtor.getTextCenter()
+        -- local flingAcc = Token.makeCascadeAccumulator()
         for _, effect in ipairs(card.data.dtor or {}) do
-          local opts = endTurnFlingOptions(effect.type)
+          local opts = endTurnFlingOptions(effect.type, nil)
           opts.value = effect.value
           Token.new_fling(sx, sy, areas.desk, opts)
         end

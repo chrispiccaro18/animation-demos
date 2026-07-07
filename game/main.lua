@@ -71,7 +71,7 @@ local viewX      = 0
 local viewY      = 0
 local viewScale  = 1
 
-local tutorialActive      = false
+local tutorialActive      = true
 local _levelCompleteTimer = nil
 
 local function updateViewport()
@@ -207,6 +207,7 @@ function love.load()
   tutorial.load()
   tutorial.onClose = function() tutorialActive = false end
   areas.load()
+  envEffects.load(areas.leftLine)
   hover.load()
   message.load()
   particles.load()
@@ -284,6 +285,7 @@ function love.draw()
   Dtor.drawAll()
   particles.draw()
   Token.drawAll()
+  envEffects.draw()
   message.draw()
   glow:renderMid()
   hand:drawDragged()

@@ -47,17 +47,17 @@ local TOKEN_DESC = {
   progress         = "Increase progress level",
   threat           = "Increase threat level",
   nullify          = "Nullify Queued effect",
-  shuffle          = "Shuffle DTOR",
+  shuffle          = "Shuffle Queue",
   progressNegative = "Decrease progress level",
   threatNegative   = "Decrease threat level",
   drawToHand       = "Draw a card to hand",
-  drawToDtor       = "Draw a card to DTOR",
-  dtor             = "Trigger DTOR effects",
+  drawToDtor       = "Draw a card to Queue",
+  dtor             = "Trigger Queue effects",
   ram              = "RAM cost",
   multiplyAll         = "Multiply all tokens",
   multiplyProgress    = "Multiply progress tokens",
   multiplyThreat      = "Multiply threat tokens",
-  flip              = "Flip progress and threat tokens",
+  flip              = "Flip +/- on progress and threat tokens",
 }
 
 local TOKEN_COLOR = {

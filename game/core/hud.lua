@@ -19,7 +19,7 @@ function M.load(onMenu, onReset, onFeedback)
   local y1 = 2 * SCALE_Y
   local y2 = y1 + (BTN_H + BTN_GAP) * SCALE_Y
   local y3 = y2 + (BTN_H + BTN_GAP) * SCALE_Y
-  _btnMenu  = Button.new(x, y1, BTN_W * SCALE_X, BTN_H * SCALE_Y, "MENU",  FONT_SIZE, onMenu)
+  _btnMenu  = Button.new(x, y1, BTN_W * SCALE_X, BTN_H * SCALE_Y, "RULES",  FONT_SIZE, onMenu)
   _btnReset = Button.new(x, y2, BTN_W * SCALE_X, BTN_H * SCALE_Y, "RESET", FONT_SIZE, onReset)
   _btnFeedback = Button.new(x, y3, BTN_W * SCALE_X, BTN_H * SCALE_Y, "FEEDBACK", FONT_SIZE, onFeedback)
 end

@@ -81,7 +81,7 @@ local TOKEN_DESC = {
   multiplyAll         = "Multiply all tokens",
   multiplyProgress    = "Multiply progress tokens",
   multiplyThreat      = "Multiply threat tokens",
-  flip              = "Flip progress and threat tokens",
+  flip              = "Flip +/- on progress and threat tokens",
 }
 
 local TOKEN_COLOR = {

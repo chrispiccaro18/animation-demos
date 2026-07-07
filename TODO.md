@@ -1,28 +1,31 @@
 fire immediately: 
-chain tokens 
+chain tokens?
 nullify
 draw
 shuffle
 
-multiply all does ram too?
+better flip description
 
-nullify next queue slot
+switch token
 
-env pops
-turn off positive particle effect
-turn on negative particle effect for beginning of turn
+handle more than 5 cards in hand
+hand max/cap
 
-starting deck and pool
+hovering tokens gives a count
 
-simplier tutorial
+card tooltip collision with bottom of canvas, move arrow up
+
+token legend/compendium
+
+scanner just goes down
+
+currated card pool for first few levels
+bigger pool in later levels
+
 acutal menu with
   reset
   tutorial
   feedback
-
-dtor handle more than 6? in stack
-amount of ram text
-highlight ram when hovering? dragging card over play area?
 
 
 WHAT'S NOT WORKING

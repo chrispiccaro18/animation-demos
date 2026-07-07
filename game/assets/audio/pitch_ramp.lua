@@ -26,7 +26,9 @@ function PitchRamp:getPitch()
   end
   self.count        = self.count + 1
   self.lastPlayTime = now
-  return self.basePitch + (self.count - 1) * self.pitchStep
+  -- need to clamp with a max and min to avoid pitch going too high or too low
+  return math.max(0.1, math.min(3.0, self.basePitch + (self.count - 1) * self.pitchStep))
+  -- return self.basePitch + (self.count - 1) * self.pitchStep
 end
 
 -- Manually reset the ramp (e.g. when a sequence ends).

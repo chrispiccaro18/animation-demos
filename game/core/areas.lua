@@ -4,7 +4,6 @@ local Palette     = require("lib.palette")
 -- local Color      = require("lib.color")
 local progressBar = require("core.progressBar")
 local threatBar   = require("core.threatBar")
-local envEffects  = require("core.envEffects")
 
 local areas = {}
 
@@ -105,9 +104,6 @@ function areas.load()
 
   progressBar.load()
   threatBar.load()
-  envEffects.load(areas.leftLine)
-  envEffects.register(1, 2, progressBar.getCount, { effects = { { type = "drawToHand" } } })
-  envEffects.register(2, 6, progressBar.getCount, { effects = { { type = "ram" } } })
 
   areas.endTurn = {
     x          = 3136 * SCALE_X,
@@ -456,7 +452,7 @@ function areas.drawDynamic()
     local previousFont = love.graphics.getFont()
     love.graphics.setFont(statFont)
     love.graphics.printf(
-      "RAM: " .. tostring(#areas.pool.chips),
+      "ENERGY: " .. tostring(#areas.pool.chips),
       areas.pool.x,
       areas.pool.y + areas.pool.h / 4,
       areas.pool.w,
@@ -497,7 +493,7 @@ function areas.drawDynamic()
     local ec = Palette.warning
     love.graphics.setColor(ec[1], ec[2], ec[3], fadeAlpha)
     love.graphics.printf(
-      "RAM: " .. tostring(#areas.pool.chips),
+      "ENERGY: " .. tostring(#areas.pool.chips),
       areas.pool.x,
       areas.pool.y + areas.pool.h / 4,
       areas.pool.w,
@@ -541,7 +537,6 @@ function areas.drawDynamic()
     love.graphics.rectangle("line", et.x, et.y, et.w, et.h)
   end
 
-  envEffects.draw()
   love.graphics.setColor(1, 1, 1, 1)
 end
 

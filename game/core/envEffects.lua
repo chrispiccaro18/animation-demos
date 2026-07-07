@@ -13,9 +13,9 @@ local ANIM_IN   = 0.2
 local ANIM_OUT  = 0.2
 
 local _anims = {
-  negative = { t = 0, active = false, done = false, scale = 1 },
-  [1]      = { t = 0, active = false, done = false, scale = 1 },
-  [2]      = { t = 0, active = false, done = false, scale = 1 },
+  negative = { t = 0, active = false, done = false, scale = 1, hold = 0 },
+  [1]      = { t = 0, active = false, done = false, scale = 1, hold = 0 },
+  [2]      = { t = 0, active = false, done = false, scale = 1, hold = 0 },
 }
 
 local THRESH_PEAK = 1.9
@@ -101,13 +101,16 @@ function EnvEffects.isActive(index)
   return e.source() >= e.threshold
 end
 
-function EnvEffects.triggerAnim(index)
+-- hold (optional): seconds to stay pinned at ANIM_PEAK between the in/out
+-- ramps. Used to keep the icon at full scale while a cascade of tokens flings.
+function EnvEffects.triggerAnim(index, hold)
   local a = _anims[index]
   if not a then return end
   a.t      = 0
   a.active = true
   a.done   = false
   a.scale  = 1
+  a.hold   = hold or 0
 end
 
 function EnvEffects.animDone(index)
@@ -152,18 +155,21 @@ function EnvEffects.thresholdAnimDone(index)
 end
 
 function EnvEffects.update(dt)
-  local total = ANIM_IN + ANIM_OUT
   for k, a in pairs(_anims) do
     if (POSITIVE_ENV_EFFECTS or k == "negative") and a.active then
       a.t = a.t + dt
+      local hold  = a.hold or 0
+      local total = ANIM_IN + hold + ANIM_OUT
       if a.t >= total then
         a.scale  = 1.0
         a.active = false
         a.done   = true
       elseif a.t <= ANIM_IN then
         a.scale = 1.0 + (ANIM_PEAK - 1.0) * smoothstep(a.t / ANIM_IN)
+      elseif a.t <= ANIM_IN + hold then
+        a.scale = ANIM_PEAK
       else
-        a.scale = ANIM_PEAK + (1.0 - ANIM_PEAK) * smoothstep((a.t - ANIM_IN) / ANIM_OUT)
+        a.scale = ANIM_PEAK + (1.0 - ANIM_PEAK) * smoothstep((a.t - ANIM_IN - hold) / ANIM_OUT)
       end
     end
   end

@@ -324,7 +324,7 @@ function M.requestRamCostGlows(glow, card)
       draw  = function(alpha, time, spec)
         love.graphics.setFont(AssetManifest.getFont(72))
         love.graphics.printf(
-          "RAM: " .. tostring(#areas.pool.chips),
+          "ENERGY: " .. tostring(#areas.pool.chips),
           areas.pool.x,
           areas.pool.y + areas.pool.h / 4,
           areas.pool.w,
@@ -539,7 +539,7 @@ local function requestDragZoneGlows(glow, draggingCard, deck)
     draw   = function(alpha, time, spec)
       love.graphics.setFont(AssetManifest.getFont(72))
       love.graphics.printf(
-        "RAM: " .. tostring(#areas.pool.chips),
+        "ENERGY: " .. tostring(#areas.pool.chips),
         areas.pool.x,
         areas.pool.y + areas.pool.h / 4,
         areas.pool.w,
@@ -617,7 +617,7 @@ function M.collectAll(glow, hand, deck, mx, my)
       draw  = function(alpha, time, spec)
         love.graphics.setFont(AssetManifest.getFont(72))
         love.graphics.printf(
-          "RAM: " .. tostring(#areas.pool.chips),
+          "ENERGY: " .. tostring(#areas.pool.chips),
           areas.pool.x,
           areas.pool.y + areas.pool.h / 4,
           areas.pool.w,
@@ -693,7 +693,7 @@ function M.collectAll(glow, hand, deck, mx, my)
       draw   = function(alpha, time, spec)
         love.graphics.setFont(AssetManifest.getFont(72))
         love.graphics.printf(
-          "RAM: " .. tostring(#areas.pool.chips),
+          "ENERGY: " .. tostring(#areas.pool.chips),
           areas.pool.x,
           areas.pool.y + areas.pool.h / 4,
           areas.pool.w,
