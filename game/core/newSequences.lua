@@ -436,6 +436,36 @@ local function startTerminalAttract(tokenType, target, acc)
   Token.attractDone(tokenType, target, tokenOptions)
 end
 
+local function resolveTerminalDestination(tokenType)
+  if tokenType == "progress" or tokenType == "progressNegative" then
+    return areas.progressDestination
+  elseif tokenType == "threat" or tokenType == "threatNegative" then
+    return areas.threatDestination
+  elseif tokenType == "ram" then
+    return areas.pool
+  elseif tokenType == "nullify" then
+    return Dtor.nextUnnullifiedSlot()
+  elseif tokenType == "shuffle" then
+    return Dtor.topSlot()
+  elseif tokenType == "drawToDtor" or tokenType == "drawToHand" then
+    return _deck:centerPosition()
+  end
+end
+
+-- Shared accumulator for immediate-settle tokens; reset at the start of
+-- each play/discard so each card's effects cascade cleanly.
+local _immediateAcc = Token.makeCascadeAccumulator()
+
+-- Token types that skip the end-of-turn scan: on fling-settle they
+-- immediately start their terminal attract animation toward the same
+-- destination as the regular end-of-turn path, then fire the effect on arrival.
+Token.registerImmediateSettle({ "drawToHand", "nullify", "shuffle", "drawToDtor" }, function(token)
+  local dest = resolveTerminalDestination(token.token_type)
+  if dest then
+    startTerminalAttract(token.token_type, dest, _immediateAcc)
+  end
+end)
+
 local function terminalAttract()
   local acc = Token.makeCascadeAccumulator()
   startTerminalAttract("progress", areas.progressDestination, acc)
@@ -657,6 +687,7 @@ function sequences.restoreCard(card)
 end
 
 function sequences.discard(card, camera)
+  _immediateAcc = Token.makeCascadeAccumulator()
   events.push({
     fn = function()
       card:lock()
@@ -826,6 +857,7 @@ function sequences.discard(card, camera)
 end
 
 function sequences.play(card, camera)
+  _immediateAcc = Token.makeCascadeAccumulator()
   events.push({
     fn = function()
       card:lock()

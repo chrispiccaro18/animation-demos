@@ -36,6 +36,20 @@ local TRAIL_PEAK_SPEED   = 1500  -- game px/s at which trail rate reaches full i
 
 local _dtorBounds = nil
 
+local _immediateTypes   = {}
+local _immediateHandler = nil
+
+------------------------------------------------------------------------
+-- Register token types that fire their terminal effect immediately on
+-- fling settle rather than waiting for the end-of-turn scan.
+-- handler(token) is called once per settling token of a registered type.
+------------------------------------------------------------------------
+function Token.registerImmediateSettle(types, handler)
+    _immediateTypes = {}
+    for _, t in ipairs(types) do _immediateTypes[t] = true end
+    _immediateHandler = handler
+end
+
 function Token.setDtorBounds(x, y, w, h)
   _dtorBounds = { x = x, y = y, w = w, h = h }
 end
@@ -509,6 +523,9 @@ function Token:_update_fling(dt)
         self.vx, self.vy = 0, 0
         self.scale = self.base_scale
         self.done  = true
+        if _immediateHandler and _immediateTypes[self.token_type] then
+            _immediateHandler(self)
+        end
     end
 end
 

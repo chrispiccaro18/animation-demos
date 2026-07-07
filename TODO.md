@@ -1,19 +1,17 @@
 fire immediately: 
-chain tokens?
 nullify
 draw
 shuffle
+chain tokens?
 
-better flip description
-
-switch token
+switch token?
 
 handle more than 5 cards in hand
 hand max/cap
 
 hovering tokens gives a count
 
-card tooltip collision with bottom of canvas, move arrow up
+card tooltip collision with bottom of canvas, move arrow down
 
 token legend/compendium
 

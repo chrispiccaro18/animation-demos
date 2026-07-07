@@ -549,41 +549,135 @@ CardData.runStartingDeck = {
 -- Each pool needs at least 3 entries so 3 unique offers can be drawn.
 CardData.offerPools = {
   [1] = {  -- offered after level 0, preparing for 1 threat/turn
-    { topEnergy=1, bottomEnergy=1, play={{type="multiplyAll",value=2},},                    dtor={{type="multiplyThreat",value=2}, { type = "flip", value = 1}} },
-    -- { topEnergy=2, bottomEnergy=2, play={{type="nullify",value=1}},                                                   dtor={{type="threat",value=1},{type="threat",value=1}} },
-    -- { topEnergy=2, bottomEnergy=2, play={{type="progress",value=1},{type="progress",value=1}},                        dtor={{type="threat",value=1},{type="threat",value=1}} },
-    { topEnergy=1, bottomEnergy=1, play={{type="progress",value=1},{type="threatNegative",value=1}},                  dtor={{type="shuffle",value=1}} },
-    { topEnergy=1, bottomEnergy=1, play={{type="flip",value=1},},                  dtor={{type="flip",value=1}} },
-    { topEnergy=2, bottomEnergy=2, play={{type="progress",value=1}, {type="multiplyAll",value=2}}, dtor={{type="multiplyThreat",value=2}} },
+    {
+      topEnergy=1,bottomEnergy=1,
+      play={{type="multiplyAll",value=2},},
+      dtor={{type="multiplyThreat",value=2}, { type = "flip", value = 1}}
+    },
+    {
+      topEnergy=1, bottomEnergy=1,
+      play={{type="progress",value=1}, {type="threatNegative",value=1}},
+      dtor={{type="progressNegative",value=1}, {type="threat",value=1}}
+    },
+    {
+      topEnergy=1, bottomEnergy=1,
+      play={{type="flip",value=1},},
+      dtor={{type="flip",value=1}}
+    },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="drawToHand",value=1}, {type="drawToHand",value=1},},
+      dtor={{type="flip",value=1}, {type="progressNegative",value=1}, {type="progressNegative",value=1},}
+    },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="progress",value=1}, {type="multiplyAll",value=2}},
+      dtor={{type="multiplyThreat",value=2}}
+    },
   },
   [2] = {  -- offered after level 1, preparing for 2 threats/turn
-    { topEnergy=1, bottomEnergy=1, play={{type="multiplyProgress",value=2}},                                          dtor={{type="threat",value=1},{type="threat",value=1}} },
-    { topEnergy=2, bottomEnergy=2, play={{type="progress",value=1},{type="progress",value=1},{type="threatNegative",value=1}}, dtor={{type="progressNegative",value=1},{type="progressNegative",value=1}} },
-    { topEnergy=3, bottomEnergy=3, play={{type="progress",value=1},{type="progress",value=1},{type="progress",value=1}}, dtor={{type="threat",value=1},{type="multiplyThreat",value=2}} },
-    { topEnergy=1, bottomEnergy=1, play={{type="flip",value=1},}, dtor={{type="shuffle",value=1},} },
-    { topEnergy=1, bottomEnergy=1, play={{type="shuffle",value=1},}, dtor={{type="flip",value=1},} },
+    {
+      topEnergy=1, bottomEnergy=1,
+      play={{type="multiplyProgress",value=2}},
+      dtor={{type="threat",value=1},{type="threat",value=1}}
+    },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="progress",value=1},{type="progress",value=1},{type="threatNegative",value=1}},
+      dtor={{type="progressNegative",value=1},{type="progressNegative",value=1}}
+    },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="progress",value=1},{type="progress",value=1},{type="nullify",value=1}},
+      dtor={{type="threatNegative",value=1},{type="threatNegative",value=1}}
+    },
+    {
+      topEnergy=3, bottomEnergy=3,
+      play={{type="progress",value=1},{type="progress",value=1},{type="progress",value=1}},
+      dtor={{type="threat",value=1},{type="multiplyThreat",value=2}}
+    },
+    {
+      topEnergy=1, bottomEnergy=1,
+      play={{type="shuffle",value=1},},
+      dtor={{type="flip",value=1},}
+    },
+    {
+      topEnergy=3, bottomEnergy=3,
+      play={{type="drawToHand",value=1}, {type="drawToHand",value=1}, {type="drawToHand",value=1},},
+      dtor={{type="multiplyThreat",value=2},}
+    },
   },
   [3] = {  -- offered after level 2, preparing for 3 threats/turn
-    { topEnergy=1, bottomEnergy=1, play={{type="flip",value=1}},                                                      dtor={{type="threat",value=1},{type="threat",value=1}} },
-    { topEnergy=2, bottomEnergy=2, play={{type="multiplyAll",value=2}},                                               dtor={{type="threat",value=1},{type="threat",value=1},{type="threat",value=1}} },
-    { topEnergy=3, bottomEnergy=3, play={{type="progress",value=1},{type="progress",value=1},{type="threatNegative",value=1}}, dtor={{type="threat",value=1},{type="threat",value=1},{type="threat",value=1}} },
-    { topEnergy=2, bottomEnergy=2, play={{type="progressNegative",value=1},{type="progressNegative",value=1},{type="nullify",value=1}}, dtor={{type="progressNegative",value=1},{type="progressNegative",value=1}} },
-    -- { topEnergy=1, bottomEnergy=1, play={{type="drawToHand",value=1},{type="drawToHand",value=1},{type="drawToHand",value=1}}, dtor={{type="threat",value=1},{type="threat",value=1}} },
+    {
+      topEnergy=1, bottomEnergy=1,
+      play={{type="flip",value=1}},
+      dtor={{type="threat",value=1},{type="threat",value=1}} },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="multiplyAll",value=2}},
+      dtor={{type="threat",value=1},{type="threat",value=1},{type="threat",value=1}} },
+    {
+      topEnergy=3, bottomEnergy=3,
+      play={{type="progress",value=1},{type="progress",value=1},{type="threatNegative",value=1}},
+      dtor={{type="threat",value=1},{type="threat",value=1},{type="threat",value=1}} },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="progressNegative",value=1},{type="progressNegative",value=1},{type="nullify",value=1}},
+      dtor={{type="progressNegative",value=1},{type="progressNegative",value=1}} },
   },
   [4] = {  -- offered after level 3, preparing for 4 threats/turn
-    { topEnergy=2, bottomEnergy=2, play={{type="multiplyProgress",value=2},{type="progress",value=1}},                dtor={{type="threat",value=1},{type="threat",value=1},{type="progressNegative",value=1}} },
-    { topEnergy=3, bottomEnergy=3, play={{type="nullify",value=1},{type="nullify",value=1}},                          dtor={{type="threat",value=1},{type="threat",value=1},{type="progressNegative",value=1}} },
-    { topEnergy=2, bottomEnergy=2, play={{type="flip",value=1},{type="threatNegative",value=1}},                      dtor={{type="threat",value=1},{type="threat",value=1}} },
-    { topEnergy=3, bottomEnergy=3, play={{type="progress",value=1},{type="progress",value=1},{type="progress",value=1},}, dtor={{type="progressNegative",value=1},{type="progressNegative",value=1},{type="progressNegative",value=1},{type="progressNegative",value=1}} },
-    -- { topEnergy=1, bottomEnergy=1, play={{type="shuffle",value=1},{type="threatNegative",value=1}},                   dtor={{type="drawToDtor",value=1}} },
-    { topEnergy=2, bottomEnergy=2, play={{type="progressNegative",value=1},{type="multiplyProgress",value=2},}, dtor={{type="progressNegative",value=1},{type="multiplyProgress",value=2}} },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="multiplyProgress",value=2},{type="progress",value=1}},
+      dtor={{type="threat",value=1},{type="threat",value=1},{type="progressNegative",value=1}}
+    },
+    {
+      topEnergy=3, bottomEnergy=3,
+      play={{type="nullify",value=1},{type="nullify",value=1}},
+      dtor={{type="threat",value=1},{type="threat",value=1},{type="progressNegative",value=1}}
+    },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="flip",value=1},{type="threatNegative",value=1}},
+      dtor={{type="threat",value=1},{type="threat",value=1}}
+    },
+    {
+      topEnergy=3, bottomEnergy=3,
+      play={{type="progress",value=1},{type="progress",value=1},{type="progress",value=1},},
+      dtor={{type="progressNegative",value=1},{type="progressNegative",value=1},{type="progressNegative",value=1},{type="progressNegative",value=1}}
+    },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="progressNegative",value=1},{type="multiplyProgress",value=2},},
+      dtor={{type="progressNegative",value=1},{type="multiplyProgress",value=2}}
+    },
   },
   [5] = {  -- offered after level 4, preparing for 5 threats/turn
-    { topEnergy=2, bottomEnergy=2, play={{type="multiplyAll",value=2}},                                               dtor={{type="multiplyAll",value=2}} },
-    { topEnergy=3, bottomEnergy=3, play={{type="threatNegative",value=1},{type="threatNegative",value=1},{type="threatNegative",value=1}}, dtor={{type="progressNegative",value=1},{type="progressNegative",value=1},{type="progressNegative",value=1}} },
-    { topEnergy=3, bottomEnergy=3, play={{type="flip",value=1},{type="progress",value=1},{type="progress",value=1},}, dtor={{type="flip",value=1},{type="threat",value=1},{type="threat",value=1},} },
-    { topEnergy=2, bottomEnergy=2, play={{type="flip",value=1},{type="multiplyAll",value=2}},                         dtor={{type="flip",value=1},{type="multiplyAll",value=2}} },
-    { topEnergy=1, bottomEnergy=1, play={{type="multiplyAll",value=2},{type="shuffle",value=1}}, dtor={{type="multiplyProgress",value=2},{type="multiplyThreat",value=2}} },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="multiplyAll",value=2}},
+      dtor={{type="multiplyAll",value=2}}
+    },
+    {
+      topEnergy=3, bottomEnergy=3,
+      play={{type="threatNegative",value=1},{type="threatNegative",value=1},{type="threatNegative",value=1}},
+      dtor={{type="progressNegative",value=1},{type="progressNegative",value=1},{type="progressNegative",value=1}}
+    },
+    {
+      topEnergy=3, bottomEnergy=3,
+      play={{type="flip",value=1},{type="progress",value=1},{type="progress",value=1},},
+      dtor={{type="flip",value=1},{type="threat",value=1},{type="threat",value=1},}
+    },
+    {
+      topEnergy=2, bottomEnergy=2,
+      play={{type="flip",value=1},{type="multiplyAll",value=2}},
+      dtor={{type="flip",value=1},{type="multiplyAll",value=2}}
+    },
+    {
+      topEnergy=1, bottomEnergy=1,
+      play={{type="multiplyAll",value=2},{type="shuffle",value=1}},
+      dtor={{type="multiplyProgress",value=2},{type="multiplyThreat",value=2}}
+    },
   },
 }
 
