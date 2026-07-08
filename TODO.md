@@ -4,7 +4,10 @@ draw
 shuffle
 chain tokens?
 
-switch token?
+token ideas:
+flip threat, progress
+switch (progress -> threat, threat -> progress)
+remove token
 
 handle more than 5 cards in hand
 hand max/cap
@@ -13,7 +16,9 @@ hovering tokens gives a count
 
 card tooltip collision with bottom of canvas, move arrow down
 
-token legend/compendium
+main menu is a sandbox of tokens
+token legend/compendium (with examples)
+sandbox where you can test combinations of tokens
 
 scanner just goes down
 
@@ -25,6 +30,11 @@ acutal menu with
   tutorial
   feedback
 
+
+CONTENT IDEAS
+Dynamic scoring Make bars bigger? Or meter
+COINS/MONEY: META GAME
+Each run has different envtokens per level? per turn?
 
 WHAT'S NOT WORKING
 win/loss condition only represented by tallies - should communicate the goal

@@ -504,7 +504,38 @@ CardData.levelFive = {
   },
 }
 
--- 6-card starting deck for a fresh run (level 0, zero enemy threats/turn)
+-- 4-card starting deck for a fresh run (level 0, zero enemy threats/turn)
+-- CardData.runStartingDeck = {
+--   {
+--     topEnergy    = 1,
+--     bottomEnergy = 1,
+--     play    = { { type = "progressNegative", value = 1 }, { type = "flip", value = 1 }, },
+--     -- discard = { { type = "threatNegative", value = 1 } },
+--     dtor = { { type = "threatNegative", value = 1 }, { type = "flip", value = 1 }, },
+--   },
+--   {
+--     topEnergy    = 1,
+--     bottomEnergy = 1,
+--     play    = { { type = "threatNegative", value = 1 }, { type = "flip", value = 1 }, },
+--     -- discard = { { type = "threatNegative", value = 1 } },
+--     dtor = { { type = "progressNegative", value = 1 }, { type = "flip", value = 1 }, },
+--   },
+--   {
+--     topEnergy    = 2,
+--     bottomEnergy = 2,
+--     play    = { { type = "progressNegative", value = 1 }, { type = "progressNegative", value = 1 }, },
+--     -- discard = { { type = "threatNegative", value = 1 } },
+--     dtor = { { type = "threatNegative", value = 1 }, { type = "threatNegative", value = 1 }},
+--   },
+--   {
+--     topEnergy    = 2,
+--     bottomEnergy = 2,
+--     play    = { { type = "threatNegative", value = 1 }, { type = "threatNegative", value = 1 } },
+--     -- discard = { { type = "threatNegative", value = 1 } },
+--     dtor = { { type = "progressNegative", value = 1 }, { type = "progressNegative", value = 1 }, },
+--   },
+-- }
+
 CardData.runStartingDeck = {
   {
     topEnergy    = 1,

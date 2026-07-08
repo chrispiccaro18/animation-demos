@@ -11,7 +11,7 @@ local M = {}
 
 -- Design-space constants (pre-SCALE)
 local CARD_Y      = 1100   -- vertical center for offer cards
-local CARD_X      = { 870, 1920, 2970 }
+local CARD_X      = { 870 + 200, 1920, 2970 - 200 }
 local TITLE_Y     = 450
 local CONFIRM_Y   = 1720
 local CONFIRM_W   = 560

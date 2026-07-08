@@ -1057,7 +1057,9 @@ function sequences.beginTurn()
       events.push({
         fn = function()
           local x, y = envEffects.getPosition("negative")
-          local opts = endTurnFlingOptions("threat", "rightward")
+          local tokenType = "threat"
+          -- local tokenType = (i % 5 == 0) and "drawToDtor" or "threat"
+          local opts = endTurnFlingOptions(tokenType, "rightward")
           opts.delay = d
           Token.new_fling(x, y, areas.desk, opts)
           Audio.playImpactIn()
