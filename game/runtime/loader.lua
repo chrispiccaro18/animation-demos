@@ -60,6 +60,7 @@ function M.loadNativeLibrary(libraryName)
     return nil
   end
 
+  print("Save Directory:", love.filesystem.getSaveDirectory())
   local assetFile = "runtime/" .. libraryName .. "/" .. subdir .. "/" .. libraryFile
   local saveFile = love.filesystem.getSaveDirectory() .. "/" .. libraryFile
   print("Asset File:", assetFile)

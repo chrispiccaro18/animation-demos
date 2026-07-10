@@ -58,14 +58,13 @@ function M.load(onResetGame)
 
     Run.addCard(chosen)
     Run.nextLevel()
-    Run.save()
     _onReset()
 
     -- Level start message (event queue was reset by resetGame)
     local lvl = Run.getLevel()
     message.text          = "LEVEL " .. lvl .. " START"
     message.textColor     = Palette.accent
-    message.current.scale = 1.5
+    message.current.scale = 6
     message.target.scale  = 1.0
     message.current.alpha = 1.0
     message.target.alpha  = 0.0

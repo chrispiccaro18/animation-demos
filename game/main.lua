@@ -43,6 +43,11 @@ local hud            = require("core.hud")
 local gameOverScreen  = require("core.gameOverScreen")
 local Run             = require("core.run")
 local cardPickScreen  = require("core.cardPickScreen")
+local menuScreen      = require("core.menuScreen")
+local sandbox         = require("core.sandbox")
+local optionsMenu     = require("core.optionsMenu")
+
+local appState = "menu"
 
 local glow = nil
 
@@ -94,7 +99,9 @@ local function fullReset()
   resetGame()
 end
 
-resetGame = function()
+-- Shared board/UI reset used by both a fresh level start and loading a save.
+-- Leaves deck/hand/dtor/progress/threat/ram construction to the caller.
+local function resetBoardState()
   events.loadAll()
   actionQueue.reset()
   Token.clearAll()
@@ -104,7 +111,6 @@ resetGame = function()
 
   progressBar.reset()
   threatBar.reset()
-  envEffects.syncState()
   areas.endTurn.frozen = false
   areas.endTurn.state = "idle"
   areas.endTurn.hover.can = true
@@ -130,37 +136,151 @@ resetGame = function()
   hover.setDeck(deck)
   sequences.setDeck(deck)
   sequences.setHand(hand)
+end
 
-  for _, cardData in ipairs(Run.getCurrentDeckData()) do
+resetGame = function()
+  resetBoardState()
+
+  for i, cardData in ipairs(Run.getCurrentDeckData()) do
     local card = Card.new(canvasW / 2, canvasH / 2, cardData)
+    card.deckIndex = i
     deck:add(card)
   end
   deck:shuffle()
 
+  envEffects.syncState()
   sequences.beginTurn()
 
   camera:setIdle()
 
-  message.text          = "LEVEL 0 START"
-  message.textColor     = Palette.accent
-  -- message.textColor     = { 0.9, 0.9, 1.0, 1.0 }
-  message.current.scale = 1.5
-  message.target.scale  = 1.0
-  message.current.alpha = 1.0
-  message.target.alpha  = 0.0
-  events.push({
-    fn = function()
-      message.text          = ""
-      message.current.alpha = 1.0
-      message.target.alpha  = 1.0
-    end,
-    blocking = false, blockable = false, persistent = false,
-    delay = 1.5, type = "before",
-  })
+  -- message.text          = "LEVEL 0 START"
+  -- message.textColor     = Palette.accent
+  -- -- message.textColor     = { 0.9, 0.9, 1.0, 1.0 }
+  -- message.current.scale = 6
+  -- message.target.scale  = 1.0
+  -- message.current.alpha = 0.0
+  -- message.target.alpha  = 1.0
+  -- events.push({
+  --   fn = function()
+  --     message.text          = ""
+  --     message.current.alpha = 0.0
+  --     message.target.alpha  = 1.0
+  --   end,
+  --   blocking = false, blockable = false, persistent = false,
+  --   delay = 1.5, type = "before",
+  -- })
   -- local ram1X, ram1Y = areas.randomPoolPosition()
   -- areas.addPoolChip(ram1X, ram1Y)
   -- local ram2X, ram2Y = areas.randomPoolPosition()
   -- areas.addPoolChip(ram2X, ram2Y)
+end
+
+-- Rebuild the board from Run.getSavedTurn() (populated by a prior Run.load()),
+-- reproducing the exact drawPile/hand/dtor/progress/threat/ram snapshot that
+-- was captured right after the last beginTurn finished dealing.
+local function loadGame()
+  local saved = Run.getSavedTurn()
+  if not saved then return end
+
+  resetBoardState()
+
+  local deckData     = Run.getCurrentDeckData()
+  local cardsByIndex = {}
+  local function cardFor(i)
+    if not cardsByIndex[i] then
+      local card = Card.new(canvasW / 2, canvasH / 2, deckData[i])
+      card.deckIndex = i
+      cardsByIndex[i] = card
+    end
+    return cardsByIndex[i]
+  end
+
+  for _, idx in ipairs(saved.drawPile) do
+    deck:add(cardFor(idx))
+  end
+
+  for _, idx in ipairs(saved.hand) do
+    hand:add(cardFor(idx), false, false)
+  end
+  hand:layout()
+  for _, card in ipairs(hand.cards) do
+    card.current.x     = card.target.x
+    card.current.y     = card.target.y
+    card.current.scale = card.scales.idle
+    card.target.scale  = card.scales.idle
+  end
+
+  for _, entry in ipairs(saved.dtor.entries) do
+    Dtor.restoreEntry(cardFor(entry.deckIndex), entry.slotIndex, entry.nullified)
+  end
+  for _, slotIdx in ipairs(saved.dtor.preNullifiedSlots) do
+    Dtor.restorePreNullifiedSlot(slotIdx)
+  end
+  if Dtor.hasEntry() then Dtor.showText() end
+
+  progressBar.setCount(saved.progress)
+  threatBar.setCount(saved.threat)
+  for _ = 1, (saved.ram or 0) do
+    local x, y = areas.randomPoolPosition()
+    areas.addPoolChip(x, y)
+  end
+
+  local level = Run.getLevel()
+
+  if level > 0 then
+    local flingAcc = Token.makeCascadeAccumulator()
+    -- Pre-compute each token's launch delay so the env anim can hold at peak
+    -- until the final token is flung. The last delay is the time (from the
+    -- first fling) until the last token launches.
+    local flingDelays = {}
+    for i = 1, level do flingDelays[i] = flingAcc:nextDelay() end
+    local holdDuration = flingDelays[level] or 0
+
+    -- Trigger the anim once, pinned at full scale for the whole cascade.
+    events.push({
+      fn = function() envEffects.triggerAnim("negative", holdDuration) end,
+      blocking = false, blockable = true, persistent = false,
+      delay = 0, type = "immediate",
+    })
+
+    local function endTurnFlingOptions(token_type, direction, acc)
+    local flingDirection = direction or "downward"
+
+    return {
+      type       = token_type,
+      bounces    = math.random(1, 3),
+      base_scale = 1.25,
+      delay      = acc and acc:nextDelay() or false,
+      target_rect = areas.flingTarget,
+      [flingDirection] = true,
+    }
+  end
+
+    for i = 1, level do
+      local d = flingDelays[i]
+      events.push({
+        fn = function()
+          local x, y = envEffects.getPosition("negative")
+          local tokenType = "threat"
+          -- local tokenType = (i % 5 == 0) and "drawToDtor" or "threat"
+          local opts = endTurnFlingOptions(tokenType, "rightward")
+          opts.delay = d
+          Token.new_fling(x, y, areas.desk, opts)
+          Audio.playImpactIn()
+        end,
+        blocking = false, blockable = true, persistent = false,
+        delay = 0, type = "immediate",
+      })
+    end
+    events.push({
+      fn = function() return Token.allDone() end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "poll",
+    })
+  end
+
+  envEffects.syncState()
+  camera:setIdle()
 end
 
 function love.load()
@@ -233,7 +353,38 @@ function love.load()
   cardPickScreen.load(resetGame)
 
   Run.newRun()
-  resetGame()
+
+  optionsMenu.load({
+    getGlowQuality = function() return glow.qualityName end,
+    setGlowQuality = function(q) glow:setQuality(q, canvasW, canvasH) end,
+  })
+
+  menuScreen.load(
+    function()  -- Continue
+      if Run.load() then loadGame() end
+      appState = "game"
+      menuScreen.hide()
+    end,
+    function()  -- New Run
+      fullReset()
+      appState = "game"
+      menuScreen.hide()
+    end,
+    function()  -- Sandbox
+      sandbox.init(function()
+        appState = "menu"
+        menuScreen.show()
+        camera:setIdle()
+      end)
+      appState = "sandbox"
+      menuScreen.hide()
+    end,
+    function()  -- Options
+      optionsMenu.show()
+    end,
+    love.system.getOS() ~= "Web" and function() love.event.quit() end or nil
+  )
+  menuScreen.show()
 end
 
 function love.draw()
@@ -242,17 +393,9 @@ function love.draw()
   love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(1, 1, 1, 1)
 
-  -- Draw all game content into the fixed-resolution canvas
-  -- love.graphics.setCanvas(gameCanvas)
-  -- love.graphics.clear(0, 0, 0, 0)
-  -- love.graphics.setColor(Palette.void)
-  -- love.graphics.rectangle("fill", 0, 0, canvasW, canvasH)
-  love.graphics.setColor(1, 1, 1, 1)
-
   local sx, sy = screenshake.getOffset()
   love.graphics.push()
   love.graphics.translate(sx, sy)
-
   if boardAsset then
     love.graphics.draw(boardAsset, viewX, viewY, 0, viewScale * SCALE_X, viewScale * SCALE_Y)
   end
@@ -261,49 +404,62 @@ function love.draw()
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.pop()
 
-
-  -- if not tutorialActive then
-    love.graphics.setColor(0, 0, 0, 0.2)
-    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    love.graphics.setColor(1, 1, 1, 1)
-  -- end
+  love.graphics.setColor(0, 0, 0, 0.2)
+  love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+  love.graphics.setColor(1, 1, 1, 1)
 
   love.graphics.setCanvas(gameCanvas)
   love.graphics.clear(0, 0, 0, 0)
-  love.graphics.push()
-  love.graphics.translate(sx, sy)
 
-  glow:renderBottom()
-  Debris.drawAll()
-  areas.drawStatic()
-  if deck then deck:draw() end
-  if camera then camera:draw() end
-  if camera then camera:drawScannerLines(areas.scanner) end
-  areas.drawScanners()
-  areas.drawDynamic()
-  hand:draw()
-  Dtor.drawAll()
-  particles.draw()
-  Token.drawAll()
-  envEffects.draw()
-  message.draw()
-  glow:renderMid()
-  hand:drawDragged()
-  gameOverScreen.draw()
-  cardPickScreen.draw()
-  glow:renderTop()
-  hoverTooltip.draw()
-  cardTooltip.draw()
-  love.graphics.pop()
-
-  hud.draw()
-  if tutorialActive then tutorial.draw() end
+  if appState == "menu" then
+    menuScreen.draw()
+    optionsMenu.draw()
+  elseif appState == "sandbox" then
+    love.graphics.push()
+    love.graphics.translate(sx, sy)
+    glow:renderBottom()
+    areas.drawStatic()
+    if camera then camera:draw() end
+    Debris.drawAll()
+    Dtor.drawAll()
+    particles.draw()
+    Token.drawAll()
+    glow:renderMid()
+    glow:renderTop()
+    love.graphics.pop()
+    sandbox.draw()
+  else  -- "game"
+    love.graphics.push()
+    love.graphics.translate(sx, sy)
+    glow:renderBottom()
+    Debris.drawAll()
+    areas.drawStatic()
+    if deck then deck:draw() end
+    if camera then camera:draw() end
+    if camera then camera:drawScannerLines(areas.scanner) end
+    areas.drawScanners()
+    areas.drawDynamic()
+    hand:draw()
+    Dtor.drawAll()
+    particles.draw()
+    Token.drawAll()
+    envEffects.draw()
+    message.draw()
+    glow:renderMid()
+    hand:drawDragged()
+    gameOverScreen.draw()
+    cardPickScreen.draw()
+    glow:renderTop()
+    hoverTooltip.draw()
+    cardTooltip.draw()
+    love.graphics.pop()
+    hud.draw()
+    if tutorialActive then tutorial.draw() end
+  end
 
   overlayStats.draw()
-  speedControl.draw()
   love.graphics.setCanvas()
 
-  -- Blit the canvas onto the screen, centered and letterboxed
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.setBlendMode("alpha", "premultiplied")
   love.graphics.draw(gameCanvas, viewX, viewY, 0, viewScale, viewScale)
@@ -324,6 +480,32 @@ function love.update(dt)
   local mouseX, mouseY = toGame(mx, my)
   Audio.update()
   overlayStats.update(dt)
+
+  if appState == "menu" then
+    if optionsMenu.isActive() then
+      optionsMenu.update(mouseX, mouseY)
+    else
+      menuScreen.update(mouseX, mouseY)
+    end
+    pulse.update(realDt)
+    glow:update(realDt)
+    return
+  end
+
+  if appState == "sandbox" then
+    sandbox.update(dt, mouseX, mouseY)
+    pulse.update(realDt)
+    particles.update(realDt)
+    Debris.updateAll(gameDt)
+    Token.updateAll(realDt, gameDt)
+    Dtor.update(realDt)
+    progressBar.update(realDt)
+    threatBar.update(realDt)
+    events.updateAll()
+    glow:update(realDt)
+    return
+  end
+
   if tutorialActive then return end
 
   hud.update(mouseX, mouseY)
@@ -377,7 +559,6 @@ function love.update(dt)
         fn       = function()
           hand:setActiveCardDraw(false)
           sequences.endTurn()
-          Run.save()
         end,
         onReject = function(_item)
           areas.endTurn.frozen    = false
@@ -418,7 +599,18 @@ end
 
 function love.mousepressed(x, y, button, istouch, presses)
   local gx, gy = toGame(x, y)
-  if speedControl.mousepressed(gx, gy, button) then return end
+  if appState == "menu" then
+    if optionsMenu.isActive() then
+      optionsMenu.mousepressed(gx, gy, button)
+    else
+      menuScreen.mousepressed(gx, gy, button)
+    end
+    return
+  end
+  if appState == "sandbox" then
+    sandbox.mousepressed(gx, gy, button)
+    return
+  end
   if tutorialActive then
     tutorial.mousepressed(gx, gy, button)
     return
@@ -442,8 +634,16 @@ end
 
 function love.keypressed(key)
   if key == "escape" and love.system.getOS() ~= "Web" then
-    love.event.quit()
-  elseif key == "r" then
+    if optionsMenu.isActive() then
+      optionsMenu.hide()
+    elseif appState == "game" or appState == "sandbox" then
+      Token.clearAll()
+      appState = "menu"
+      menuScreen.show()
+    else
+      love.event.quit()
+    end
+  elseif key == "r" and appState == "game" then
     fullReset()
   elseif key == "return" then
     if tutorialActive then
@@ -538,12 +738,20 @@ function love.touchreleased(id, x, y, dx, dy, pressure)
     local elapsed = love.timer.getTime() - touchStartTime
     if elapsed < TAP_THRESHOLD then
       if maxTouches == 3 then
-        fullReset()
+        if appState == "game" then fullReset() end
       elseif maxTouches == 2 then
-        tutorialActive = not tutorialActive
+        if appState == "game" then tutorialActive = not tutorialActive end
       elseif maxTouches == 1 then
         local gx, gy = toGame(x, y)
-        if tutorialActive then
+        if appState == "menu" then
+          if optionsMenu.isActive() then
+            optionsMenu.touchpressed(gx, gy)
+          else
+            menuScreen.touchpressed(gx, gy)
+          end
+        elseif appState == "sandbox" then
+          sandbox.touchpressed(gx, gy)
+        elseif tutorialActive then
           tutorial.touchpressed(gx, gy)
         elseif cardPickScreen.isActive() then
           cardPickScreen.touchpressed(gx, gy)

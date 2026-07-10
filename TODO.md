@@ -1,8 +1,16 @@
-fire immediately: 
-nullify
-draw
-shuffle
-chain tokens?
+Level complete unlock tokens. Ceremony and visual demonstration of how it works. Then cards with those tokens start appearing in pool
+1. negative threat/progress
+2. draw to queue/hand
+3. nullify/shuffle
+4. multiply threat/progress
+5. multiply all/flip
+
+chain tokens:
+multiply need to set a rule for sequential, same token type firing
+- currently they just multiply the "base" tokens, not the others that have been multiplied by previous tokens
+- different than when multiple types of multiply tokens fire they multiply all
+- how do we make sure things don't go out of control with # of tokens without taking away fun?
+- could create "big" tokens that represent 5, 10, 20, etc
 
 token ideas:
 flip threat, progress
@@ -16,20 +24,31 @@ hovering tokens gives a count
 
 card tooltip collision with bottom of canvas, move arrow down
 
+make save file more readable (serialize?)
+need to save dtor, hand, progress/threat, deck ...
+
 main menu is a sandbox of tokens
 token legend/compendium (with examples)
 sandbox where you can test combinations of tokens
+
+
+Options Menu
+Design
 
 scanner just goes down
 
 currated card pool for first few levels
 bigger pool in later levels
 
-acutal menu with
+game menu with
   reset
-  tutorial
+  tutorial/rules
+  options/speed
+  main menu
+  quit
   feedback
 
+when using keyboard/touch shortcut to change speed message text will appear
 
 CONTENT IDEAS
 Dynamic scoring Make bars bigger? Or meter

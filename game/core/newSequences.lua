@@ -123,7 +123,7 @@ local function fireEnvThresholdCeremony()
       message.text      = "EFFECT LOST"
       message.textColor = Palette.danger
     end
-    message.current.scale = 1.5
+    message.current.scale = 6
     message.target.scale  = 1.0
     events.push({
       fn = function() message.text = "" end,
@@ -1027,16 +1027,17 @@ function sequences.play(card, camera)
 end
 
 function sequences.beginTurn()
-  local level = Run.getLevel()
-
   events.push({
-    fn = function() areas.endTurn.frozen = true end,
+    fn = function()
+      areas.endTurn.frozen = true
+    end,
     blocking = true, blockable = true, persistent = false,
     delay = 0, type = "immediate",
   })
 
-  if level > 0 then
+  local level = Run.getLevel()
 
+  if level > 0 then
     local flingAcc = Token.makeCascadeAccumulator()
     -- Pre-compute each token's launch delay so the env anim can hold at peak
     -- until the final token is flung. The last delay is the time (from the
@@ -1068,11 +1069,11 @@ function sequences.beginTurn()
         delay = 0, type = "immediate",
       })
     end
-    -- events.push({
-    --   fn = function() return Token.allDone() end,
-    --   blocking = true, blockable = true, persistent = false,
-    --   delay = 0, type = "poll",
-    -- })
+    events.push({
+      fn = function() return Token.allDone() end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "poll",
+    })
     -- sequences.scan(areas.scanner.both)
     -- events.push({
     --   fn = function()
@@ -1091,7 +1092,25 @@ function sequences.beginTurn()
         sequences.dealCardToHand()
       end
       events.push({
-        fn = function() areas.endTurn.frozen = false end,
+        fn = function()
+          areas.endTurn.frozen = false
+          local drawPile = {}
+          for _, card in ipairs(_deck.cards) do
+            drawPile[#drawPile + 1] = card.deckIndex
+          end
+          local handCards = {}
+          for _, card in ipairs(_hand.cards) do
+            handCards[#handCards + 1] = card.deckIndex
+          end
+          Run.saveTurn({
+            progress = progressBar.getCount(),
+            threat   = threatBar.getCount(),
+            ram      = #areas.pool.chips,
+            drawPile = drawPile,
+            hand     = handCards,
+            dtor     = Dtor.getSaveData(),
+          })
+        end,
         blocking = true, blockable = true, persistent = false,
         delay = 0, type = "immediate",
       })
@@ -1213,6 +1232,16 @@ function sequences.endTurn()
     blocking = true, blockable = true, persistent = false,
     delay = 0.1, type = "after",
   })
+end
+
+function sequences.score()
+  _immediateAcc = Token.makeCascadeAccumulator()
+  events.push({
+    fn       = function() return Token.allDone() end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  })
+  startPreTerminalPipeline()
 end
 
 return sequences

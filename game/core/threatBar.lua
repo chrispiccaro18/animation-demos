@@ -55,6 +55,12 @@ function ThreatBar.getCount() return _count end
 function ThreatBar.getMax()   return _max   end
 function ThreatBar.isFull()   return _count >= _max end
 
+-- Set the count directly (used when loading a save), no animation.
+function ThreatBar.setCount(n)
+  _count    = math.max(0, math.min(n or 0, _max))
+  _popScale = 1.0
+end
+
 function ThreatBar.increment()
   _count    = math.min(_count + 1, _max)
   _popScale = 1.0 + 0.6 * (_count / _max)

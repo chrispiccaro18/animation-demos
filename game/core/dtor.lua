@@ -622,4 +622,53 @@ function Dtor.drawAll()
   love.graphics.setLineWidth(1)
 end
 
+-- Restore a queue entry into a specific slot (used when loading a save).
+-- Bypasses the normal reserve/claim/register animation flow.
+function Dtor.restoreEntry(card, slotIndex, nullified, scale)
+  local dq = Dtor.area
+  if not dq.slots[slotIndex] then
+    dq.slots[slotIndex] = { occupied = false, reserved = false, nullified = false }
+  end
+  local slot = dq.slots[slotIndex]
+  slot.occupied  = true
+  slot.reserved  = false
+  slot.nullified = nullified or false
+  slot.scale     = scale or 1
+  table.insert(_queue, { card = card, slotIndices = { slotIndex } })
+  table.sort(_queue, function(a, b)
+    return (a.slotIndices[1] or math.huge) < (b.slotIndices[1] or math.huge)
+  end)
+  _updateTextContent()
+end
+
+-- Mark a slot as pre-nullified with no occupying card (used when loading a save).
+function Dtor.restorePreNullifiedSlot(slotIndex)
+  local dq = Dtor.area
+  if not dq.slots[slotIndex] then
+    dq.slots[slotIndex] = { occupied = false, reserved = false, nullified = false }
+  end
+  dq.slots[slotIndex].nullified = true
+end
+
+function Dtor.getSaveData()
+  local entries = {}
+  for _, entry in ipairs(_queue) do
+    local slotIdx = entry.slotIndices[1]
+    local slot    = Dtor.area.slots[slotIdx]
+    entries[#entries + 1] = {
+      deckIndex = entry.card.deckIndex,
+      slotIndex = slotIdx,
+      nullified = slot and slot.nullified or false,
+    }
+  end
+  local preNullified = {}
+  for i = 1, Dtor.area.maxSlots do
+    local slot = Dtor.area.slots[i]
+    if slot and slot.nullified and not slot.occupied and not slot.reserved then
+      preNullified[#preNullified + 1] = i
+    end
+  end
+  return { entries = entries, preNullifiedSlots = preNullified }
+end
+
 return Dtor
