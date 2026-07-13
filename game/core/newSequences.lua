@@ -31,6 +31,12 @@ function sequences.getDeck()   return _deck  end
 local _hand = nil
 function sequences.setHand(h) _hand = h end
 
+-- Sandbox drives terminalEvent (progress/threat/etc.) the same way real play
+-- does, but a sandbox session isn't a real run — level-complete/failure
+-- ceremony (message, sound, Run.levelComplete()) must not fire from it.
+local _sandboxMode = false
+function sequences.setSandboxMode(v) _sandboxMode = v end
+
 
 local function discardFlingOptions()
   return {
@@ -403,7 +409,9 @@ local function terminalEvent(tokenType)
             end)
           end
         end
-        if progressBar.isFull() then
+        if _sandboxMode then
+          -- no level-complete/failure ceremony in sandbox
+        elseif progressBar.isFull() then
           gameOver              = "levelComplete"
           Run.levelComplete()
           message.text          = "LEVEL COMPLETE"
@@ -455,8 +463,12 @@ local function resolveTerminalDestination(tokenType)
 end
 
 -- Shared accumulator for immediate-settle tokens; reset at the start of
--- each play/discard so each card's effects cascade cleanly.
+-- each play/discard so each card's effects cascade cleanly. Sandbox tokens
+-- settle independently of play/discard, so it also needs a way to reset
+-- this itself (see core/sandbox.lua) — otherwise the delay this accumulator
+-- hands out only ever grows, across the whole session.
 local _immediateAcc = Token.makeCascadeAccumulator()
+function sequences.resetImmediateAcc() _immediateAcc = Token.makeCascadeAccumulator() end
 
 -- Token types that skip the end-of-turn scan: on fling-settle they
 -- immediately start their terminal attract animation toward the same

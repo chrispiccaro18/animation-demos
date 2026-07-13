@@ -66,7 +66,8 @@ end
 
 --- Draw the visual card-back pile.
 --- Empty: nothing. Single: one card back. Stack (2+): layered depth effect.
-function Deck:draw()
+function Deck:draw(alphaMul)
+  alphaMul = alphaMul or 1
   if #self.cards == 0 then return end
 
   local iw, ih   = self.backAsset:getDimensions()
@@ -76,7 +77,7 @@ function Deck:draw()
   local layers   = math.min(#self.cards, 3)
   local layerOff = 3 * SCALE_Y
 
-  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setColor(1, 1, 1, alphaMul)
 
   if #self.cards == 1 then
     love.graphics.draw(self.backAsset, cx, cy, 0, sc, sc, iw / 2, ih / 2)

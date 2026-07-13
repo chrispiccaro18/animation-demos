@@ -859,7 +859,8 @@ function Card:_applyTiltUniforms(includeMouse)
   self.tiltShader:send("card_center_y", screenCY)
 end
 
-function Card:draw()
+function Card:draw(alphaMul)
+  alphaMul = alphaMul or 1
   local windowScaleX = SCALE_X
   local windowScaleY = SCALE_Y
   local W = SCALE_X * 3840
@@ -925,7 +926,7 @@ function Card:draw()
     local dy = 40 * windowScaleY * boost
     love.graphics.push()
     love.graphics.translate(dx, dy)
-    love.graphics.setColor(0, 0, 0, 0.3)
+    love.graphics.setColor(0, 0, 0, 0.3 * alphaMul)
     love.graphics.draw(
       self.asset,
       self.current.x, self.current.y, self.current.r,
@@ -947,7 +948,7 @@ function Card:draw()
     love.graphics.setShader(self.shader)
   end
 
-  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setColor(1, 1, 1, alphaMul)
   love.graphics.draw(
     self.asset,
     self.current.x, self.current.y, self.current.r,
@@ -968,7 +969,7 @@ function Card:draw()
 
     for _, part in ipairs(self.parts) do
       local partAlpha = part.hidden and 0 or part.current.alpha
-      love.graphics.setColor(1, 1, 1, partAlpha)
+      love.graphics.setColor(1, 1, 1, partAlpha * alphaMul)
 
       if part.items then
         for _, item in ipairs(part.items) do
@@ -1035,7 +1036,7 @@ function Card:draw()
                     self:_applyDissolveUniforms(tokenAsset)
                     love.graphics.setShader(self.shader)
                   end
-                  love.graphics.setColor(1, 1, 1, slot.alpha * partAlpha)
+                  love.graphics.setColor(1, 1, 1, slot.alpha * partAlpha * alphaMul)
                   love.graphics.draw(tokenAsset, cx, cy, 0, s, s, iw / 2, ih / 2)
                   if useShader and partAlpha > 0.001 then
                     love.graphics.setShader(self.tiltShader)

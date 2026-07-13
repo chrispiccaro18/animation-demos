@@ -368,7 +368,7 @@ function Hand:setActiveCardDraw(visible)
   self._suppressActiveCard = not visible
 end
 
-function Hand:draw()
+function Hand:draw(alphaMul)
   local activeCard    = actionQueue.activeCard()
   if activeCard ~= self._lastActiveCard then
     self._suppressActiveCard = false
@@ -380,16 +380,16 @@ function Hand:draw()
   for _, card in ipairs(pendingCards) do queued[card] = true end
 
   for _, card in ipairs(self.cards) do
-    if not card.drag.is and card.stationary and not queued[card] then card:draw() end
+    if not card.drag.is and card.stationary and not queued[card] then card:draw(alphaMul) end
   end
   for _, card in ipairs(self.cards) do
-    if not card.drag.is and not card.stationary and not queued[card] then card:draw() end
+    if not card.drag.is and not card.stationary and not queued[card] then card:draw(alphaMul) end
   end
   -- reverse order so queue[1] (next to process) is drawn on top
-  for i = #pendingCards, 1, -1 do pendingCards[i]:draw() end
-  if activeCard and not self._suppressActiveCard then activeCard:draw() end
+  for i = #pendingCards, 1, -1 do pendingCards[i]:draw(alphaMul) end
+  if activeCard and not self._suppressActiveCard then activeCard:draw(alphaMul) end
   for _, card in ipairs(self.cards) do
-    if not card.drag.is and card.hover.is and not queued[card] then card:draw() end
+    if not card.drag.is and card.hover.is and not queued[card] then card:draw(alphaMul) end
   end
 end
 

@@ -13,6 +13,14 @@ local UnlockLevels = require("data.unlocks")
 local hoverTooltip = require("core.hoverTooltip")
 local menuScreen   = require("core.menuScreen")
 local animation    = require("lib.animation")
+local Camera       = require("core.camera")
+local laser        = require("core.laser")
+local Card         = require("core.card")
+local CardData     = require("data.cards")
+local message      = require("core.message")
+local Debris       = require("core.debris")
+local actionQueue  = require("core.actionQueue")
+local sequences    = require("core.newSequences")
 
 local sandbox = {}
 
@@ -71,6 +79,75 @@ local _collapsed   = false
 local _interacted  = false
 local _panelShiftX = 0  -- how far the icon grid has slid left, mirroring the tab's travel
 
+local _deck = nil
+local _hand = nil
+
+-- Contextual game-UI visibility: fades in fast while relevant token types are
+-- on the desk, fades out slowly after a grace period once none are.
+local HIDE_DELAY   = 1.2
+local FADE_IN_RATE = 20
+local FADE_OUT_RATE = 3
+
+local function newFadeGroup()
+  return {
+    alpha = 0, hideTimer = 0, justHidden = false,
+    update = function(self, dt, needed)
+      self.hideTimer = needed and 0 or (self.hideTimer + dt)
+      -- The grace period only applies once something has actually been shown —
+      -- otherwise a fresh/cleared group (alpha == 0, hideTimer == 0 < HIDE_DELAY)
+      -- would target 1 and visibly flash in before fading back out.
+      local target
+      if needed then
+        target = 1
+      elseif self.alpha > 0.01 and self.hideTimer < HIDE_DELAY then
+        target = 1
+      else
+        target = 0
+      end
+      local wasVisible = self.alpha > 0.01
+      local rate = (target > self.alpha) and FADE_IN_RATE or FADE_OUT_RATE
+      self.alpha = animation.expDecay(self.alpha, target, rate, dt)
+      self.justHidden = wasVisible and self.alpha <= 0.01
+    end,
+    snapHidden = function(self)
+      self.alpha = 0
+      self.hideTimer = 0
+      self.justHidden = false
+    end,
+  }
+end
+
+local _visProgress = newFadeGroup()
+local _visThreat    = newFadeGroup()
+local _visDtor      = newFadeGroup()
+local _visDeck      = newFadeGroup()
+local _visHand      = newFadeGroup()
+local _visCamera    = newFadeGroup()
+
+local function anyTokenActive(types)
+  for _, t in ipairs(types) do
+    if Token.count(t) > 0 or not Token.allDone(t) then return true end
+  end
+  return false
+end
+
+-- drawToHand/drawToDtor share the deck, so they share one draw-count cap too.
+local MAX_DRAW_TOKENS   = 5
+local MAX_MSG_DURATION  = 1.5
+local _drawCount    = 0
+local _maxMsgTimer  = 0
+
+local function showMaxDrawMessage()
+  message.text          = "MAX REACHED"
+  message.subtitle      = "CLEAR TO ADD MORE"
+  message.textColor     = Palette.warning
+  message.current.scale = 6
+  message.target.scale  = 1.0
+  message.current.alpha = 1.0
+  message.target.alpha  = 1.0
+  _maxMsgTimer = MAX_MSG_DURATION
+end
+
 local function containsPoint(btn, px, py)
   return px >= btn.x and px <= btn.x + btn.w
      and py >= btn.y and py <= btn.y + btn.h
@@ -84,19 +161,46 @@ local function panelWidth()
   return BTN_SIZE * COLS + COL_GAP * (COLS - 1)
 end
 
+-- Adds one card to the shared deck so the drawToHand/drawToDtor tokens
+-- (which deal from it the moment they settle — see Token.registerImmediateSettle
+-- in core/newSequences.lua) always have supply to consume.
+local function addCardToDeck()
+  if not _deck then return end
+  local card = Card.new(_deck.x, _deck.y, CardData.runStartingDeck[1])
+  _deck:add(card)
+end
+
+-- These settle straight into their terminal effect (see
+-- Token.registerImmediateSettle in core/newSequences.lua) via a shared
+-- cascade accumulator that only ever counts up — reset it before each
+-- sandbox-triggered settle or their start-up delay grows without bound.
+local IMMEDIATE_SETTLE_TYPES = { drawToHand = true, drawToDtor = true, nullify = true, shuffle = true }
+
 local function flingFromIcon(btn)
   local dk = areas.desk
   if not dk then return end
+  if btn.tokenType == "drawToDtor" and events.isRunning("terminalArrive") then
+    return -- wait for the current drawToDtor camera/laser sequence to finish
+  end
+  if btn.tokenType == "drawToHand" or btn.tokenType == "drawToDtor" then
+    if _drawCount >= MAX_DRAW_TOKENS then
+      showMaxDrawMessage()
+      return
+    end
+    _drawCount = _drawCount + 1
+    addCardToDeck()
+  end
+  if IMMEDIATE_SETTLE_TYPES[btn.tokenType] then
+    sequences.resetImmediateAcc()
+  end
   Token.new_fling(btn.x + btn.w / 2, btn.y + btn.h / 2, dk, {
     type    = btn.tokenType,
     bounces = math.random(0, 2),
     delay   = false,
   })
   _selected = btn.tokenType
-  if not _interacted then
-    _interacted = true
-    menuScreen.minimize()
-  end
+  menuScreen.minimize()
+  _interacted = true
 end
 
 local function newIconButton(x, y, sz, ttype, asset)
@@ -199,6 +303,15 @@ local function newTabButton()
   }
 end
 
+-- Stores refs to the same deck/hand instances main.lua uses for real runs
+-- (both already always exist, just not necessarily wired into core.newSequences
+-- yet — see main.lua's love.load). Starting a real run replaces these
+-- module-locals in main.lua with fresh instances, so nothing here leaks.
+function sandbox.setDeckAndHand(deck, hand)
+  _deck = deck
+  _hand = hand
+end
+
 -- Rebuilds the icon grid's unlocked/locked flags against the profile's
 -- current highest level reached. Positions are static (every token type is
 -- always shown); only lock state can change between menu visits.
@@ -217,6 +330,8 @@ function sandbox.init()
   _collapsed  = false
   _interacted = false
   _selected   = nil
+  _drawCount  = 0
+  _maxMsgTimer = 0
 
   _iconButtons = {}
   for i, ttype in ipairs(TOKEN_TYPES) do
@@ -231,7 +346,6 @@ function sandbox.init()
 
   _tab = newTabButton()
 
-  local sequences = require("core.newSequences")
   local clearY = 2160 - BOTTOM_MARGIN - SCORE_CLEAR_H
   local scoreY = clearY - SCORE_CLEAR_GAP - SCORE_CLEAR_H
 
@@ -245,9 +359,29 @@ function sandbox.init()
     SCORE_CLEAR_W * SCALE_X, SCORE_CLEAR_H * SCALE_Y,
     "Clear", 72, function()
       Token.clearAll()
+      Debris.clearAll()
       progressBar.reset()
       threatBar.reset()
       Dtor.reset()
+      events.loadAll()   -- cancels any in-flight "terminalArrive"/default sequence
+      actionQueue.reset()
+      sequences.resetImmediateAcc()
+      laser.hide()
+      Camera:setIdle()
+      if _deck then _deck.cards = {} end
+      if _hand then _hand.cards = {} end
+      _drawCount = 0
+      _maxMsgTimer = 0
+      message.text          = ""
+      message.subtitle      = ""
+      message.current.alpha = 0
+      message.target.alpha  = 0
+      _visProgress:snapHidden()
+      _visThreat:snapHidden()
+      _visDtor:snapHidden()
+      _visDeck:snapHidden()
+      _visHand:snapHidden()
+      _visCamera:snapHidden()
     end
   )
 end
@@ -265,10 +399,72 @@ function sandbox.update(dt, mx, my)
   end
 
   _tab:update(mx, my)
-  if _interacted then
+  if _interacted and not _collapsed then
     _scoreButton:update(mx, my)
     _clearButton:update(mx, my)
   end
+
+  -- drawToDtor's token is consumed (removed from Token's instances) the
+  -- instant its multi-second camera/laser/shatter sequence *starts* (see
+  -- core/newSequences.lua's terminalEvent), so relevance also has to track
+  -- that "terminalArrive" event queue, not just the token's own lifetime.
+  local drawToDtorActive = Token.count("drawToDtor") > 0
+    or not Token.allDone("drawToDtor")
+    or events.isRunning("terminalArrive")
+
+  local handNeeded = anyTokenActive({ "drawToHand" }) or drawToDtorActive
+
+  _visProgress:update(dt, anyTokenActive({ "progress", "progressNegative" }))
+  _visThreat:update(dt, anyTokenActive({ "threat", "threatNegative" }))
+  _visDtor:update(dt, anyTokenActive({ "nullify", "shuffle", "dtor" }) or drawToDtorActive)
+  _visDeck:update(dt, handNeeded)
+  _visHand:update(dt, handNeeded)
+  _visCamera:update(dt, drawToDtorActive)
+
+  -- Once the hand has fully faded out, drop its cards entirely — nothing
+  -- left to hover, and a fresh drawToHand click won't show a stale card.
+  if _visHand.justHidden and _hand then
+    _hand.cards = {}
+  end
+
+  Camera:update(dt, mx, my, areas.scanner)
+  laser.update(gameDt)
+  if _hand then
+    -- Suppress hover while the hand isn't needed (grace period + fade-out)
+    -- so a fading-away card doesn't still react to the mouse.
+    if handNeeded then
+      _hand:update(mx, my)
+    else
+      _hand:update(-9999, -9999)
+    end
+  end
+
+  if _maxMsgTimer > 0 then
+    _maxMsgTimer = _maxMsgTimer - dt
+    if _maxMsgTimer <= 0 then
+      message.target.alpha = 0
+    end
+  end
+  message.update(dt)
+end
+
+function sandbox.drawScene()
+  if _visProgress.alpha > 0.01 then progressBar.draw(_visProgress.alpha) end
+  if _visThreat.alpha > 0.01 then threatBar.draw(_visThreat.alpha) end
+  if _visDeck.alpha > 0.01 and _deck then _deck:draw(_visDeck.alpha) end
+  if _visCamera.alpha > 0.01 then Camera:draw(_visCamera.alpha) end
+  if _visHand.alpha > 0.01 and _hand then _hand:draw(_visHand.alpha) end
+  if _visDtor.alpha > 0.01 then
+    if areas.dtorRow.asset then
+      love.graphics.setColor(1, 1, 1, _visDtor.alpha)
+      love.graphics.draw(areas.dtorRow.asset, areas.dtorRow.x, areas.dtorRow.y,
+        0, SCALE_X, SCALE_Y, areas.dtorRow.asset:getWidth() / 2, areas.dtorRow.asset:getHeight() / 2)
+      love.graphics.setColor(1, 1, 1, 1)
+    end
+    Dtor.drawAll(_visDtor.alpha, true) -- true: skip the front-of-queue effect text
+  end
+  laser.draw()
+  message.draw()
 end
 
 function sandbox.collectTooltipRequests()
@@ -309,7 +505,7 @@ function sandbox.draw()
 
   _tab:draw()
 
-  if _interacted then
+  if _interacted and not _collapsed then
     _scoreButton:draw()
     _clearButton:draw()
   end
@@ -317,7 +513,7 @@ end
 
 function sandbox.mousepressed(x, y, button)
   if _tab:mousepressed(x, y, button) then return true end
-  if _interacted then
+  if _interacted and not _collapsed then
     if _scoreButton:mousepressed(x, y, button) then return true end
     if _clearButton:mousepressed(x, y, button) then return true end
   end
@@ -330,7 +526,7 @@ end
 
 function sandbox.touchpressed(x, y)
   if _tab:touchpressed(x, y) then return true end
-  if _interacted then
+  if _interacted and not _collapsed then
     if _scoreButton:touchpressed(x, y) then return true end
     if _clearButton:touchpressed(x, y) then return true end
   end

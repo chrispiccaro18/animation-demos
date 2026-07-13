@@ -6,8 +6,11 @@ Level complete unlock tokens. Ceremony and visual demonstration of how it works.
 5. multiply all/flip
 
 run/level/starting deck - determines what gets flung at beginning of turn
-need a way to end the run - just when everything has been unlocked?
+need a way to end the run - just when everything has been unlocked? optional endless mode after
 tokens are small unlocks, starting decks are bigger unlocks (winning a run)
+
+token unlock ceremony
+new starting deck unlock ceremony
 
 chain tokens:
 multiply need to set a rule for sequential, same token type firing
@@ -31,7 +34,6 @@ card tooltip collision with bottom of canvas, move arrow down
 main menu is a sandbox of tokens
 token legend/compendium (with examples)
 sandbox where you can test combinations of tokens
-
 
 Options Menu
 Design

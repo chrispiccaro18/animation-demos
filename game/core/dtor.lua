@@ -497,7 +497,8 @@ end
 ------------------------------------------------------------------------
 -- Draw slots + text
 ------------------------------------------------------------------------
-function Dtor.drawAll()
+function Dtor.drawAll(alphaMul, hideText)
+  alphaMul = alphaMul or 1
   if not _dtorSlotAsset then return end
   local dq    = Dtor.area
   local slotH = dq.h / dq.maxSlots
@@ -529,7 +530,7 @@ function Dtor.drawAll()
         love.graphics.translate(sx, sy)
         love.graphics.scale(sc, sc)
 
-        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setColor(1, 1, 1, alphaMul)
         local slotAsset = slot.nullified and _emptyNullifySlot or _dtorSlotAsset
         love.graphics.draw(slotAsset, 0, 0, 0, 1, 1, sw / 2, sh / 2)
 
@@ -567,7 +568,8 @@ function Dtor.drawAll()
     local sy    = dq.y + (dq.maxSlots - 0.5) * slotH
     local dotR  = 22 * SCALE_X
     local gap   = dotR * 2.8
-    love.graphics.setColor(Palette.warning)
+    local wc0 = Palette.warning
+    love.graphics.setColor(wc0[1], wc0[2], wc0[3], (wc0[4] or 1) * alphaMul)
     for d = 1, overflowDots do
       local offset = (d - (overflowDots + 1) / 2) * gap
       love.graphics.circle("fill", sx + offset, sy, dotR)
@@ -586,7 +588,7 @@ function Dtor.drawAll()
         love.graphics.push()
         love.graphics.translate(sx, sy)
         love.graphics.scale(sc, sc)
-        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setColor(1, 1, 1, alphaMul)
         love.graphics.draw(_emptyNullifySlot, 0, 0, 0, 1, 1, ew / 2, eh / 2)
         love.graphics.pop()
       end
@@ -594,7 +596,7 @@ function Dtor.drawAll()
   end
 
   -- Text overlay
-  if _text.alpha > 0.01 and _text.segments and _font then
+  if not hideText and _text.alpha > 0.01 and _text.segments and _font then
     local isTopEntryNullified = Dtor.isEntryNullified()
     local spriteSize = _font:getHeight()
     local gap        = 4 * SCALE_X
@@ -606,11 +608,11 @@ function Dtor.drawAll()
       tokens     = _tokenAssets,
       gap        = gap,
       spriteSize = spriteSize,
-      alpha      = _text.alpha,
+      alpha      = _text.alpha * alphaMul,
     })
     if isTopEntryNullified then
       local wc = Palette.warning
-      love.graphics.setColor(wc[1], wc[2], wc[3], _text.alpha)
+      love.graphics.setColor(wc[1], wc[2], wc[3], _text.alpha * alphaMul)
       love.graphics.setLineWidth(8 * SCALE_X)
       love.graphics.line(_text.x + 20 * SCALE_X, _text.y + _text.h / 2, _text.x + _text.w - 20 * SCALE_X, _text.y + _text.h / 2)
     end

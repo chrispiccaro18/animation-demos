@@ -105,6 +105,7 @@ end
 
 local function showMenu()
   sandbox.refreshUnlocks()
+  sequences.setSandboxMode(true)
   menuScreen.show()
 end
 
@@ -344,6 +345,8 @@ function love.load()
   particles.load()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
   sequences.setDeck(deck)
+  sequences.setHand(hand)
+  sandbox.setDeckAndHand(deck, hand)
   print("ScaleX: " .. SCALE_X .. ", ScaleY: " .. SCALE_Y)
 
   events.loadAll()
@@ -378,11 +381,13 @@ function love.load()
     function()  -- Continue
       if Run.load() then loadGame() end
       appState = "game"
+      sequences.setSandboxMode(false)
       menuScreen.hide()
     end,
     function()  -- New Run
       fullReset()
       appState = "game"
+      sequences.setSandboxMode(false)
       menuScreen.hide()
     end,
     function()  -- Options
@@ -410,10 +415,8 @@ function love.draw()
     love.graphics.push()
     love.graphics.translate(sx, sy)
     glow:renderBottom()
-    areas.drawStatic()
-    -- if camera then camera:draw() end
     Debris.drawAll()
-    Dtor.drawAll()
+    sandbox.drawScene()
     particles.draw()
     Token.drawAll()
     glow:renderMid()
@@ -615,8 +618,10 @@ function love.mousepressed(x, y, button, istouch, presses)
   if appState == "menu" then
     if optionsMenu.isActive() then
       optionsMenu.mousepressed(gx, gy, button)
-    elseif not sandbox.mousepressed(gx, gy, button) then
-      menuScreen.mousepressed(gx, gy, button)
+    else
+      local consumed = sandbox.mousepressed(gx, gy, button)
+      if not consumed then consumed = menuScreen.mousepressed(gx, gy, button) end
+      if not consumed then Debris.mousePressed(gx, gy, button) end
     end
     return
   end

@@ -121,7 +121,8 @@ function ProgressBar.getEnvIndicatorPositions()
   }
 end
 
-function ProgressBar.draw()
+function ProgressBar.draw(alphaMul)
+  alphaMul = alphaMul or 1
   if not _asset then return end
   local pulseA = pulse.valueFrom(2.0, 0.0, 0.8, _negPulseStartT)
   local aw = _w / SCALE_X
@@ -131,7 +132,7 @@ function ProgressBar.draw()
     local cx          = _x + i * _gapX + _w / 2
     local cy          = _y + _h / 2
     local isAffected  = _tickPulseCount > 0 and i >= _count - _tickPulseCount
-    love.graphics.setColor(1, 1, 1, isAffected and pulseA or 1.0)
+    love.graphics.setColor(1, 1, 1, (isAffected and pulseA or 1.0) * alphaMul)
     love.graphics.draw(_asset, cx, cy, 0, SCALE_X * s, SCALE_Y * s, aw / 2, ah / 2)
   end
   love.graphics.setColor(1, 1, 1, 1)
@@ -143,7 +144,7 @@ function ProgressBar.draw()
   -- end
 
   if _font and _titleFont then
-    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setColor(1, 1, 1, alphaMul)
     local prevFont = love.graphics.getFont()
     love.graphics.setFont(_font)
     love.graphics.printf(
@@ -152,7 +153,8 @@ function ProgressBar.draw()
     )
     -- love.graphics.rectangle("line", _textArea.x, _textArea.y, _textArea.w, _textArea.h)
     love.graphics.setFont(_titleFont)
-    love.graphics.setColor(Palette.positive)
+    local pc = Palette.positive
+    love.graphics.setColor(pc[1], pc[2], pc[3], (pc[4] or 1) * alphaMul)
     love.graphics.printf(
       "PROGRESS LEVEL",
       _textArea.x - _textArea.w,

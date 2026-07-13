@@ -162,10 +162,11 @@ function Camera:drawScannerLines(scanners)
   love.graphics.setLineWidth(previousLineWidth)
 end
 
-function Camera:draw()
+function Camera:draw(alphaMul)
+  alphaMul = alphaMul or 1
   local windowScaleX = SCALE_X / 2
   local windowScaleY = SCALE_Y / 2
-  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setColor(1, 1, 1, alphaMul)
   love.graphics.draw(
     self.parts.base.asset,
     self.x,
@@ -192,7 +193,8 @@ function Camera:draw()
     self.offsetX,
     self.offsetY
   )
-  love.graphics.setColor(self.parts.ring.color)
+  local ringColor = self.parts.ring.color
+  love.graphics.setColor(ringColor[1], ringColor[2], ringColor[3], (ringColor[4] or 1) * alphaMul)
   love.graphics.draw(
     self.parts.ring.asset,
     self.x
@@ -227,7 +229,7 @@ function Camera:draw()
       oy = self.offsetY,
       color = self.parts.ring.color,
       luminescence = luminescence,
-      alpha = 0.8,
+      alpha = 0.8 * alphaMul,
     })
 end
 

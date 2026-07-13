@@ -103,7 +103,8 @@ function ThreatBar.getTickData()
   return ticks
 end
 
-function ThreatBar.draw()
+function ThreatBar.draw(alphaMul)
+  alphaMul = alphaMul or 1
   if not _asset then return end
   local pulseA = pulse.valueFrom(2.0, 0.0, 0.8, _negPulseStartT)
   local aw = _w / SCALE_X
@@ -113,13 +114,13 @@ function ThreatBar.draw()
     local cx         = _x + i * _gapX + _w / 2
     local cy         = _y + _h / 2
     local isAffected = _tickPulseCount > 0 and i >= _count - _tickPulseCount
-    love.graphics.setColor(1, 1, 1, isAffected and pulseA or 1.0)
+    love.graphics.setColor(1, 1, 1, (isAffected and pulseA or 1.0) * alphaMul)
     love.graphics.draw(_asset, cx, cy, 0, SCALE_X * s, SCALE_Y * s, aw / 2, ah / 2)
   end
   love.graphics.setColor(1, 1, 1, 1)
 
   if _font and _titleFont then
-    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setColor(1, 1, 1, alphaMul)
     local prevFont = love.graphics.getFont()
     love.graphics.setFont(_font)
     love.graphics.printf(
@@ -127,7 +128,8 @@ function ThreatBar.draw()
       _textArea.x, _textArea.y, _textArea.w, "left"
     )
     love.graphics.setFont(_titleFont)
-    love.graphics.setColor(Palette.danger)
+    local dc = Palette.danger
+    love.graphics.setColor(dc[1], dc[2], dc[3], (dc[4] or 1) * alphaMul)
     love.graphics.printf(
       "THREAT LEVEL",
       _textArea.x,
