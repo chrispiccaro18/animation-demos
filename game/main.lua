@@ -73,6 +73,7 @@ local camera = nil
 local previousSpeed = config.speed
 
 local gameCanvas = nil
+local menuCanvas = nil
 local canvasW    = 0
 local canvasH    = 0
 local viewX      = 0
@@ -100,6 +101,11 @@ local resetGame   -- forward declaration (cardPickScreen needs the reference bef
 local function fullReset()
   Run.newRun()
   resetGame()
+end
+
+local function showMenu()
+  sandbox.refreshUnlocks()
+  menuScreen.show()
 end
 
 -- Shared board/UI reset used by both a fresh level start and loading a save.
@@ -345,6 +351,7 @@ function love.load()
   speedControl.load()
 
   gameCanvas = love.graphics.newCanvas(canvasW, canvasH)
+  menuCanvas = love.graphics.newCanvas(canvasW, canvasH)
   overlayStats.setGameCanvas(gameCanvas)
   updateViewport()
 
@@ -360,6 +367,7 @@ function love.load()
 
   Profile.setActive(1) -- no profile picker yet; always resume/create profile 1
   Run.newRun()
+  sandbox.init()
 
   optionsMenu.load({
     getGlowQuality = function() return glow.qualityName end,
@@ -377,56 +385,33 @@ function love.load()
       appState = "game"
       menuScreen.hide()
     end,
-    function()  -- Sandbox
-      sandbox.init(function()
-        appState = "menu"
-        menuScreen.show()
-        camera:setIdle()
-      end)
-      appState = "sandbox"
-      menuScreen.hide()
-    end,
     function()  -- Options
       optionsMenu.show()
     end,
     love.system.getOS() ~= "Web" and function() love.event.quit() end or nil
   )
-  menuScreen.show()
+  showMenu()
 end
 
 function love.draw()
-  -- Fill full screen to cover letterbox bars
+  local sx, sy = screenshake.getOffset()
+  local activeCanvas
+
+  -- Full-window background always covers the letterbox bars, regardless of
+  -- what's centered in the 16:9 canvas on top of it.
   love.graphics.setColor(Palette.void)
   love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(1, 1, 1, 1)
 
-  local sx, sy = screenshake.getOffset()
-  love.graphics.push()
-  love.graphics.translate(sx, sy)
-  if boardAsset then
-    love.graphics.draw(boardAsset, viewX, viewY, 0, viewScale * SCALE_X, viewScale * SCALE_Y)
-  end
-  love.graphics.setColor(0, 0, 0, 0.3)
-  love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-  love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.pop()
-
-  love.graphics.setColor(0, 0, 0, 0.2)
-  love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-  love.graphics.setColor(1, 1, 1, 1)
-
-  love.graphics.setCanvas(gameCanvas)
-  love.graphics.clear(0, 0, 0, 0)
-
   if appState == "menu" then
-    menuScreen.draw()
-    optionsMenu.draw()
-  elseif appState == "sandbox" then
+    love.graphics.setCanvas(menuCanvas)
+    love.graphics.clear(0, 0, 0, 0)
+
     love.graphics.push()
     love.graphics.translate(sx, sy)
     glow:renderBottom()
     areas.drawStatic()
-    if camera then camera:draw() end
+    -- if camera then camera:draw() end
     Debris.drawAll()
     Dtor.drawAll()
     particles.draw()
@@ -435,7 +420,29 @@ function love.draw()
     glow:renderTop()
     love.graphics.pop()
     sandbox.draw()
+    menuScreen.draw()
+    optionsMenu.draw()
+    hoverTooltip.draw()
+
+    activeCanvas = menuCanvas
   else  -- "game"
+    love.graphics.push()
+    love.graphics.translate(sx, sy)
+    if boardAsset then
+      love.graphics.draw(boardAsset, viewX, viewY, 0, viewScale * SCALE_X, viewScale * SCALE_Y)
+    end
+    love.graphics.setColor(0, 0, 0, 0.3)
+    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.pop()
+
+    love.graphics.setColor(0, 0, 0, 0.2)
+    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    love.graphics.setColor(1, 1, 1, 1)
+
+    love.graphics.setCanvas(gameCanvas)
+    love.graphics.clear(0, 0, 0, 0)
+
     love.graphics.push()
     love.graphics.translate(sx, sy)
     glow:renderBottom()
@@ -462,6 +469,8 @@ function love.draw()
     love.graphics.pop()
     hud.draw()
     if tutorialActive then tutorial.draw() end
+
+    activeCanvas = gameCanvas
   end
 
   overlayStats.draw()
@@ -469,7 +478,7 @@ function love.draw()
 
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.setBlendMode("alpha", "premultiplied")
-  love.graphics.draw(gameCanvas, viewX, viewY, 0, viewScale, viewScale)
+  love.graphics.draw(activeCanvas, viewX, viewY, 0, viewScale, viewScale)
   love.graphics.setBlendMode("alpha")
 end
 
@@ -493,14 +502,11 @@ function love.update(dt)
       optionsMenu.update(mouseX, mouseY)
     else
       menuScreen.update(mouseX, mouseY)
+      sandbox.update(dt, mouseX, mouseY)
+      hoverTooltip.clear()
+      sandbox.collectTooltipRequests()
+      hoverTooltip.update()
     end
-    pulse.update(realDt)
-    glow:update(realDt)
-    return
-  end
-
-  if appState == "sandbox" then
-    sandbox.update(dt, mouseX, mouseY)
     pulse.update(realDt)
     particles.update(realDt)
     Debris.updateAll(gameDt)
@@ -609,13 +615,9 @@ function love.mousepressed(x, y, button, istouch, presses)
   if appState == "menu" then
     if optionsMenu.isActive() then
       optionsMenu.mousepressed(gx, gy, button)
-    else
+    elseif not sandbox.mousepressed(gx, gy, button) then
       menuScreen.mousepressed(gx, gy, button)
     end
-    return
-  end
-  if appState == "sandbox" then
-    sandbox.mousepressed(gx, gy, button)
     return
   end
   if tutorialActive then
@@ -643,10 +645,10 @@ function love.keypressed(key)
   if key == "escape" and love.system.getOS() ~= "Web" then
     if optionsMenu.isActive() then
       optionsMenu.hide()
-    elseif appState == "game" or appState == "sandbox" then
+    elseif appState == "game" then
       Token.clearAll()
       appState = "menu"
-      menuScreen.show()
+      showMenu()
     else
       love.event.quit()
     end
@@ -753,11 +755,9 @@ function love.touchreleased(id, x, y, dx, dy, pressure)
         if appState == "menu" then
           if optionsMenu.isActive() then
             optionsMenu.touchpressed(gx, gy)
-          else
+          elseif not sandbox.touchpressed(gx, gy) then
             menuScreen.touchpressed(gx, gy)
           end
-        elseif appState == "sandbox" then
-          sandbox.touchpressed(gx, gy)
         elseif tutorialActive then
           tutorial.touchpressed(gx, gy)
         elseif cardPickScreen.isActive() then

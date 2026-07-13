@@ -45,13 +45,16 @@ function Button:touchpressed(tx, ty)
   return false
 end
 
-function Button:draw()
-  love.graphics.setColor(Palette.background)
+function Button:draw(alphaMul)
+  alphaMul = alphaMul or 1
+
+  local bg = Palette.background
+  love.graphics.setColor(bg[1], bg[2], bg[3], (bg[4] or 1) * alphaMul)
   love.graphics.rectangle("fill", self.x, self.y, self.w, self.h,
     CORNER_R * SCALE_X, CORNER_R * SCALE_Y)
 
   local borderColor = self.hovered and Palette.accent or Palette.primary
-  love.graphics.setColor(borderColor)
+  love.graphics.setColor(borderColor[1], borderColor[2], borderColor[3], (borderColor[4] or 1) * alphaMul)
   local prevLW = love.graphics.getLineWidth()
   love.graphics.setLineWidth(LINE_W * math.max(SCALE_X, SCALE_Y))
   love.graphics.rectangle("line", self.x, self.y, self.w, self.h,
@@ -64,7 +67,7 @@ function Button:draw()
   local tw  = font:getWidth(self.label)
   local th  = font:getHeight()
   local fontColor = self.hovered and Palette.accent or Palette.primary
-  love.graphics.setColor(fontColor)
+  love.graphics.setColor(fontColor[1], fontColor[2], fontColor[3], (fontColor[4] or 1) * alphaMul)
   love.graphics.print(self.label,
     math.floor(self.x + (self.w - tw) / 2),
     math.floor(self.y + (self.h - th) / 2))
