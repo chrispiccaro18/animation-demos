@@ -4,6 +4,8 @@ local areas         = require("core.areas")
 local progressBar   = require("core.progressBar")
 local threatBar     = require("core.threatBar")
 local Run           = require("core.run")
+local Profile       = require("core.profile")
+local Unlocks       = require("core.unlocks")
 local envEffects    = require("core.envEffects")
 local message       = require("core.message")
 local Token         = require("core.token")
@@ -1053,13 +1055,14 @@ function sequences.beginTurn()
       delay = 0, type = "immediate",
     })
 
+    local highestLevel = Profile.getHighestLevelReached()
+
     for i = 1, level do
       local d = flingDelays[i]
       events.push({
         fn = function()
           local x, y = envEffects.getPosition("negative")
-          local tokenType = "threat"
-          -- local tokenType = (i % 5 == 0) and "drawToDtor" or "threat"
+          local tokenType = Unlocks.pickEscalationType(highestLevel)
           local opts = endTurnFlingOptions(tokenType, "rightward")
           opts.delay = d
           Token.new_fling(x, y, areas.desk, opts)

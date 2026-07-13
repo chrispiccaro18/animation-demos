@@ -42,6 +42,9 @@ local tutorial       = require("core.tutorial")
 local hud            = require("core.hud")
 local gameOverScreen  = require("core.gameOverScreen")
 local Run             = require("core.run")
+local Profile         = require("core.profile")
+local Unlocks         = require("core.unlocks")
+local Settings        = require("lib.settings")
 local cardPickScreen  = require("core.cardPickScreen")
 local menuScreen      = require("core.menuScreen")
 local sandbox         = require("core.sandbox")
@@ -256,13 +259,14 @@ local function loadGame()
     }
   end
 
+    local highestLevel = Profile.getHighestLevelReached()
+
     for i = 1, level do
       local d = flingDelays[i]
       events.push({
         fn = function()
           local x, y = envEffects.getPosition("negative")
-          local tokenType = "threat"
-          -- local tokenType = (i % 5 == 0) and "drawToDtor" or "threat"
+          local tokenType = Unlocks.pickEscalationType(highestLevel)
           local opts = endTurnFlingOptions(tokenType, "rightward")
           opts.delay = d
           Token.new_fling(x, y, areas.desk, opts)
@@ -303,9 +307,10 @@ function love.load()
   AssetManifest.load()
   RichText.load()
   Audio.load()
-  love.audio.setVolume(0.25)
-  -- love.audio.setVolume(0.5)
-  -- love.audio.setVolume(1.0)
+  local settings = Settings.load()
+  love.audio.setVolume(settings.volume)
+  config.speedIndex = settings.speedIndex
+  config.speed      = config.speedPresets[settings.speedIndex] or config.speed
 
   Token.load()
   Dtor.load()
@@ -344,6 +349,7 @@ function love.load()
   updateViewport()
 
   glow = Glow.load(canvasW, canvasH)
+  glow:setQuality(settings.glowQuality, canvasW, canvasH)
   hud.load(
     function() tutorialActive = true end,
     fullReset,
@@ -352,6 +358,7 @@ function love.load()
   gameOverScreen.load(fullReset)
   cardPickScreen.load(resetGame)
 
+  Profile.setActive(1) -- no profile picker yet; always resume/create profile 1
   Run.newRun()
 
   optionsMenu.load({
@@ -518,7 +525,7 @@ function love.update(dt)
     if _levelCompleteTimer >= 1.5 then
       gameOver              = nil
       _levelCompleteTimer   = nil
-      cardPickScreen.show(Run.getOfferCards())
+      cardPickScreen.show(Run.getOfferCards(Profile.getHighestLevelReached()))
     end
     return
   end

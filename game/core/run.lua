@@ -1,61 +1,23 @@
+local Serialize = require("lib.serialize")
+local Unlocks   = require("core.unlocks")
+
 local Run = {}
 
 local _level         = 0
 local _deckData      = {}
 local _levelComplete = false
 local _savedTurn     = nil
+local _saveDir       = ""
 
-local function prettySerialize(v, indent)
-  indent = indent or 0
-  local pad  = string.rep("    ", indent)
-  local ipad = string.rep("    ", indent + 1)
-  local t = type(v)
-  if t == "number"  then return tostring(v) end
-  if t == "string"  then return string.format("%q", v) end
-  if t == "boolean" then return tostring(v) end
-  if t ~= "table"   then return "nil" end
-  if next(v) == nil then return "{}" end
+local function savePath()
+  return (_saveDir ~= "" and (_saveDir .. "/") or "") .. "run.lua"
+end
 
-  -- Pure sequential array (integer keys 1..n, no gaps)?
-  local maxN, isArr = 0, true
-  for k in pairs(v) do
-    if type(k) ~= "number" or k ~= math.floor(k) or k < 1 then
-      isArr = false; break
-    end
-    if k > maxN then maxN = k end
-  end
-  if isArr then
-    local count = 0
-    for _ in pairs(v) do count = count + 1 end
-    if count ~= maxN then isArr = false end
-  end
-
-  if isArr then
-    local hasNested = false
-    for i = 1, maxN do
-      if type(v[i]) == "table" then hasNested = true; break end
-    end
-    if not hasNested then
-      local parts = {}
-      for i = 1, maxN do parts[i] = prettySerialize(v[i], 0) end
-      return "{ " .. table.concat(parts, ", ") .. " }"
-    end
-    local lines = {}
-    for i = 1, maxN do
-      lines[i] = ipad .. prettySerialize(v[i], indent + 1)
-    end
-    return "{\n" .. table.concat(lines, ",\n") .. ",\n" .. pad .. "}"
-  end
-
-  -- Dict-style: sort keys for stable output
-  local parts = {}
-  for k, val in pairs(v) do
-    local key = (type(k) == "string" and k:match("^[%a_][%w_]*$"))
-                and k or ("[" .. prettySerialize(k, 0) .. "]")
-    parts[#parts + 1] = ipad .. key .. " = " .. prettySerialize(val, indent + 1)
-  end
-  table.sort(parts)
-  return "{\n" .. table.concat(parts, ",\n") .. ",\n" .. pad .. "}"
+-- Sets the directory this run's save file lives in (e.g. "profiles/1").
+-- Must be called (typically by Profile.setActive) before any load/save call.
+function Run.setSaveDir(dir)
+  _saveDir = dir or ""
+  if _saveDir ~= "" then love.filesystem.createDirectory(_saveDir) end
 end
 
 function Run.newRun()
@@ -86,14 +48,25 @@ function Run.nextLevel()
   _levelComplete = false
 end
 
-function Run.getOfferCards()
+-- `highestLevel` is the profile's meta-progression high-water mark (see
+-- core/profile.lua); pass nil/0 to only offer cards unlocked from the start.
+function Run.getOfferCards(highestLevel)
   local CardData = require("data.cards")
   local pool = CardData.offerPools[_level + 1]
   if not pool or #pool == 0 then
     pool = CardData.offerPools[1] or {}
   end
   local available = {}
-  for _, v in ipairs(pool) do available[#available + 1] = v end
+  for _, v in ipairs(pool) do
+    if Unlocks.isCardUnlocked(v, highestLevel) then
+      available[#available + 1] = v
+    end
+  end
+  if #available == 0 then
+    -- Thresholds locked out the whole pool (likely a tuning mistake) --
+    -- fall back to the unfiltered pool instead of leaving nothing to offer.
+    for _, v in ipairs(pool) do available[#available + 1] = v end
+  end
   local offers = {}
   while #offers < 3 and #available > 0 do
     local idx = math.random(#available)
@@ -113,21 +86,20 @@ function Run.saveTurn(opts)
     "    progress = " .. tostring(opts.progress)  .. ",",
     "    threat   = " .. tostring(opts.threat)    .. ",",
     "    ram      = " .. tostring(opts.ram)       .. ",",
-    "    deck     = " .. prettySerialize(_deckData,    1) .. ",",
-    "    drawPile = " .. prettySerialize(opts.drawPile, 1) .. ",",
-    "    hand     = " .. prettySerialize(opts.hand,     1) .. ",",
-    "    dtor     = " .. prettySerialize(opts.dtor,     1) .. ",",
+    "    deck     = " .. Serialize.pretty(_deckData,    1) .. ",",
+    "    drawPile = " .. Serialize.pretty(opts.drawPile, 1) .. ",",
+    "    hand     = " .. Serialize.pretty(opts.hand,     1) .. ",",
+    "    dtor     = " .. Serialize.pretty(opts.dtor,     1) .. ",",
     "}",
   }
-  local ok, err = love.filesystem.write("run_save.lua", table.concat(lines, "\n") .. "\n")
+  local ok, err = love.filesystem.write(savePath(), table.concat(lines, "\n") .. "\n")
   if not ok then print("[Run] saveTurn failed: " .. tostring(err)) end
 end
 
 function Run.load()
-  if not love.filesystem.getInfo("run_save.lua") then return false end
-  local ok, data = pcall(function() return love.filesystem.load("run_save.lua")() end)
-  if not ok or type(data) ~= "table" then
-    print("[Run] load failed")
+  local data, err = Serialize.loadFile(savePath())
+  if not data then
+    if err ~= "not found" then print("[Run] load failed") end
     return false
   end
   _level         = data.level or 0
@@ -148,7 +120,7 @@ end
 -- if no save has been loaded this session.
 function Run.getSavedTurn() return _savedTurn end
 
-function Run.deleteSave()  love.filesystem.remove("run_save.lua") end
-function Run.hasSave()     return love.filesystem.getInfo("run_save.lua") ~= nil end
+function Run.deleteSave()  love.filesystem.remove(savePath()) end
+function Run.hasSave()     return love.filesystem.getInfo(savePath()) ~= nil end
 
 return Run

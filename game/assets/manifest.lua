@@ -24,6 +24,12 @@ Manifest.ui = {
   closeButton = {
     path = basePath .. "proto/close-button.png"
   },
+  arrowUpRight = {
+    path = basePath .. "proto/arrow-button-up-right.png"
+  },
+  arrowDownLeft = {
+    path = basePath .. "proto/arrow-button-down-left.png"
+  }
 }
 
 Manifest.card = {
@@ -101,6 +107,9 @@ Manifest.tokens = {
   },
   multiplyThreat = {
     path = basePath .. "proto/multiply-threat-token.png"
+  },
+  lock = {
+    path = basePath .. "proto/lock.png"
   }
 }
 

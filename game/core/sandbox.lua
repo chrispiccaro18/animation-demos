@@ -7,6 +7,8 @@ local events   = require("lib.events")
 local progressBar = require("core.progressBar")
 local threatBar   = require("core.threatBar")
 local Dtor        = require("core.dtor")
+local Profile     = require("core.profile")
+local Unlocks     = require("core.unlocks")
 
 local sandbox = {}
 
@@ -106,13 +108,21 @@ end
 
 function sandbox.init(onBack)
   _onBack   = onBack
-  _selected = TOKEN_TYPES[1]
   Token.clearAll()
   events.loadAll()
   areas.pool.chips = {}
 
+  local highestLevel = Profile.getHighestLevelReached()
+  local available = {}
+  for _, ttype in ipairs(TOKEN_TYPES) do
+    if Unlocks.isTokenUnlocked(ttype, highestLevel) then
+      available[#available + 1] = ttype
+    end
+  end
+  _selected = available[1]
+
   _iconButtons = {}
-  for i, ttype in ipairs(TOKEN_TYPES) do
+  for i, ttype in ipairs(available) do
     local col = (i <= 8) and 0 or 1
     local row = (i <= 8) and (i - 1) or (i - 9)
     local x   = (PANEL_X + col * (BTN_SIZE + COL_GAP)) * SCALE_X

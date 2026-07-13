@@ -24,7 +24,7 @@ local function makeButtons(hasSave)
     items[#items + 1] = { label = "Continue", fn = _onContinue }
   end
   items[#items + 1] = { label = "New Run",  fn = _onNewRun  }
-  items[#items + 1] = { label = "Sandbox",  fn = _onSandbox }
+  -- items[#items + 1] = { label = "Sandbox",  fn = _onSandbox }
   items[#items + 1] = { label = "Options",  fn = _onOptions }
   if _onQuit then
     items[#items + 1] = { label = "Quit",   fn = _onQuit   }

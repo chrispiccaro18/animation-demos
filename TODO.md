@@ -5,6 +5,10 @@ Level complete unlock tokens. Ceremony and visual demonstration of how it works.
 4. multiply threat/progress
 5. multiply all/flip
 
+run/level/starting deck - determines what gets flung at beginning of turn
+need a way to end the run - just when everything has been unlocked?
+tokens are small unlocks, starting decks are bigger unlocks (winning a run)
+
 chain tokens:
 multiply need to set a rule for sequential, same token type firing
 - currently they just multiply the "base" tokens, not the others that have been multiplied by previous tokens
@@ -23,9 +27,6 @@ hand max/cap
 hovering tokens gives a count
 
 card tooltip collision with bottom of canvas, move arrow down
-
-make save file more readable (serialize?)
-need to save dtor, hand, progress/threat, deck ...
 
 main menu is a sandbox of tokens
 token legend/compendium (with examples)

@@ -6,6 +6,7 @@ local cardTooltip = require("core.cardTooltip")
 local message     = require("core.message")
 local events      = require("lib.events")
 local Run         = require("core.run")
+local Profile     = require("core.profile")
 
 local M = {}
 
@@ -58,6 +59,7 @@ function M.load(onResetGame)
 
     Run.addCard(chosen)
     Run.nextLevel()
+    Profile.reportLevelReached(Run.getLevel())
     _onReset()
 
     -- Level start message (event queue was reset by resetGame)

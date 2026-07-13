@@ -2,6 +2,7 @@ local Button   = require("core.button")
 local Manifest = require("assets.manifest")
 local Palette  = require("lib.palette")
 local config   = require("lib.config")
+local Settings = require("lib.settings")
 
 local optionsMenu = {}
 
@@ -58,6 +59,7 @@ local function buildGameTab()
     _speedButtons[i] = Button.new(bx, by, bw * SCALE_X, bh * SCALE_Y, preset .. "x", 72, function()
       config.speedIndex = i
       config.speed      = preset
+      Settings.save({ speedIndex = i })
     end)
   end
 end
@@ -80,6 +82,7 @@ local function buildVideoTab()
     local by = BUTTON_Y * SCALE_Y
     _qualityButtons[i] = Button.new(bx, by, bw * SCALE_X, bh * SCALE_Y, q.label, 72, function()
       if _setGlowQuality then _setGlowQuality(q.value) end
+      Settings.save({ glowQuality = q.value })
     end)
     _qualityButtons[i]._value = q.value
   end
@@ -100,6 +103,7 @@ local function buildAudioTab()
     local by = BUTTON_Y * SCALE_Y
     _volumeButtons[i] = Button.new(bx, by, bw * SCALE_X, bh * SCALE_Y, labels[i], 72, function()
       love.audio.setVolume(vol)
+      Settings.save({ volume = vol })
     end)
     _volumeButtons[i]._volume = vol
   end
