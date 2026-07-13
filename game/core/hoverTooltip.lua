@@ -155,7 +155,8 @@ local function computeLayout(data, alpha)
   local textW     = bw - padX * 2
 
   -- Build content rows, tracking a Y cursor from box top
-  local cursor       = padY + fontH + titleBodyGap  -- space consumed by title
+  local hasTitle     = data.title and data.title ~= ""
+  local cursor       = hasTitle and (padY + fontH + titleBodyGap) or padY
   local entries      = {}   -- token-entry format
   local wrappedLines = {}   -- plain-line format
 
@@ -235,6 +236,7 @@ local function computeLayout(data, alpha)
     entryLineH   = entryLineH, bodyLH = bodyLH,
     padX         = padX, padY         = padY,
     titleBodyGap = titleBodyGap,
+    hasTitle     = hasTitle,
     title        = data.title, titleColor = data.titleColor,
     entries      = entries, wrappedLines = wrappedLines, linesY = linesY,
     arrowImg     = arrowImg, arrow        = arrow,
@@ -335,9 +337,11 @@ function M.draw()
     love.graphics.setFont(L.font)
 
     -- Title
-    local tc2 = L.titleColor or tc
-    love.graphics.setColor(tc2[1], tc2[2], tc2[3], (tc2[4] or 1) * a)
-    love.graphics.print(L.title or "", L.ox + L.padX, L.oy + L.padY)
+    if L.hasTitle then
+      local tc2 = L.titleColor or tc
+      love.graphics.setColor(tc2[1], tc2[2], tc2[3], (tc2[4] or 1) * a)
+      love.graphics.print(L.title, L.ox + L.padX, L.oy + L.padY)
+    end
 
     -- Plain body lines (lines format; rendered before token entries)
     if #L.wrappedLines > 0 then

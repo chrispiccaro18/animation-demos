@@ -952,6 +952,13 @@ function Token.allQuiverDone()
   return true
 end
 
+function Token.anyPopActive()
+  for _, token in ipairs(instances) do
+    if token.pop and token.pop.active then return true end
+  end
+  return false
+end
+
 function Token.allDone(token_type)
   for _, token in ipairs(instances) do
     if (token_type == nil or token.token_type == token_type) and not token.done then

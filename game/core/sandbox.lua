@@ -176,11 +176,27 @@ end
 -- sandbox-triggered settle or their start-up delay grows without bound.
 local IMMEDIATE_SETTLE_TYPES = { drawToHand = true, drawToDtor = true, nullify = true, shuffle = true }
 
+-- True for the whole drawToDtor lifecycle: initial fling+settle, the terminal
+-- attract flight to the deck (both still just live "drawToDtor" tokens), and
+-- the camera/laser/shatter/dtor-register sequence once it arrives (tracked via
+-- the "terminalArrive" queue, since the token itself is gone by then). Dtor
+-- only has one _transitCard slot, so a second drawToDtor landing anywhere in
+-- this window stomps the first one's card mid-sequence.
+local function scoreIsLocked()
+  return events.anyRunning() or Token.anyPopActive()
+end
+
+local function isDrawToDtorBusy()
+  return Token.count("drawToDtor") > 0
+    or not Token.allDone("drawToDtor")
+    or events.isRunning("terminalArrive")
+end
+
 local function flingFromIcon(btn)
   local dk = areas.desk
   if not dk then return end
-  if btn.tokenType == "drawToDtor" and events.isRunning("terminalArrive") then
-    return -- wait for the current drawToDtor camera/laser sequence to finish
+  if btn.tokenType == "drawToDtor" and isDrawToDtorBusy() then
+    return -- wait for the current drawToDtor sequence to fully finish
   end
   if btn.tokenType == "drawToHand" or btn.tokenType == "drawToDtor" then
     if _drawCount >= MAX_DRAW_TOKENS then
@@ -400,18 +416,11 @@ function sandbox.update(dt, mx, my)
 
   _tab:update(mx, my)
   if _interacted and not _collapsed then
-    _scoreButton:update(mx, my)
+    _scoreButton:update(scoreIsLocked() and -9999 or mx, scoreIsLocked() and -9999 or my)
     _clearButton:update(mx, my)
   end
 
-  -- drawToDtor's token is consumed (removed from Token's instances) the
-  -- instant its multi-second camera/laser/shatter sequence *starts* (see
-  -- core/newSequences.lua's terminalEvent), so relevance also has to track
-  -- that "terminalArrive" event queue, not just the token's own lifetime.
-  local drawToDtorActive = Token.count("drawToDtor") > 0
-    or not Token.allDone("drawToDtor")
-    or events.isRunning("terminalArrive")
-
+  local drawToDtorActive = isDrawToDtorBusy()
   local handNeeded = anyTokenActive({ "drawToHand" }) or drawToDtorActive
 
   _visProgress:update(dt, anyTokenActive({ "progress", "progressNegative" }))
@@ -470,15 +479,28 @@ end
 function sandbox.collectTooltipRequests()
   if _collapsed then return end
   for _, btn in ipairs(_iconButtons) do
-    if btn.hovered and not btn.unlocked then
-      hoverTooltip.request("sandboxLock_" .. btn.tokenType, {
-        title   = "LOCKED",
-        lines   = { "Reach Level " .. tostring(btn.required) },
-        anchorX = btn.x + btn.w,
-        anchorY = btn.y,
-        side    = "right",
-        arrowYOffset = 32.5
-      })
+    if btn.hovered then
+      if btn.unlocked then
+        -- Same {type=...} "effects" format core/cardTooltip.lua and
+        -- core/hover.lua use: colored name + token sprite header, wrapped
+        -- description body — hoverTooltip.lua builds it for us.
+        hoverTooltip.request("sandboxToken_" .. btn.tokenType, {
+          effects = { { type = btn.tokenType } },
+          anchorX = btn.x + btn.w,
+          anchorY = btn.y,
+          side    = "right",
+          arrowYOffset = 32.5
+        })
+      else
+        hoverTooltip.request("sandboxLock_" .. btn.tokenType, {
+          title   = "LOCKED",
+          lines   = { "Reach Level " .. tostring(btn.required) },
+          anchorX = btn.x + btn.w,
+          anchorY = btn.y,
+          side    = "right",
+          arrowYOffset = 32.5
+        })
+      end
     end
   end
 end
@@ -506,7 +528,8 @@ function sandbox.draw()
   _tab:draw()
 
   if _interacted and not _collapsed then
-    _scoreButton:draw()
+    local scoreAlpha = scoreIsLocked() and 0.35 or 1
+    _scoreButton:draw(scoreAlpha)
     _clearButton:draw()
   end
 end
@@ -514,7 +537,7 @@ end
 function sandbox.mousepressed(x, y, button)
   if _tab:mousepressed(x, y, button) then return true end
   if _interacted and not _collapsed then
-    if _scoreButton:mousepressed(x, y, button) then return true end
+    if not scoreIsLocked() and _scoreButton:mousepressed(x, y, button) then return true end
     if _clearButton:mousepressed(x, y, button) then return true end
   end
   if _collapsed then return false end
@@ -527,7 +550,7 @@ end
 function sandbox.touchpressed(x, y)
   if _tab:touchpressed(x, y) then return true end
   if _interacted and not _collapsed then
-    if _scoreButton:touchpressed(x, y) then return true end
+    if not scoreIsLocked() and _scoreButton:touchpressed(x, y) then return true end
     if _clearButton:touchpressed(x, y) then return true end
   end
   if _collapsed then return false end
