@@ -12,6 +12,8 @@ tokens are small unlocks, starting decks are bigger unlocks (winning a run)
 token unlock ceremony
 new starting deck unlock ceremony
 
+ending level lets final token pop finish then do an animation to clear the screen. when that finishes we can go to unlock ceremony/cardPicker
+
 chain tokens:
 multiply need to set a rule for sequential, same token type firing
 - currently they just multiply the "base" tokens, not the others that have been multiplied by previous tokens
@@ -30,10 +32,6 @@ hand max/cap
 hovering tokens gives a count
 
 card tooltip collision with bottom of canvas, move arrow down
-
-main menu is a sandbox of tokens
-token legend/compendium (with examples)
-sandbox where you can test combinations of tokens
 
 Options Menu
 Design
