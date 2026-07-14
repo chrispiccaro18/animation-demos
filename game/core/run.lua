@@ -1,5 +1,7 @@
 local Serialize = require("lib.serialize")
 local Unlocks   = require("core.unlocks")
+local Rarity    = require("data.rarity")
+local Dedup     = require("data.dedup")
 
 local Run = {}
 
@@ -61,8 +63,79 @@ function Run.nextLevel()
   _turn          = 0
 end
 
+-- Distinct token types a card's play/dtor effects touch (discard is
+-- excluded since that zone is mostly unused in current data).
+local function tokenTypesOf(cardData)
+  local set = {}
+  for _, zoneKey in ipairs({ "play", "dtor" }) do
+    local effects = cardData[zoneKey]
+    if type(effects) == "table" then
+      for _, effect in ipairs(effects) do
+        if effect.type then set[effect.type] = true end
+      end
+    end
+  end
+  return set
+end
+
+-- { [bucket] = count of deck cards touching that bucket }, per data/dedup.lua.
+local function deckBucketCounts(deckData)
+  local counts = {}
+  for _, cardData in ipairs(deckData) do
+    local touched = {}
+    for tokenType in pairs(tokenTypesOf(cardData)) do
+      local bucket = Dedup.bucketFor(tokenType)
+      if bucket then touched[bucket] = true end
+    end
+    for bucket in pairs(touched) do
+      counts[bucket] = (counts[bucket] or 0) + 1
+    end
+  end
+  return counts
+end
+
+-- 1.0 unless a card touches a saturated dedup bucket, in which case its
+-- weight decays the further the deck is over that bucket's target density.
+local function saturationMultiplier(cardData, bucketCounts, deckSize)
+  local touched = {}
+  for tokenType in pairs(tokenTypesOf(cardData)) do
+    local bucket = Dedup.bucketFor(tokenType)
+    if bucket then touched[bucket] = true end
+  end
+  local mult = 1
+  for bucket in pairs(touched) do
+    local count  = bucketCounts[bucket] or 0
+    local target = deckSize / bucket.perCards
+    if count > target then
+      mult = mult * ((bucket.decay or 0.6) ^ (count - target))
+    end
+  end
+  return mult
+end
+
+local function cardWeight(cardData, rarityWeights, bucketCounts, deckSize)
+  return (rarityWeights[cardData.rarity or "common"] or 1)
+       * saturationMultiplier(cardData, bucketCounts, deckSize)
+end
+
+-- Roulette-wheel pick of an index into `list`, given a parallel `weights`
+-- array. Falls back to a uniform pick if all weights are zero.
+local function weightedPick(list, weights)
+  local total = 0
+  for _, w in ipairs(weights) do total = total + w end
+  if total <= 0 then return math.random(#list) end
+  local r, cumulative = math.random() * total, 0
+  for i, w in ipairs(weights) do
+    cumulative = cumulative + w
+    if r <= cumulative then return i end
+  end
+  return #list
+end
+
 -- `highestLevel` is the profile's meta-progression high-water mark (see
 -- core/profile.lua); pass nil/0 to only offer cards unlocked from the start.
+-- Rarity scales with the current run's level (_level); dedup weighting
+-- scales with the current run's deck composition (_deckData).
 function Run.getOfferCards(highestLevel)
   local CardData = require("data.cards")
   local pool = CardData.offerPool
@@ -77,9 +150,18 @@ function Run.getOfferCards(highestLevel)
     -- fall back to the unfiltered pool instead of leaving nothing to offer.
     for _, v in ipairs(pool) do available[#available + 1] = v end
   end
+
+  local rarityWeights = Rarity.weightsForLevel(_level)
+  local deckSize      = #_deckData
+  local bucketCounts  = deckBucketCounts(_deckData)
+
   local offers = {}
   while #offers < 3 and #available > 0 do
-    local idx = math.random(#available)
+    local weights = {}
+    for i, v in ipairs(available) do
+      weights[i] = cardWeight(v, rarityWeights, bucketCounts, deckSize)
+    end
+    local idx = weightedPick(available, weights)
     offers[#offers + 1] = available[idx]
     table.remove(available, idx)
   end

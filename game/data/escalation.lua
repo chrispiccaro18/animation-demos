@@ -15,13 +15,16 @@ return {
   -- level plays as a fixed puzzle rather than a random draw. If level 4
   -- ever throws more than 4 tokens the list cycles: token 5 repeats
   -- order[1], token 6 repeats order[2], etc.
-  -- [1] = { mode = "predetermined", order = { "threat" } },
-  -- [2] = { mode = "predetermined", order = { "threat", "threat", "progressNegative" } },
-  -- [3] = { mode = "predetermined", order = { "threat", "threat", "progressNegative" } },
-  -- [4] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor" } },
-  -- [5] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor" } },
-  -- [6] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor", "shuffle"  } },
-  -- [7] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor", "shuffle" } },
+  [1] = { mode = "predetermined", order = { "threat" } },
+  [2] = { mode = "predetermined", order = { "threat", "threat", "progressNegative" } },
+  [3] = { mode = "predetermined", order = { "threat", "threat", "progressNegative" } },
+  [4] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor" } },
+  [5] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor" } },
+  [6] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor", "shuffle"  } },
+  [7] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor", "shuffle" } },
+  [8] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor", "shuffle", "multiplyThreat" } },
+  [9] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor", "shuffle", "multiplyThreat" } },
+  [10] = { mode = "predetermined", order = { "threat", "threat", "progressNegative", "drawToDtor", "shuffle", "multiplyThreat" } },
 
   -- Level 2 only ever throws threat or progressNegative, never the wider
   -- unlocked set -- eases the player into escalation before it opens up.
