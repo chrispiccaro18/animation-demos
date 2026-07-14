@@ -8,6 +8,8 @@ local _deckData      = {}
 local _levelComplete = false
 local _savedTurn     = nil
 local _saveDir       = ""
+local _runSeed       = 0
+local _turn          = 0
 
 local function savePath()
   return (_saveDir ~= "" and (_saveDir .. "/") or "") .. "run.lua"
@@ -25,6 +27,8 @@ function Run.newRun()
   _level         = 0
   _levelComplete = false
   _deckData      = {}
+  _runSeed       = math.random(1, 2147483647)
+  _turn          = 0
   for _, cd in ipairs(CardData.runStartingDeck) do
     _deckData[#_deckData + 1] = cd
   end
@@ -34,6 +38,14 @@ function Run.getLevel()             return _level             end
 function Run.getCurrentDeckData()   return _deckData          end
 function Run.isLevelComplete()      return _levelComplete     end
 function Run.clearLevelComplete()   _levelComplete = false    end
+function Run.getRunSeed()           return _runSeed           end
+function Run.getTurn()              return _turn              end
+
+-- Advances the within-level turn counter; call once per sequences.beginTurn().
+function Run.nextTurn()
+  _turn = _turn + 1
+  return _turn
+end
 
 function Run.levelComplete()
   _levelComplete = true
@@ -46,16 +58,14 @@ end
 function Run.nextLevel()
   _level         = _level + 1
   _levelComplete = false
+  _turn          = 0
 end
 
 -- `highestLevel` is the profile's meta-progression high-water mark (see
 -- core/profile.lua); pass nil/0 to only offer cards unlocked from the start.
 function Run.getOfferCards(highestLevel)
   local CardData = require("data.cards")
-  local pool = CardData.offerPools[_level + 1]
-  if not pool or #pool == 0 then
-    pool = CardData.offerPools[1] or {}
-  end
+  local pool = CardData.offerPool
   local available = {}
   for _, v in ipairs(pool) do
     if Unlocks.isCardUnlocked(v, highestLevel) then
@@ -83,6 +93,8 @@ function Run.saveTurn(opts)
   local lines = {
     "return {",
     "    level    = " .. tostring(_level)         .. ",",
+    "    turn     = " .. tostring(_turn)          .. ",",
+    "    runSeed  = " .. tostring(_runSeed)        .. ",",
     "    progress = " .. tostring(opts.progress)  .. ",",
     "    threat   = " .. tostring(opts.threat)    .. ",",
     "    ram      = " .. tostring(opts.ram)       .. ",",
@@ -105,6 +117,8 @@ function Run.load()
   _level         = data.level or 0
   _deckData      = data.deck  or {}
   _levelComplete = false
+  _turn          = data.turn or 0
+  _runSeed       = data.runSeed or math.random(1, 2147483647)
   _savedTurn = {
     progress = data.progress or 0,
     threat   = data.threat   or 0,

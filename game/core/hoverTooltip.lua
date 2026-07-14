@@ -246,6 +246,12 @@ end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
 
+-- Display name for a token type, e.g. for labels outside the hover-tooltip
+-- flow (see core/unlockCeremony.lua).
+function M.getTokenName(tokenType)
+  return TOKEN_NAME[tokenType] or tokenType
+end
+
 function M.load()
   for name in pairs(TOKEN_DESC) do
     local ok, img = pcall(Manifest.get, "tokens", name)

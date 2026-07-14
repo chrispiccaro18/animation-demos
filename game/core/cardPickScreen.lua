@@ -6,7 +6,6 @@ local cardTooltip = require("core.cardTooltip")
 local message     = require("core.message")
 local events      = require("lib.events")
 local Run         = require("core.run")
-local Profile     = require("core.profile")
 
 local M = {}
 
@@ -59,7 +58,6 @@ function M.load(onResetGame)
 
     Run.addCard(chosen)
     Run.nextLevel()
-    Profile.reportLevelReached(Run.getLevel())
     _onReset()
 
     -- Level start message (event queue was reset by resetGame)
@@ -183,7 +181,8 @@ function M.draw()
   --   love.graphics.draw(_vignette, 0, 0, 0, cw / vw, ch / vh)
   -- else
   -- end
-  love.graphics.setColor(0, 0, 0, 0.78)
+  love.graphics.setColor(Palette.void)
+  -- love.graphics.setColor(0, 0, 0, 0.78)
   love.graphics.rectangle("fill", 0, 0, cw, ch)
   love.graphics.setColor(1, 1, 1, 1)
 

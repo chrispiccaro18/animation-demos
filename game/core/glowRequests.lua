@@ -485,7 +485,8 @@ function M.requestEnvGlows(glow)
         color = icon.glowColor,
         alpha = 0.35,
         light = { radius = 100 * SCALE_X, alpha = 0.35 },
-      }, "top")
+      })
+      -- }, "top")
     end
   end
 end
@@ -674,7 +675,8 @@ function M.collectAll(glow, hand, deck, mx, my)
           radius = 80 * SCALE_X,
           alpha  = 0.4,
         },
-      }, "top")
+      })
+      -- }, "top")
     end
   else
     _endTurnGlowDismissed = false

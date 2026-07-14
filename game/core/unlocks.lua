@@ -27,9 +27,26 @@ function Unlocks.allTokenTypes()
   return list
 end
 
--- A card is unlocked once every token type it references (play/discard/dtor
--- effects) is unlocked.
+-- Token types whose unlock threshold falls in (oldHighest, newHighest] --
+-- i.e. everything that became newly unlocked by reaching newHighest.
+function Unlocks.newlyUnlocked(oldHighest, newHighest)
+  local list = {}
+  for tokenType, required in pairs(UnlockLevels) do
+    if required > (oldHighest or 0) and required <= (newHighest or 0) then
+      list[#list + 1] = tokenType
+    end
+  end
+  table.sort(list)
+  return list
+end
+
+-- A card is unlocked once its optional minUnlockLevel override is met (if
+-- present) and every token type it references (play/discard/dtor effects)
+-- is unlocked.
 function Unlocks.isCardUnlocked(cardData, highestLevel)
+  if cardData.minUnlockLevel and (highestLevel or 0) < cardData.minUnlockLevel then
+    return false
+  end
   for _, zoneKey in ipairs({ "play", "discard", "dtor" }) do
     local effects = cardData[zoneKey]
     if type(effects) == "table" then
@@ -41,17 +58,6 @@ function Unlocks.isCardUnlocked(cardData, highestLevel)
     end
   end
   return true
-end
-
--- Picks a random currently-unlocked token type for end-of-turn escalation
--- flinging. Every unlocked type is eligible (no separate "hostile" tag).
-function Unlocks.pickEscalationType(highestLevel)
-  local eligible = {}
-  for tokenType, required in pairs(UnlockLevels) do
-    if (highestLevel or 0) >= required then eligible[#eligible + 1] = tokenType end
-  end
-  if #eligible == 0 then return "threat" end
-  return eligible[math.random(#eligible)]
 end
 
 return Unlocks

@@ -391,6 +391,18 @@ end
 -- Shared update
 ------------------------------------------------------------------------
 function Token:update(dt, gameDt)
+    if self.vanish and self.vanish.active then
+        self.vanish.time = self.vanish.time + dt
+        local t = math.min(self.vanish.time / self.vanish.duration, 1)
+        self.scale = self.vanish.startScale * (1 - t)
+        self.alpha = self.vanish.startAlpha * (1 - t)
+        if t >= 1 then
+            self.vanish.active = false
+            if self.vanish.onComplete then self.vanish.onComplete(self) end
+            self._remove = true
+        end
+        return
+    end
     if self.delay and self.delay > 0 then
         self.delay = self.delay - gameDt
         return
@@ -825,6 +837,23 @@ function Token:draw()
   -- end
 end
 
+------------------------------------------------------------------------
+-- Cancels this token's current animation in place and shrinks/fades it
+-- out over `duration`, then removes it. Used to cut short every token
+-- except the one that decided a win/loss outcome -- see
+-- core/newSequences.lua's resolveOutcome and Token.vanishAllExcept below.
+------------------------------------------------------------------------
+function Token:triggerVanish(duration, onComplete)
+    self.vanish = {
+        active     = true,
+        time       = 0,
+        duration   = duration or 0.25,
+        startScale = self.scale,
+        startAlpha = self.alpha or 1,
+        onComplete = onComplete,
+    }
+end
+
 function Token:triggerPop(peakScale, duration, onComplete)
     self.rotation        = 0
     self.target_rotation = 0
@@ -957,6 +986,31 @@ function Token.anyPopActive()
     if token.pop and token.pop.active then return true end
   end
   return false
+end
+
+function Token.anyVanishActive()
+  for _, token in ipairs(instances) do
+    if token.vanish and token.vanish.active then return true end
+  end
+  return false
+end
+
+------------------------------------------------------------------------
+-- Cancels every token's current animation except keepToken and vanishes
+-- it in place. Skips "dtor"/"dtor_null" tokens -- those are mid-flight
+-- inside the drawToDtor Queue-reveal pipeline (laser/shatter/slot
+-- resolution in core/newSequences.lua), which has its own persistent
+-- Dtor-slot bookkeeping that vanishing mid-sequence would corrupt; that
+-- pipeline is left to finish naturally instead.
+------------------------------------------------------------------------
+function Token.vanishAllExcept(keepToken, duration)
+  for _, token in ipairs(instances) do
+    if token ~= keepToken
+       and token.token_type ~= "dtor" and token.token_type ~= "dtor_null"
+       and not (token.vanish and token.vanish.active) then
+      token:triggerVanish(duration)
+    end
+  end
 end
 
 function Token.allDone(token_type)

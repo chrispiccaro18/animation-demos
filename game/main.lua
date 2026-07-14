@@ -43,8 +43,10 @@ local gameOverScreen  = require("core.gameOverScreen")
 local Run             = require("core.run")
 local Profile         = require("core.profile")
 local Unlocks         = require("core.unlocks")
+local Escalation      = require("core.escalation")
 local Settings        = require("lib.settings")
 local cardPickScreen  = require("core.cardPickScreen")
+local unlockCeremony  = require("core.unlockCeremony")
 local menuScreen      = require("core.menuScreen")
 local sandbox         = require("core.sandbox")
 local optionsMenu     = require("core.optionsMenu")
@@ -81,6 +83,10 @@ local viewScale  = 1
 
 local tutorialActive      = true
 local _levelCompleteTimer = nil
+local _lossBoardCleared   = false
+-- Hold after the board clears (post-flourish, see core/newSequences.lua's
+-- resolveOutcome) before the unlock ceremony/card-pick screen appears.
+local LEVEL_COMPLETE_HOLD = 1.5
 
 local function updateViewport()
   local sw = love.graphics.getWidth()
@@ -108,9 +114,19 @@ local function showMenu()
   menuScreen.show()
 end
 
--- Shared board/UI reset used by both a fresh level start and loading a save.
--- Leaves deck/hand/dtor/progress/threat/ram construction to the caller.
-local function resetBoardState()
+-- Shared board/UI reset -- used to start a fresh level, load a save, return
+-- to the menu mid-run, and to clear the board after a win/loss resolves
+-- (see the gameOver == "levelComplete" branch and the loss fallthrough in
+-- love.update). Leaves deck/hand/dtor/progress/threat/ram construction, and
+-- the gameOver/_levelCompleteTimer/_lossBoardCleared flow flags, to the
+-- caller -- those mean different things depending on why the board is
+-- being cleared.
+-- opts.keepMessage (bool): skip clearing the message singleton -- used by
+-- the win/loss one-shot clears so "LEVEL COMPLETE"/"FAILURE" stays on
+-- screen through the ceremony/pick or gameOverScreen hand-off instead of
+-- getting wiped the instant the board clears.
+local function resetBoardState(opts)
+  opts = opts or {}
   events.loadAll()
   actionQueue.reset()
   Token.clearAll()
@@ -131,14 +147,15 @@ local function resetBoardState()
   areas.scanner.right.active = false
   areas.scanner.right.y = areas.desk.y
   areas.pool.chips = {}
-  message.text          = ""
-  message.subtitle      = ""
-  message.textColor     = { 1, 1, 1, 1 }
-  message.current       = { scale = 1, alpha = 1.0 }
-  message.target        = { scale = 1, alpha = 1.0 }
-  gameOver              = nil
-  _levelCompleteTimer   = nil
+  if not opts.keepMessage then
+    message.text          = ""
+    message.subtitle      = ""
+    message.textColor     = { 1, 1, 1, 1 }
+    message.current       = { scale = 1, alpha = 1.0 }
+    message.target        = { scale = 1, alpha = 1.0 }
+  end
   gameOverScreen.reset()
+  if camera then camera:setIdle() end
 
   hand = NewHand.new()
   deck = Deck.new(220 * SCALE_X, 1840 * SCALE_Y, cardBackAsset)
@@ -149,6 +166,9 @@ end
 
 resetGame = function()
   resetBoardState()
+  gameOver              = nil
+  _levelCompleteTimer   = nil
+  _lossBoardCleared      = false
 
   for i, cardData in ipairs(Run.getCurrentDeckData()) do
     local card = Card.new(canvasW / 2, canvasH / 2, cardData)
@@ -159,8 +179,6 @@ resetGame = function()
 
   envEffects.syncState()
   sequences.beginTurn()
-
-  camera:setIdle()
 
   -- message.text          = "LEVEL 0 START"
   -- message.textColor     = Palette.accent
@@ -192,6 +210,9 @@ local function loadGame()
   if not saved then return end
 
   resetBoardState()
+  gameOver              = nil
+  _levelCompleteTimer   = nil
+  _lossBoardCleared      = false
 
   local deckData     = Run.getCurrentDeckData()
   local cardsByIndex = {}
@@ -266,13 +287,14 @@ local function loadGame()
   end
 
     local highestLevel = Profile.getHighestLevelReached()
+    local sequence = Escalation.pickSequence(level, Run.getTurn(), Run.getRunSeed(), highestLevel)
 
     for i = 1, level do
       local d = flingDelays[i]
       events.push({
         fn = function()
           local x, y = envEffects.getPosition("negative")
-          local tokenType = Unlocks.pickEscalationType(highestLevel)
+          local tokenType = sequence[i]
           local opts = endTurnFlingOptions(tokenType, "rightward")
           opts.delay = d
           Token.new_fling(x, y, areas.desk, opts)
@@ -287,10 +309,37 @@ local function loadGame()
       blocking = true, blockable = true, persistent = false,
       delay = 0, type = "poll",
     })
+    events.push({
+      fn = function()
+        Token.attractDone("ram", areas.pool, {
+        onArrive = function()
+          Audio.playRamImpact()
+        end
+      })
+      end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "immediate",
+    })
+    events.push({
+      fn = function()
+        return Token.allDone()
+      end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "poll"
+    })
+    events.push({
+      fn = function()
+        local ramTokens = Token.removeDone("ram")
+        for _, t in ipairs(ramTokens) do
+          areas.addPoolChip(t.x, t.y)
+        end
+      end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0.1, type = "after"
+    })
   end
 
   envEffects.syncState()
-  camera:setIdle()
 end
 
 function love.load()
@@ -366,6 +415,7 @@ function love.load()
   )
   gameOverScreen.load(fullReset)
   cardPickScreen.load(resetGame)
+  unlockCeremony.load()
 
   Profile.setActive(1) -- no profile picker yet; always resume/create profile 1
   Run.newRun()
@@ -464,6 +514,7 @@ function love.draw()
     glow:renderMid()
     hand:drawDragged()
     gameOverScreen.draw()
+    unlockCeremony.draw()
     cardPickScreen.draw()
     glow:renderTop()
     hoverTooltip.draw()
@@ -488,6 +539,7 @@ local function collectGlowRequests(mx, my)
   glowRequests.collectAll(glow, hand, deck, mx, my)
   cardTooltip.collectGlowRequests(glow)
   cardPickScreen.collectGlowRequests(glow)
+  unlockCeremony.collectGlowRequests(glow)
 end
 
 function love.update(dt)
@@ -527,14 +579,50 @@ function love.update(dt)
   pulse.update(realDt)
   message.update(realDt)
 
-  -- Level complete: show celebration message, then transition to card pick screen
+  -- Level complete: show celebration message, then transition to the unlock
+  -- ceremony (if this level crossed a token-unlock threshold) and the card
+  -- pick screen
   if gameOver == "levelComplete" then
+    if not _levelCompleteTimer then
+      -- First frame after resolveOutcome's flourish finished (see
+      -- core/newSequences.lua) -- clear the settled board before the
+      -- ceremony/pick screen dims in over it. Keep the "LEVEL COMPLETE"
+      -- message up through the hold below.
+      resetBoardState({ keepMessage = true })
+    end
     _levelCompleteTimer = (_levelCompleteTimer or 0) + realDt
-    if _levelCompleteTimer >= 1.5 then
+    if _levelCompleteTimer >= LEVEL_COMPLETE_HOLD then
       gameOver              = nil
       _levelCompleteTimer   = nil
-      cardPickScreen.show(Run.getOfferCards(Profile.getHighestLevelReached()))
+
+      local oldHighest = Profile.getHighestLevelReached()
+      local newHighest = Run.getLevel() + 1 -- level the player is about to start
+      Profile.reportLevelReached(newHighest)
+      local newlyUnlocked = Unlocks.newlyUnlocked(oldHighest, newHighest)
+
+      local function showPick()
+        cardPickScreen.show(Run.getOfferCards(Profile.getHighestLevelReached()))
+      end
+
+      if #newlyUnlocked > 0 then
+        unlockCeremony.show(newlyUnlocked, showPick)
+      else
+        showPick()
+      end
     end
+    return
+  end
+
+  -- Unlock ceremony: handle its own update + tooltips
+  if unlockCeremony.isActive() then
+    unlockCeremony.update(realDt, mouseX, mouseY)
+    cardTooltip.clear()
+    hoverTooltip.clear()
+    unlockCeremony.collectTooltipRequests()
+    cardTooltip.update(mouseX, mouseY)
+    hoverTooltip.update()
+    collectGlowRequests(mouseX, mouseY)
+    glow:update(realDt)
     return
   end
 
@@ -557,7 +645,17 @@ function love.update(dt)
   particles.update(realDt)
   Debris.updateAll(gameDt)
   gameOverScreen.update(realDt, mouseX, mouseY)
-  if gameOver then return end
+  if gameOver then
+    if gameOver == "loss" and not _lossBoardCleared then
+      -- First frame after resolveOutcome's flourish finished -- clear the
+      -- settled board so gameOverScreen's buttons fade in over a clean
+      -- state instead of the frozen failure board. Keep the "FAILURE"
+      -- message up since gameOverScreen has no background of its own.
+      _lossBoardCleared = true
+      resetBoardState({ keepMessage = true })
+    end
+    return
+  end
 
   if camera then camera:update(realDt, mouseX, mouseY, areas.scanner) end
   laser.update(gameDt)
@@ -628,6 +726,10 @@ function love.mousepressed(x, y, button, istouch, presses)
     tutorial.mousepressed(gx, gy, button)
     return
   end
+  if unlockCeremony.isActive() then
+    unlockCeremony.mousepressed(gx, gy, button)
+    return
+  end
   if cardPickScreen.isActive() then
     cardPickScreen.mousepressed(gx, gy, button)
     return
@@ -650,7 +752,10 @@ function love.keypressed(key)
     if optionsMenu.isActive() then
       optionsMenu.hide()
     elseif appState == "game" then
-      Token.clearAll()
+      resetBoardState()
+      gameOver              = nil
+      _levelCompleteTimer   = nil
+      _lossBoardCleared      = false
       appState = "menu"
       showMenu()
     else
@@ -764,6 +869,8 @@ function love.touchreleased(id, x, y, dx, dy, pressure)
           end
         elseif tutorialActive then
           tutorial.touchpressed(gx, gy)
+        elseif unlockCeremony.isActive() then
+          unlockCeremony.touchpressed(gx, gy)
         elseif cardPickScreen.isActive() then
           cardPickScreen.touchpressed(gx, gy)
         elseif gameOverScreen.touchpressed(gx, gy) then

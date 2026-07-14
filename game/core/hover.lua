@@ -163,7 +163,8 @@ local function glowEnvIcon(glow, index)
     luminescence = lum,
     pulse        = HOVER_PULSE,
     light        = { radius = 130 * SCALE_X, alpha = lAlpha },
-  }, "top")
+  })
+  -- }, "top")
 
   if index == 1 or index == 2 then
     local indAlpha  = d.isActive and 0.65 or 0.4
@@ -184,7 +185,8 @@ local function glowEnvIcon(glow, index)
           alpha = indAlpha,
           pulse = HOVER_PULSE,
           light = { radius = 70 * SCALE_X, alpha = indLAlpha },
-        }, "top")
+        })
+        -- }, "top")
         break
       end
     end

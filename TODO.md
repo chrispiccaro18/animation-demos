@@ -5,14 +5,17 @@ Level complete unlock tokens. Ceremony and visual demonstration of how it works.
 4. multiply threat/progress
 5. multiply all/flip
 
-run/level/starting deck - determines what gets flung at beginning of turn
+NEXT run/level/starting deck - determines what gets flung at beginning of turn
 need a way to end the run - just when everything has been unlocked? optional endless mode after
 tokens are small unlocks, starting decks are bigger unlocks (winning a run)
 
-token unlock ceremony
 new starting deck unlock ceremony
 
-ending level lets final token pop finish then do an animation to clear the screen. when that finishes we can go to unlock ceremony/cardPicker
+add deck tooltip with # of cards
+
+make cards appear more likely on card picking
+
+update env effect tooltip
 
 chain tokens:
 multiply need to set a rule for sequential, same token type firing

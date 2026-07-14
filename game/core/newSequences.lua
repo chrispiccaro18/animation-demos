@@ -5,7 +5,7 @@ local progressBar   = require("core.progressBar")
 local threatBar     = require("core.threatBar")
 local Run           = require("core.run")
 local Profile       = require("core.profile")
-local Unlocks       = require("core.unlocks")
+local Escalation    = require("core.escalation")
 local envEffects    = require("core.envEffects")
 local message       = require("core.message")
 local Token         = require("core.token")
@@ -139,6 +139,92 @@ local function fireEnvThresholdCeremony()
       delay = 1.5, type = "after",
     })
   end
+end
+
+local OUTCOME_VANISH_DURATION = 0.25
+local OUTCOME_FLOURISH_HOLD   = 1.2
+local OUTCOME_BURST2_DELAY    = 0.5 -- time after the first burst that the second fires
+
+-- Guards against a second progress/threat token (still arriving in the
+-- same cascade) re-triggering this while the first is already resolving.
+local _outcomeResolving = false
+
+-- Fires once a progress/threat token tips a bar to full: cuts every other
+-- token's animation short (Token.vanishAllExcept), waits for the board to
+-- actually settle (scoring token's pop finishes, cancelled tokens finish
+-- vanishing), then plays a distinct win/loss flourish, holds, and only
+-- then flips the global `gameOver` -- main.lua reacts to that by clearing
+-- the board (resetBoardState) and handing off to the unlock ceremony/card
+-- picker (win) or gameOverScreen (loss).
+local function resolveOutcome(kind, token)
+  if _outcomeResolving then return end
+  _outcomeResolving = true
+
+  Token.vanishAllExcept(token, OUTCOME_VANISH_DURATION)
+
+  events.push({
+    fn = function()
+      return not Token.isActive() and not Token.anyPopActive() and not Token.anyVanishActive()
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "poll",
+  }, "terminalArrive")
+
+  events.push({
+    fn = function()
+      local cx, cy = SCALE_X * 1920, SCALE_Y * 1080
+      if kind == "levelComplete" then
+        Run.levelComplete()
+        message.text          = "LEVEL COMPLETE"
+        message.subtitle      = ""
+        message.textColor     = { 0.4, 1, 0.6, 1 }
+        message.current.scale = 6
+        message.target.scale  = 1.0
+        message.current.alpha = 1.0
+        message.target.alpha  = 1.0
+        Audio.playSuccess()
+        particles.emit("progress", cx, cy, 60, { speed = 1400 })
+        screenshake.trigger(6, 0.4)
+        Camera:setColor(Color("#6ED59E"))
+      else
+        message.text          = "FAILURE"
+        message.subtitle      = ""
+        message.textColor     = { 1, 0.3, 0.3, 1 }
+        message.current.scale = 6
+        message.target.scale  = 1.0
+        message.current.alpha = 1.0
+        message.target.alpha  = 1.0
+        Audio.playFailure()
+        particles.emit("threat", cx, cy, 60, { speed = 1400 })
+        screenshake.trigger(14, 0.5)
+        Camera:setColor(Color("#9C2B2B"))
+      end
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = 0, type = "immediate",
+  }, "terminalArrive")
+
+  -- Second burst, staggered after the first so the flourish reads as two
+  -- beats instead of one flat pop.
+  events.push({
+    fn = function()
+      local cx, cy = SCALE_X * 1920, SCALE_Y * 1080
+      local burstType = kind == "levelComplete" and "progress" or "threat"
+      particles.emit(burstType, cx, cy, 90, { speed = 2000 })
+      screenshake.triggerH(kind == "levelComplete" and 4 or 8)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = OUTCOME_BURST2_DELAY, type = "before",
+  }, "terminalArrive")
+
+  events.push({
+    fn = function()
+      gameOver = kind
+      _outcomeResolving = false
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = math.max(OUTCOME_FLOURISH_HOLD - OUTCOME_BURST2_DELAY, 0), type = "before",
+  }, "terminalArrive")
 end
 
 local function terminalEvent(tokenType)
@@ -412,22 +498,9 @@ local function terminalEvent(tokenType)
         if _sandboxMode then
           -- no level-complete/failure ceremony in sandbox
         elseif progressBar.isFull() then
-          gameOver              = "levelComplete"
-          Run.levelComplete()
-          message.text          = "LEVEL COMPLETE"
-          message.subtitle      = ""
-          message.textColor     = { 0.4, 1, 0.6, 1 }
-          message.current.scale = 6
-          message.current.alpha = 1.0
-          message.target.alpha  = 1.0
-          Audio.playSuccess()
+          resolveOutcome("levelComplete", token)
         elseif threatBar.isFull() then
-          gameOver = "loss"
-          message.text          = "FAILURE"
-          message.subtitle      = ""
-          message.current.scale = 6
-          message.textColor     = { 1, 0.3, 0.3, 1 }
-          Audio.playFailure()
+          resolveOutcome("loss", token)
         end
       end,
       blocking = true, blockable = true, persistent = false,
@@ -711,21 +784,21 @@ function sequences.discard(card, camera)
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after"
   })
-  events.push({
-    fn = function()
-      card.target.x = areas.discard.x + areas.discard.w * 0.4
-      card.target.y = areas.discard.current.y + areas.discard.h
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate"
-  })
-  events.push({
-    fn = function()
-      return card:isAtTarget()
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll"
-  })
+  -- events.push({
+  --   fn = function()
+  --     card.target.x = areas.discard.x + areas.discard.w * 0.4
+  --     card.target.y = areas.discard.current.y + areas.discard.h
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate"
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     return card:isAtTarget()
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "poll"
+  -- })
   events.push({
     fn = function()
       camera:setColor(Color("#9C2B2B"))
@@ -881,21 +954,21 @@ function sequences.play(card, camera)
     blocking = true, blockable = true, persistent = false,
     delay = 0.5, type = "after"
   })
-  events.push({
-    fn = function()
-      card.target.x = areas.play.x + areas.play.w * 0.6
-      card.target.y = areas.play.y + areas.play.h * 0.75
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "immediate"
-  })
-  events.push({
-    fn = function()
-      return card:isAtTarget(1)
-    end,
-    blocking = true, blockable = true, persistent = false,
-    delay = 0, type = "poll"
-  })
+  -- events.push({
+  --   fn = function()
+  --     card.target.x = areas.play.x + areas.play.w * 0.6
+  --     card.target.y = areas.play.y + areas.play.h * 0.75
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "immediate"
+  -- })
+  -- events.push({
+  --   fn = function()
+  --     return card:isAtTarget(1)
+  --   end,
+  --   blocking = true, blockable = true, persistent = false,
+  --   delay = 0, type = "poll"
+  -- })
   events.push({
     fn = function()
       local ramChips = areas.consumePoolChips(card.energy)
@@ -932,8 +1005,9 @@ function sequences.play(card, camera)
     fn = function()
       -- card.decay = 8
       card:enterSlot(471 * SCALE_Y)
-      card.target.y = 440 * SCALE_Y + (card.h / 2) * SCALE_Y
-      card.target.x = card.current.x + 50 * SCALE_X
+      -- card.target.y = 440 * SCALE_Y + (card.h / 2) * SCALE_Y
+      card.target.x = areas.play.x + areas.play.w * 0.6 + 50 * SCALE_X
+      -- card.target.x = card.current.x + 50 * SCALE_X
       card.target.y = 471 * SCALE_Y
     end,
     blocking = true, blockable = true, persistent = false,
@@ -1049,56 +1123,6 @@ function sequences.beginTurn()
     delay = 0, type = "immediate",
   })
 
-  local level = Run.getLevel()
-
-  if level > 0 then
-    local flingAcc = Token.makeCascadeAccumulator()
-    -- Pre-compute each token's launch delay so the env anim can hold at peak
-    -- until the final token is flung. The last delay is the time (from the
-    -- first fling) until the last token launches.
-    local flingDelays = {}
-    for i = 1, level do flingDelays[i] = flingAcc:nextDelay() end
-    local holdDuration = flingDelays[level] or 0
-
-    -- Trigger the anim once, pinned at full scale for the whole cascade.
-    events.push({
-      fn = function() envEffects.triggerAnim("negative", holdDuration) end,
-      blocking = false, blockable = true, persistent = false,
-      delay = 0, type = "immediate",
-    })
-
-    local highestLevel = Profile.getHighestLevelReached()
-
-    for i = 1, level do
-      local d = flingDelays[i]
-      events.push({
-        fn = function()
-          local x, y = envEffects.getPosition("negative")
-          local tokenType = Unlocks.pickEscalationType(highestLevel)
-          local opts = endTurnFlingOptions(tokenType, "rightward")
-          opts.delay = d
-          Token.new_fling(x, y, areas.desk, opts)
-          Audio.playImpactIn()
-        end,
-        blocking = false, blockable = true, persistent = false,
-        delay = 0, type = "immediate",
-      })
-    end
-    events.push({
-      fn = function() return Token.allDone() end,
-      blocking = true, blockable = true, persistent = false,
-      delay = 0, type = "poll",
-    })
-    -- sequences.scan(areas.scanner.both)
-    -- events.push({
-    --   fn = function()
-    --     return Token.allDone() and not events.isRunning("terminalArrive")
-    --   end,
-    --   blocking = true, blockable = true, persistent = false,
-    --   delay = 0, type = "poll",
-    -- })
-  end
-
   events.push({
     fn = function()
       local toDeal = math.min(5 - _hand:handSize(), 4)
@@ -1129,6 +1153,79 @@ function sequences.beginTurn()
         blocking = true, blockable = true, persistent = false,
         delay = 0, type = "immediate",
       })
+
+      local level = Run.getLevel()
+      local turn  = Run.nextTurn()
+
+      if level > 0 then
+        local flingAcc = Token.makeCascadeAccumulator()
+        -- Pre-compute each token's launch delay so the env anim can hold at peak
+        -- until the final token is flung. The last delay is the time (from the
+        -- first fling) until the last token launches.
+        local flingDelays = {}
+        for i = 1, level do flingDelays[i] = flingAcc:nextDelay() end
+        local holdDuration = flingDelays[level] or 0
+
+        -- Trigger the anim once, pinned at full scale for the whole cascade.
+        events.push({
+          fn = function() envEffects.triggerAnim("negative", holdDuration) end,
+          blocking = false, blockable = true, persistent = false,
+          delay = 0, type = "immediate",
+        })
+
+        local highestLevel = Profile.getHighestLevelReached()
+        local sequence = Escalation.pickSequence(level, turn, Run.getRunSeed(), highestLevel)
+
+        for i = 1, level do
+          local d = flingDelays[i]
+          events.push({
+            fn = function()
+              local x, y = envEffects.getPosition("negative")
+              local tokenType = sequence[i]
+              local opts = endTurnFlingOptions(tokenType, "rightward")
+              opts.delay = d
+              Token.new_fling(x, y, areas.desk, opts)
+              Audio.playImpactIn()
+            end,
+            blocking = false, blockable = true, persistent = false,
+            delay = 0, type = "immediate",
+          })
+        end
+        events.push({
+          fn = function() return Token.allDone() end,
+          blocking = true, blockable = true, persistent = false,
+          delay = 0, type = "poll",
+        })
+        -- sequences.scan(areas.scanner.both)
+        events.push({
+          fn = function()
+            Token.attractDone("ram", areas.pool, {
+            onArrive = function()
+              Audio.playRamImpact()
+            end
+          })
+          end,
+          blocking = true, blockable = true, persistent = false,
+          delay = 0, type = "immediate",
+        })
+        events.push({
+          fn = function()
+            return Token.allDone()
+          end,
+          blocking = true, blockable = true, persistent = false,
+          delay = 0, type = "poll"
+        })
+        events.push({
+          fn = function()
+            local ramTokens = Token.removeDone("ram")
+            for _, t in ipairs(ramTokens) do
+              areas.addPoolChip(t.x, t.y)
+            end
+          end,
+          blocking = true, blockable = true, persistent = false,
+          delay = 0.1, type = "after"
+        })
+      end
     end,
     blocking = true, blockable = true, persistent = false,
     delay = 0.25, type = "before",
