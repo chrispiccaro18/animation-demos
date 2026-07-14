@@ -8,6 +8,7 @@ local progressBar  = require("core.progressBar")
 local threatBar    = require("core.threatBar")
 local Dtor         = require("core.dtor")
 local Profile      = require("core.profile")
+local Run          = require("core.run")
 local Unlocks      = require("core.unlocks")
 local UnlockLevels = require("data.unlocks")
 local hoverTooltip = require("core.hoverTooltip")
@@ -166,7 +167,9 @@ end
 -- in core/newSequences.lua) always have supply to consume.
 local function addCardToDeck()
   if not _deck then return end
-  local card = Card.new(_deck.x, _deck.y, CardData.runStartingDeck[1])
+  -- Cosmetic set-dressing for the pre-run sandbox scene; deliberately
+  -- pinned to "original" rather than reflecting the last-played deck.
+  local card = Card.new(_deck.x, _deck.y, CardData.startingDecks.original.deck[1])
   _deck:add(card)
 end
 
@@ -220,14 +223,15 @@ local function flingFromIcon(btn)
 end
 
 local function newIconButton(x, y, sz, ttype, asset)
-  local requiredLevel = UnlockLevels[ttype] or 0
   return {
     x = x, y = y, w = sz, h = sz,
     baseX      = x,
     asset      = asset,
     tokenType  = ttype,
     unlocked   = true,
-    required   = requiredLevel,
+    -- Overwritten by the first sandbox.refreshUnlocks() call (see
+    -- sandbox.init()) once a deckId is known; 0 here is a harmless placeholder.
+    required   = 0,
     hovered    = false,
     update = function(self, mx, my)
       self.hovered = containsPoint(self, mx, my)
@@ -329,12 +333,19 @@ function sandbox.setDeckAndHand(deck, hand)
 end
 
 -- Rebuilds the icon grid's unlocked/locked flags against the profile's
--- current highest level reached. Positions are static (every token type is
--- always shown); only lock state can change between menu visits.
+-- current highest level reached for the active run's starting deck.
+-- Positions are static (every token type is always shown); only lock state
+-- can change between menu visits. Sandbox isn't tied to a real run's deck
+-- choice, so it previews Run.getDeckType() -- always valid by the time this
+-- runs, since Run.newRun("original") happens unconditionally in love.load()
+-- before any deck-select UI exists.
 function sandbox.refreshUnlocks()
-  local highestLevel = Profile.getHighestLevelReached()
+  local deckId = Run.getDeckType() or "original"
+  local highestLevel = Profile.getHighestLevelReached(deckId)
+  local levels = UnlockLevels[deckId] or UnlockLevels.original or {}
   for _, btn in ipairs(_iconButtons) do
-    btn.unlocked = Unlocks.isTokenUnlocked(btn.tokenType, highestLevel)
+    btn.unlocked = Unlocks.isTokenUnlocked(deckId, btn.tokenType, highestLevel)
+    btn.required = levels[btn.tokenType] or 0
   end
 end
 

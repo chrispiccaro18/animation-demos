@@ -1,9 +1,3 @@
-Level complete unlock tokens. Ceremony and visual demonstration of how it works. Then cards with those tokens start appearing in pool
-1. negative threat/progress
-2. draw to queue/hand
-3. nullify/shuffle
-4. multiply threat/progress
-5. multiply all/flip
 
 NEXT run/level/starting deck - determines what gets flung at beginning of turn
 need a way to end the run - just when everything has been unlocked? optional endless mode after
@@ -12,8 +6,6 @@ tokens are small unlocks, starting decks are bigger unlocks (winning a run)
 new starting deck unlock ceremony
 
 add deck tooltip with # of cards
-
-make cards appear more likely on card picking
 
 update env effect tooltip
 

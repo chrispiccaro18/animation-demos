@@ -1,35 +1,98 @@
 local CardData = {}
 
-CardData.runStartingDeck = {
-  {
-    topEnergy    = 1,
-    bottomEnergy = 1,
-    play    = { { type = "progress", value = 1 } },
-    -- discard = { { type = "threatNegative", value = 1 } },
-    dtor = { { type = "threat", value = 1 }, },
+-- Selectable starting decks (see core/deckSelectScreen.lua, core/run.lua's
+-- Run.newRun(deckId)). Each entry's `id` doubles as the canonical deckId
+-- used throughout data/unlocks.lua, data/escalation.lua, data/deckUnlocks.lua,
+-- and Run's persisted `deckType`. `startingDeckOrder` gives deck-select a
+-- stable display order (plain `pairs()` over `startingDecks` is unordered).
+CardData.startingDecks = {
+  original = {
+    id   = "original",
+    name = "Original",
+    -- No tint: card back renders in its natural color (see
+    -- core/deckSelectScreen.lua, resolved against lib/palette.lua).
+    tintPalette = nil,
+    deck = {
+      {
+        topEnergy    = 1,
+        bottomEnergy = 1,
+        play    = { { type = "progress", value = 1 } },
+        -- discard = { { type = "threatNegative", value = 1 } },
+        dtor = { { type = "threat", value = 1 }, },
+      },
+      {
+        topEnergy    = 1,
+        bottomEnergy = 1,
+        play    = { { type = "threat", value = 1 } },
+        -- discard = { { type = "threatNegative", value = 1 } },
+        dtor = { { type = "progress", value = 1 }, },
+      },
+      {
+        topEnergy    = 2,
+        bottomEnergy = 2,
+        play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 } },
+        -- discard = { { type = "threatNegative", value = 1 } },
+        dtor = { { type = "threat", value = 1 }, { type = "threat", value = 1 }, },
+      },
+      {
+        topEnergy    = 2,
+        bottomEnergy = 2,
+        play    = { { type = "threat", value = 1 }, { type = "threat", value = 1 } },
+        -- discard = { { type = "threatNegative", value = 1 } },
+        dtor = { { type = "progress", value = 1 }, { type = "progress", value = 1 }, },
+      },
+    },
   },
-  {
-    topEnergy    = 1,
-    bottomEnergy = 1,
-    play    = { { type = "threat", value = 1 } },
-    -- discard = { { type = "threatNegative", value = 1 } },
-    dtor = { { type = "progress", value = 1 }, },
-  },
-  {
-    topEnergy    = 2,
-    bottomEnergy = 2,
-    play    = { { type = "progress", value = 1 }, { type = "progress", value = 1 } },
-    -- discard = { { type = "threatNegative", value = 1 } },
-    dtor = { { type = "threat", value = 1 }, { type = "threat", value = 1 }, },
-  },
-  {
-    topEnergy    = 2,
-    bottomEnergy = 2,
-    play    = { { type = "threat", value = 1 }, { type = "threat", value = 1 } },
-    -- discard = { { type = "threatNegative", value = 1 } },
-    dtor = { { type = "progress", value = 1 }, { type = "progress", value = 1 }, },
+
+  -- Unlocked by reaching level 10 with the "original" deck (see
+  -- data/deckUnlocks.lua). Name/theme are placeholders.
+  negative = {
+    id   = "negative",
+    name = "Negative",
+    -- Palette key (see lib/palette.lua) the deck-select card back is tinted
+    -- with (core/deckSelectScreen.lua).
+    tintPalette = "nullify",
+    deck = {
+      {
+        topEnergy    = 1,
+        bottomEnergy = 1,
+        play    = { { type = "progressNegative", value = 1 } },
+        -- discard = { { type = "threatNegative", value = 1 } },
+        dtor = { { type = "threatNegative", value = 1 }, },
+      },
+      {
+        topEnergy    = 1,
+        bottomEnergy = 1,
+        play    = { { type = "threatNegative", value = 1 } },
+        -- discard = { { type = "threatNegative", value = 1 } },
+        dtor = { { type = "progressNegative", value = 1 }, },
+      },
+      {
+        topEnergy    = 1,
+        bottomEnergy = 1,
+        play    = { { type = "flip", value = 1 } },
+        -- discard = { { type = "threatNegative", value = 1 } },
+        dtor = { { type = "flip", value = 1 }, },
+      },
+      {
+        topEnergy    = 2,
+        bottomEnergy = 2,
+        play    = { { type = "progressNegative", value = 1 }, { type = "progressNegative", value = 1 } },
+        -- discard = { { type = "threatNegative", value = 1 } },
+        dtor = { { type = "threatNegative", value = 1 }, { type = "threatNegative", value = 1 }, },
+      },
+      {
+        topEnergy    = 2,
+        bottomEnergy = 2,
+        play    = { { type = "threatNegative", value = 1 }, { type = "threatNegative", value = 1 } },
+        -- discard = { { type = "threatNegative", value = 1 } },
+        dtor = { { type = "progressNegative", value = 1 }, { type = "progressNegative", value = 1 }, },
+      },
+    },
   },
 }
+
+CardData.startingDeckOrder = { "original", "negative" }
 
 -- CardData.runStartingDeck = {
 --   { topEnergy=1, bottomEnergy=1, play={{type="progress",value=1}},                                                   dtor={{type="threat",value=1}} },
@@ -49,6 +112,9 @@ CardData.runStartingDeck = {
 -- rare) and can be retuned per-card independently of tier from here on.
 -- An optional `minUnlockLevel` field can hold a card back independent of the
 -- (already-unlocked) tokens it uses, for curation purposes.
+-- Run persists which starting deck a run began with (Run.getDeckType()) --
+-- a future hook for skewing this pool by deck type -- but that skew isn't
+-- implemented yet; offers are weighted purely by rarity/dedup today.
 CardData.offerPool = {
   -- tier 1 (was: offered after level 0, preparing for 1 threat/turn)
   {

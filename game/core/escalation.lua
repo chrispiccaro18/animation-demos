@@ -2,20 +2,26 @@ local EscalationLevels = require("data.escalation")
 local Unlocks          = require("core.unlocks")
 
 -- Picks the beginning-of-turn escalation token sequence per level, per
--- data/escalation.lua's mode config. Random/pool draws are seeded off the
--- run's seed + level + turn (see core/run.lua) so the same run replaying
--- the same level/turn -- e.g. main.lua's post-reload cascade replay --
--- reproduces the same sequence without persisting it.
+-- data/escalation.lua's mode config (nested per starting-deck id). Random/
+-- pool draws are seeded off the run's seed + level + turn (see core/run.lua)
+-- so the same run replaying the same level/turn -- e.g. main.lua's
+-- post-reload cascade replay -- reproduces the same sequence without
+-- persisting it.
 local Escalation = {}
 
-local function configFor(level)
-  return EscalationLevels[level] or EscalationLevels.default or { mode = "random" }
+local function levelsFor(deckId)
+  return EscalationLevels[deckId] or EscalationLevels.original or {}
 end
 
-local function unlockedList(highestLevel)
+local function configFor(deckId, level)
+  local levels = levelsFor(deckId)
+  return levels[level] or levels.default or { mode = "random" }
+end
+
+local function unlockedList(deckId, highestLevel)
   local eligible = {}
-  for _, tokenType in ipairs(Unlocks.allTokenTypes()) do
-    if Unlocks.isTokenUnlocked(tokenType, highestLevel) then
+  for _, tokenType in ipairs(Unlocks.allTokenTypes(deckId)) do
+    if Unlocks.isTokenUnlocked(deckId, tokenType, highestLevel) then
       eligible[#eligible + 1] = tokenType
     end
   end
@@ -27,19 +33,33 @@ local function makeGenerator(runSeed, level, turn)
   return love.math.newRandomGenerator((runSeed or 0) * 1000003 + level * 1009 + turn)
 end
 
--- Maps each capped token type to the index of its cap group in
--- EscalationLevels.maxPerTurn (built once; the data table is static).
-local maxPerTurn = EscalationLevels.maxPerTurn or {}
-local groupIndexByType = {}
-for i, group in ipairs(maxPerTurn) do
-  for _, tokenType in ipairs(group.types) do
-    groupIndexByType[tokenType] = i
+-- Maps each capped token type to the index of its cap group in a deck's
+-- maxPerTurn list. Built lazily per deckId (each deck's data/escalation.lua
+-- sub-table has its own maxPerTurn) and cached since the data is static.
+local _capDataCache = {}
+local function capDataFor(deckId)
+  local cached = _capDataCache[deckId]
+  if cached then return cached end
+
+  local maxPerTurn = levelsFor(deckId).maxPerTurn or {}
+  local groupIndexByType = {}
+  for i, group in ipairs(maxPerTurn) do
+    for _, tokenType in ipairs(group.types) do
+      groupIndexByType[tokenType] = i
+    end
   end
+
+  local data = { maxPerTurn = maxPerTurn, groupIndexByType = groupIndexByType }
+  _capDataCache[deckId] = data
+  return data
 end
 
 -- Tracks per-group pick counts for a single sequence generation, so caps
 -- reset every call (i.e. every turn).
-local function newCapTracker()
+local function newCapTracker(deckId)
+  local capData = capDataFor(deckId)
+  local maxPerTurn = capData.maxPerTurn
+  local groupIndexByType = capData.groupIndexByType
   local counts = {}
   for i in ipairs(maxPerTurn) do counts[i] = 0 end
   return {
@@ -68,10 +88,11 @@ local function pickEligibleInOrder(order, startIdx, tracker)
   return "threat"
 end
 
--- Returns an array of `level` token type strings for this turn.
-function Escalation.pickSequence(level, turn, runSeed, highestLevel)
-  local cfg = configFor(level)
-  local tracker = newCapTracker()
+-- Returns an array of `level` token type strings for this turn, for the
+-- given starting-deck id.
+function Escalation.pickSequence(deckId, level, turn, runSeed, highestLevel)
+  local cfg = configFor(deckId, level)
+  local tracker = newCapTracker(deckId)
 
   if cfg.mode == "predetermined" then
     local order = cfg.order or { "threat" }
@@ -85,7 +106,7 @@ function Escalation.pickSequence(level, turn, runSeed, highestLevel)
     return sequence
   end
 
-  local pool = unlockedList(highestLevel)
+  local pool = unlockedList(deckId, highestLevel)
   if cfg.mode == "pool" and cfg.pool then
     local unlockedSet = {}
     for _, t in ipairs(pool) do unlockedSet[t] = true end

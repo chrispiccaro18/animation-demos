@@ -26,8 +26,8 @@ end
 
 local function defaultProfileData(name)
   return {
-    name               = name,
-    highestLevelReached = 0,
+    name                      = name,
+    highestLevelReachedByDeck = { original = 0 },
   }
 end
 
@@ -47,16 +47,24 @@ end
 function Profile.getActiveId() return _activeId end
 function Profile.getData()     return _data end
 
-function Profile.getHighestLevelReached()
-  return _data and _data.highestLevelReached or 0
+-- Highest level ever reached WITH A GIVEN STARTING DECK (see
+-- data/cards.lua's CardData.startingDecks), across all runs of that deck.
+function Profile.getHighestLevelReached(deckId)
+  deckId = deckId or "original"
+  local byDeck = _data and _data.highestLevelReachedByDeck or {}
+  return byDeck[deckId] or 0
 end
 
--- Bumps the profile's high-water mark and persists it, if `level` is a new
--- best. Call whenever Run.nextLevel() advances (see cardPickScreen.lua).
-function Profile.reportLevelReached(level)
+-- Bumps the given deck's high-water mark and persists it, if `level` is a
+-- new best for that deck. Call whenever Run.nextLevel() advances (see
+-- cardPickScreen.lua), passing Run.getDeckType().
+function Profile.reportLevelReached(deckId, level)
   if not _data then return end
-  if (level or 0) > (_data.highestLevelReached or 0) then
-    _data.highestLevelReached = level
+  deckId = deckId or "original"
+  _data.highestLevelReachedByDeck = _data.highestLevelReachedByDeck or {}
+  local current = _data.highestLevelReachedByDeck[deckId] or 0
+  if (level or 0) > current then
+    _data.highestLevelReachedByDeck[deckId] = level
     Profile.save()
   end
 end

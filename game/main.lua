@@ -48,6 +48,7 @@ local Settings        = require("lib.settings")
 local cardPickScreen  = require("core.cardPickScreen")
 local unlockCeremony  = require("core.unlockCeremony")
 local menuScreen      = require("core.menuScreen")
+local deckSelectScreen = require("core.deckSelectScreen")
 local sandbox         = require("core.sandbox")
 local optionsMenu     = require("core.optionsMenu")
 
@@ -104,7 +105,11 @@ end
 
 local resetGame   -- forward declaration (cardPickScreen needs the reference before definition)
 local function fullReset()
-  Run.newRun()
+  -- Mid-game "restart this exact run" shortcut (hud reset button, game-over
+  -- restart, "r" keybind) -- not "New Run"'s deck-select flow -- so it keeps
+  -- whatever deck the current run started with rather than resetting to
+  -- "original".
+  Run.newRun(Run.getDeckType())
   resetGame()
 end
 
@@ -286,8 +291,9 @@ local function loadGame()
     }
   end
 
-    local highestLevel = Profile.getHighestLevelReached()
-    local sequence = Escalation.pickSequence(level, Run.getTurn(), Run.getRunSeed(), highestLevel)
+    local deckId = Run.getDeckType()
+    local highestLevel = Profile.getHighestLevelReached(deckId)
+    local sequence = Escalation.pickSequence(deckId, level, Run.getTurn(), Run.getRunSeed(), highestLevel)
 
     for i = 1, level do
       local d = flingDelays[i]
@@ -418,13 +424,26 @@ function love.load()
   unlockCeremony.load()
 
   Profile.setActive(1) -- no profile picker yet; always resume/create profile 1
-  Run.newRun()
+  Run.newRun("original") -- gives sandbox/menu a defined deck before any player choice
   sandbox.init()
 
   optionsMenu.load({
     getGlowQuality = function() return glow.qualityName end,
     setGlowQuality = function(q) glow:setQuality(q, canvasW, canvasH) end,
   })
+
+  local function onConfirmDeck(deckId)
+    Run.newRun(deckId)
+    resetGame()
+    appState = "game"
+    sequences.setSandboxMode(false)
+    deckSelectScreen.hide()
+  end
+  local function onBackFromDeckSelect()
+    deckSelectScreen.hide()
+    menuScreen.show()
+  end
+  deckSelectScreen.load(onConfirmDeck, onBackFromDeckSelect)
 
   menuScreen.load(
     function()  -- Continue
@@ -434,10 +453,8 @@ function love.load()
       menuScreen.hide()
     end,
     function()  -- New Run
-      fullReset()
-      appState = "game"
-      sequences.setSandboxMode(false)
       menuScreen.hide()
+      deckSelectScreen.show()
     end,
     function()  -- Options
       optionsMenu.show()
@@ -474,7 +491,9 @@ function love.draw()
     sandbox.draw()
     menuScreen.draw()
     optionsMenu.draw()
+    deckSelectScreen.draw()
     hoverTooltip.draw()
+    cardTooltip.draw()
 
     activeCanvas = menuCanvas
   else  -- "game"
@@ -554,6 +573,11 @@ function love.update(dt)
   if appState == "menu" then
     if optionsMenu.isActive() then
       optionsMenu.update(mouseX, mouseY)
+    elseif deckSelectScreen.isActive() then
+      deckSelectScreen.update(dt, mouseX, mouseY)
+      cardTooltip.clear()
+      deckSelectScreen.collectTooltipRequests()
+      cardTooltip.update(mouseX, mouseY)
     else
       menuScreen.update(mouseX, mouseY)
       sandbox.update(dt, mouseX, mouseY)
@@ -595,13 +619,14 @@ function love.update(dt)
       gameOver              = nil
       _levelCompleteTimer   = nil
 
-      local oldHighest = Profile.getHighestLevelReached()
+      local deckId = Run.getDeckType()
+      local oldHighest = Profile.getHighestLevelReached(deckId)
       local newHighest = Run.getLevel() + 1 -- level the player is about to start
-      Profile.reportLevelReached(newHighest)
-      local newlyUnlocked = Unlocks.newlyUnlocked(oldHighest, newHighest)
+      Profile.reportLevelReached(deckId, newHighest)
+      local newlyUnlocked = Unlocks.newlyUnlocked(deckId, oldHighest, newHighest)
 
       local function showPick()
-        cardPickScreen.show(Run.getOfferCards(Profile.getHighestLevelReached()))
+        cardPickScreen.show(Run.getOfferCards(Profile.getHighestLevelReached(deckId)))
       end
 
       if #newlyUnlocked > 0 then
@@ -715,6 +740,8 @@ function love.mousepressed(x, y, button, istouch, presses)
   if appState == "menu" then
     if optionsMenu.isActive() then
       optionsMenu.mousepressed(gx, gy, button)
+    elseif deckSelectScreen.isActive() then
+      deckSelectScreen.mousepressed(gx, gy, button)
     else
       local consumed = sandbox.mousepressed(gx, gy, button)
       if not consumed then consumed = menuScreen.mousepressed(gx, gy, button) end
@@ -751,6 +778,9 @@ function love.keypressed(key)
   if key == "escape" and love.system.getOS() ~= "Web" then
     if optionsMenu.isActive() then
       optionsMenu.hide()
+    elseif deckSelectScreen.isActive() then
+      deckSelectScreen.hide()
+      menuScreen.show()
     elseif appState == "game" then
       resetBoardState()
       gameOver              = nil
@@ -864,6 +894,8 @@ function love.touchreleased(id, x, y, dx, dy, pressure)
         if appState == "menu" then
           if optionsMenu.isActive() then
             optionsMenu.touchpressed(gx, gy)
+          elseif deckSelectScreen.isActive() then
+            deckSelectScreen.touchpressed(gx, gy)
           elseif not sandbox.touchpressed(gx, gy) then
             menuScreen.touchpressed(gx, gy)
           end

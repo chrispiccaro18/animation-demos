@@ -7,6 +7,7 @@ local Run = {}
 
 local _level         = 0
 local _deckData      = {}
+local _deckType      = "original"
 local _levelComplete = false
 local _savedTurn     = nil
 local _saveDir       = ""
@@ -24,20 +25,23 @@ function Run.setSaveDir(dir)
   if _saveDir ~= "" then love.filesystem.createDirectory(_saveDir) end
 end
 
-function Run.newRun()
+function Run.newRun(deckId)
   local CardData = require("data.cards")
+  _deckType      = deckId or "original"
   _level         = 0
   _levelComplete = false
   _deckData      = {}
   _runSeed       = math.random(1, 2147483647)
   _turn          = 0
-  for _, cd in ipairs(CardData.runStartingDeck) do
+  local deckEntry = CardData.startingDecks[_deckType] or CardData.startingDecks.original
+  for _, cd in ipairs(deckEntry.deck) do
     _deckData[#_deckData + 1] = cd
   end
 end
 
 function Run.getLevel()             return _level             end
 function Run.getCurrentDeckData()   return _deckData          end
+function Run.getDeckType()          return _deckType          end
 function Run.isLevelComplete()      return _levelComplete     end
 function Run.clearLevelComplete()   _levelComplete = false    end
 function Run.getRunSeed()           return _runSeed           end
@@ -140,8 +144,10 @@ function Run.getOfferCards(highestLevel)
   local CardData = require("data.cards")
   local pool = CardData.offerPool
   local available = {}
+  -- deckType isn't used to skew offer-pool weighting yet (see data/cards.lua's
+  -- offerPool comment) -- only to gate which cards' token types are unlocked.
   for _, v in ipairs(pool) do
-    if Unlocks.isCardUnlocked(v, highestLevel) then
+    if Unlocks.isCardUnlocked(_deckType, v, highestLevel) then
       available[#available + 1] = v
     end
   end
@@ -177,6 +183,7 @@ function Run.saveTurn(opts)
     "    level    = " .. tostring(_level)         .. ",",
     "    turn     = " .. tostring(_turn)          .. ",",
     "    runSeed  = " .. tostring(_runSeed)        .. ",",
+    "    deckType = " .. Serialize.pretty(_deckType) .. ",",
     "    progress = " .. tostring(opts.progress)  .. ",",
     "    threat   = " .. tostring(opts.threat)    .. ",",
     "    ram      = " .. tostring(opts.ram)       .. ",",
@@ -198,6 +205,7 @@ function Run.load()
   end
   _level         = data.level or 0
   _deckData      = data.deck  or {}
+  _deckType      = data.deckType or "original"
   _levelComplete = false
   _turn          = data.turn or 0
   _runSeed       = data.runSeed or math.random(1, 2147483647)

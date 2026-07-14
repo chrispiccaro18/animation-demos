@@ -1173,8 +1173,9 @@ function sequences.beginTurn()
           delay = 0, type = "immediate",
         })
 
-        local highestLevel = Profile.getHighestLevelReached()
-        local sequence = Escalation.pickSequence(level, turn, Run.getRunSeed(), highestLevel)
+        local deckId = Run.getDeckType()
+        local highestLevel = Profile.getHighestLevelReached(deckId)
+        local sequence = Escalation.pickSequence(deckId, level, turn, Run.getRunSeed(), highestLevel)
 
         for i = 1, level do
           local d = flingDelays[i]
