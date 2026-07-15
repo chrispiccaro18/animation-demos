@@ -8,9 +8,17 @@ local Settings = {}
 local PATH = "settings.lua"
 
 local DEFAULTS = {
-  glowQuality = "high",
-  volume      = 0.25,
-  speedIndex  = 1,
+  glowQuality    = "medium",
+  volume         = 0.5,
+  speedIndex     = 1,
+  playAction     = "drag",
+  paletteVariant = "default",
+  windowMode     = "windowed",
+  resolutionW    = 1920,
+  resolutionH    = 1080,
+  vsync          = true,
+  musicVolume    = 0.5,
+  sfxVolume      = 0.5,
 }
 
 local _data = nil

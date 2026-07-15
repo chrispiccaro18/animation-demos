@@ -1,8 +1,14 @@
-local Button   = require("core.button")
-local Manifest = require("assets.manifest")
-local Palette  = require("lib.palette")
-local config   = require("lib.config")
-local Settings = require("lib.settings")
+local Button      = require("core.button")
+local ButtonGroup = require("core.buttonGroup")
+local Carousel    = require("core.carousel")
+local Slider      = require("core.slider")
+local Checkbox    = require("core.checkbox")
+local Manifest    = require("assets.manifest")
+local Palette     = require("lib.palette")
+local config      = require("lib.config")
+local Settings    = require("lib.settings")
+local WindowMode  = require("lib.windowMode")
+local Audio       = require("assets.audio")
 
 local optionsMenu = {}
 
@@ -13,100 +19,274 @@ local _getGlowQuality = nil
 local _setGlowQuality = nil
 
 -- Panel dimensions (design units)
-local PX    = 820
-local PY    = 380
-local PW    = 2200
-local PH    = 1400
+local PX    = 720
+local PY    = 280
+local PW    = 2400
+local PH    = 1600
 local TAB_H = 140
 
-local _tabButtons     = {}
-local _closeButton    = nil
-local _speedButtons   = {}
-local _qualityButtons = {}
-local _volumeButtons  = {}
+-- Row layout (design units)
+local CONTENT_TOP  = PY + TAB_H + 70
+local ROW_MARGIN_X = 300
+local ROW_WIDGET_W = PW - 2 * ROW_MARGIN_X
+local ROW_WIDGET_H = 130
+local CAROUSEL_EXTRA_H = 40  -- must match Carousel's internal dot-strip reservation
+local LABEL_H      = 64
+local LABEL_GAP    = 28
+local ROW_GAP      = 70
+local LABEL_FONT_SIZE  = 48
+local WIDGET_FONT_SIZE = 72
 
 local TABS       = { "Game", "Video", "Audio" }
 local TABS_LOWER = { "game", "video", "audio" }
 
-local LABEL_Y  = PY + TAB_H + 40   -- design units, multiplied at draw time
-local BUTTON_Y = PY + TAB_H + 200  -- design units, multiplied at build time
+local PALETTE_DISPLAY = {
+  default      = "Default",
+  colorblind   = "Colorblind",
+  highContrast = "High Contrast",
+}
+
+local _tabGroup    = nil
+local _closeButton = nil
+local _rows        = { game = {}, video = {}, audio = {} }
+
+local TAB_GAP = 30
 
 local function buildTabs()
-  _tabButtons = {}
-  local tw = PW / #TABS
-  for i, label in ipairs(TABS) do
-    local bx  = (PX + (i - 1) * tw) * SCALE_X
-    local by  = PY * SCALE_Y
-    local tabKey = TABS_LOWER[i]
-    _tabButtons[i] = Button.new(bx, by, tw * SCALE_X, TAB_H * SCALE_Y, label, 72, function()
-      _activeTab = tabKey
-    end)
-  end
+  _tabGroup = ButtonGroup.new(
+    PX * SCALE_X, PY * SCALE_Y, PW * SCALE_X, TAB_H * SCALE_Y,
+    TABS, 72, 1,
+    function(_, tabKey) _activeTab = tabKey end,
+    { values = TABS_LOWER, fillMode = "solid", gap = TAB_GAP * SCALE_X }
+  )
 end
 
-local function buildGameTab()
-  _speedButtons = {}
-  local bw     = 500
-  local bh     = 130
-  local gap    = 40
-  local n      = #config.speedPresets
-  local totalW = n * bw + (n - 1) * gap
-  local startX = 1920 - totalW / 2
+local function rowX() return (PX + ROW_MARGIN_X) * SCALE_X end
+local function rowW() return ROW_WIDGET_W * SCALE_X end
+local function panelCenterX() return PX + PW / 2 end
 
-  for i, preset in ipairs(config.speedPresets) do
-    local bx = (startX + (i - 1) * (bw + gap)) * SCALE_X
-    local by = BUTTON_Y * SCALE_Y
-    _speedButtons[i] = Button.new(bx, by, bw * SCALE_X, bh * SCALE_Y, preset .. "x", 72, function()
-      config.speedIndex = i
-      config.speed      = preset
-      Settings.save({ speedIndex = i })
-    end)
+-- Sliders: track is centered under the row label, value readout sits to its
+-- right (outside the centered width, using the row's outer margin as slack).
+local SLIDER_TRACK_W = 1200
+local function sliderX() return (panelCenterX() - SLIDER_TRACK_W / 2) * SCALE_X end
+local function sliderW() return SLIDER_TRACK_W * SCALE_X end
+
+local function buildGameTab()
+  local y = CONTENT_TOP
+  local rows = {}
+
+  -- Speed
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local options = {}
+    for i, preset in ipairs(config.speedPresets) do
+      options[i] = { label = preset .. "x", value = preset }
+    end
+    local carousel = Carousel.new(
+      rowX(), widgetY * SCALE_Y, rowW(), ROW_WIDGET_H * SCALE_Y,
+      options, config.speedIndex, WIDGET_FONT_SIZE,
+      function(i, value)
+        config.speedIndex = i
+        config.speed      = value
+        Settings.save({ speedIndex = i })
+      end
+    )
+    table.insert(rows, { label = "Speed", labelY = labelY, widget = carousel })
+    y = widgetY + ROW_WIDGET_H + CAROUSEL_EXTRA_H + ROW_GAP
   end
+
+  -- Play/Discard Action (stored only — no gameplay code reads this yet)
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local current  = Settings.get().playAction
+    local selected = (current == "click") and 1 or 2
+    local group = ButtonGroup.new(
+      rowX(), widgetY * SCALE_Y, rowW(), ROW_WIDGET_H * SCALE_Y,
+      { "Click", "Drag" }, WIDGET_FONT_SIZE, selected,
+      function(_, value)
+        Settings.save({ playAction = value })
+      end,
+      { values = { "click", "drag" }, gap = 40 * SCALE_X }
+    )
+    table.insert(rows, { label = "Play/Discard Action", labelY = labelY, widget = group })
+    y = widgetY + ROW_WIDGET_H + ROW_GAP
+  end
+
+  -- Color Palette
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local names  = Palette.variantNames()
+    local labels = {}
+    for i, name in ipairs(names) do
+      labels[i] = PALETTE_DISPLAY[name] or name
+    end
+    local current  = Palette.getVariant()
+    local selected = 1
+    for i, name in ipairs(names) do
+      if name == current then selected = i break end
+    end
+    local group = ButtonGroup.new(
+      rowX(), widgetY * SCALE_Y, rowW(), ROW_WIDGET_H * SCALE_Y,
+      labels, WIDGET_FONT_SIZE, selected,
+      function(_, value)
+        Palette.setVariant(value)
+        Settings.save({ paletteVariant = value })
+      end,
+      { values = names, gap = 30 * SCALE_X }
+    )
+    table.insert(rows, { label = "Color Palette", labelY = labelY, widget = group })
+    y = widgetY + ROW_WIDGET_H + ROW_GAP
+  end
+
+  _rows.game = rows
 end
 
 local function buildVideoTab()
-  _qualityButtons = {}
-  local qualities = {
-    { label = "High",   value = "high"   },
-    { label = "Medium", value = "medium" },
-    { label = "Low",    value = "low"    },
-  }
-  local bw     = 600
-  local bh     = 130
-  local gap    = 40
-  local totalW = #qualities * bw + (#qualities - 1) * gap
-  local startX = 1920 - totalW / 2
+  local y = CONTENT_TOP
+  local rows = {}
+  local settings = Settings.get()
 
-  for i, q in ipairs(qualities) do
-    local bx = (startX + (i - 1) * (bw + gap)) * SCALE_X
-    local by = BUTTON_Y * SCALE_Y
-    _qualityButtons[i] = Button.new(bx, by, bw * SCALE_X, bh * SCALE_Y, q.label, 72, function()
-      if _setGlowQuality then _setGlowQuality(q.value) end
-      Settings.save({ glowQuality = q.value })
-    end)
-    _qualityButtons[i]._value = q.value
+  -- Window Mode
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local modes  = { "fullscreen", "borderless", "windowed" }
+    local labels = { "Fullscreen", "Borderless", "Windowed" }
+    local selected = 3
+    for i, m in ipairs(modes) do
+      if m == settings.windowMode then selected = i break end
+    end
+    local group = ButtonGroup.new(
+      rowX(), widgetY * SCALE_Y, rowW(), ROW_WIDGET_H * SCALE_Y,
+      labels, WIDGET_FONT_SIZE, selected,
+      function(_, value)
+        WindowMode.apply(value, settings.resolutionW, settings.resolutionH)
+        Settings.save({ windowMode = value })
+      end,
+      { values = modes, gap = 30 * SCALE_X }
+    )
+    table.insert(rows, { label = "Window Mode", labelY = labelY, widget = group })
+    y = widgetY + ROW_WIDGET_H + ROW_GAP
   end
+
+  -- Resolution
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local options = WindowMode.listResolutions()
+    local selected = 1
+    for i, opt in ipairs(options) do
+      if opt.value.w == settings.resolutionW and opt.value.h == settings.resolutionH then
+        selected = i
+        break
+      end
+    end
+    local carousel = Carousel.new(
+      rowX(), widgetY * SCALE_Y, rowW(), ROW_WIDGET_H * SCALE_Y,
+      options, selected, WIDGET_FONT_SIZE,
+      function(_, value)
+        WindowMode.apply(settings.windowMode, value.w, value.h)
+        Settings.save({ resolutionW = value.w, resolutionH = value.h })
+      end
+    )
+    table.insert(rows, { label = "Resolution", labelY = labelY, widget = carousel })
+    y = widgetY + ROW_WIDGET_H + CAROUSEL_EXTRA_H + ROW_GAP
+  end
+
+  -- Vsync
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local size = 80
+    local checkboxX = (panelCenterX() - size / 2) * SCALE_X
+    local checkbox = Checkbox.new(
+      checkboxX, widgetY * SCALE_Y, size * SCALE_X, settings.vsync,
+      function(checked)
+        WindowMode.setVsync(checked)
+        Settings.save({ vsync = checked })
+      end
+    )
+    table.insert(rows, { label = "Vsync", labelY = labelY, widget = checkbox })
+    y = widgetY + size + ROW_GAP
+  end
+
+  -- Glow Quality
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local labels = { "High", "Medium", "Low" }
+    local values = { "high", "medium", "low" }
+    local current  = _getGlowQuality and _getGlowQuality() or "high"
+    local selected = 1
+    for i, v in ipairs(values) do
+      if v == current then selected = i break end
+    end
+    local group = ButtonGroup.new(
+      rowX(), widgetY * SCALE_Y, rowW(), ROW_WIDGET_H * SCALE_Y,
+      labels, WIDGET_FONT_SIZE, selected,
+      function(_, value)
+        if _setGlowQuality then _setGlowQuality(value) end
+        Settings.save({ glowQuality = value })
+      end,
+      { values = values, gap = 30 * SCALE_X }
+    )
+    table.insert(rows, { label = "Glow Quality", labelY = labelY, widget = group })
+    y = widgetY + ROW_WIDGET_H + ROW_GAP
+  end
+
+  _rows.video = rows
 end
 
 local function buildAudioTab()
-  _volumeButtons = {}
-  local presets = { 0, 0.25, 0.5, 0.75, 1.0 }
-  local labels  = { "0%", "25%", "50%", "75%", "100%" }
-  local bw     = 300
-  local bh     = 130
-  local gap    = 25
-  local totalW = #presets * bw + (#presets - 1) * gap
-  local startX = 1920 - totalW / 2
+  local y = CONTENT_TOP
+  local rows = {}
+  local settings = Settings.get()
 
-  for i, vol in ipairs(presets) do
-    local bx = (startX + (i - 1) * (bw + gap)) * SCALE_X
-    local by = BUTTON_Y * SCALE_Y
-    _volumeButtons[i] = Button.new(bx, by, bw * SCALE_X, bh * SCALE_Y, labels[i], 72, function()
-      love.audio.setVolume(vol)
-      Settings.save({ volume = vol })
-    end)
-    _volumeButtons[i]._volume = vol
+  -- Master (real: drives love.audio.setVolume)
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local slider = Slider.new(
+      sliderX(), widgetY * SCALE_Y, sliderW(), ROW_WIDGET_H * SCALE_Y,
+      love.audio.getVolume(),
+      function(value) love.audio.setVolume(value) end,
+      function(value) Settings.save({ volume = value }) end,
+      WIDGET_FONT_SIZE
+    )
+    table.insert(rows, { label = "Master", labelY = labelY, widget = slider })
+    y = widgetY + ROW_WIDGET_H + ROW_GAP
   end
+
+  -- Music bus (no tracks loaded yet, but the bus itself is live — see
+  -- assets/audio/init.lua's Audio.playMusic/Audio.music.tracks)
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local slider = Slider.new(
+      sliderX(), widgetY * SCALE_Y, sliderW(), ROW_WIDGET_H * SCALE_Y,
+      settings.musicVolume,
+      function(value) Audio.setMusicVolume(value) end,
+      function(value) Settings.save({ musicVolume = value }) end,
+      WIDGET_FONT_SIZE
+    )
+    table.insert(rows, { label = "Music", labelY = labelY, widget = slider })
+    y = widgetY + ROW_WIDGET_H + ROW_GAP
+  end
+
+  -- SFX bus (mousedown/mouseup play a click sfx so the slider previews its
+  -- own volume as you drag it)
+  do
+    local labelY, widgetY = y, y + LABEL_H + LABEL_GAP
+    local slider = Slider.new(
+      sliderX(), widgetY * SCALE_Y, sliderW(), ROW_WIDGET_H * SCALE_Y,
+      settings.sfxVolume,
+      function(value) Audio.setSfxVolume(value) end,
+      function(value)
+        Settings.save({ sfxVolume = value })
+        Audio.playClickOut()
+      end,
+      WIDGET_FONT_SIZE,
+      function() Audio.playClickIn() end
+    )
+    table.insert(rows, { label = "SFX", labelY = labelY, widget = slider })
+    y = widgetY + ROW_WIDGET_H + ROW_GAP
+  end
+
+  _rows.audio = rows
 end
 
 local function buildClose()
@@ -130,8 +310,17 @@ function optionsMenu.load(callbacks)
 end
 
 function optionsMenu.show()
+  -- Rebuild rows from current state every time the menu opens: several
+  -- values (speed, palette, glow quality) can change from outside the menu
+  -- (keyboard shortcuts, touch gestures, debug hotkeys) while it's closed,
+  -- and the rows otherwise only reflect whatever was current at load().
+  buildGameTab()
+  buildVideoTab()
+  buildAudioTab()
+
   _active    = true
   _activeTab = "game"
+  if _tabGroup then _tabGroup:setSelected(1) end
 end
 
 function optionsMenu.hide()
@@ -144,20 +333,11 @@ end
 
 function optionsMenu.update(mx, my)
   if not _active then return end
-  for _, btn in ipairs(_tabButtons) do btn:update(mx, my) end
+  _tabGroup:update(mx, my)
   _closeButton:update(mx, my)
-  if _activeTab == "game" then
-    for _, btn in ipairs(_speedButtons)   do btn:update(mx, my) end
-  elseif _activeTab == "video" then
-    for _, btn in ipairs(_qualityButtons) do btn:update(mx, my) end
-  elseif _activeTab == "audio" then
-    for _, btn in ipairs(_volumeButtons)  do btn:update(mx, my) end
+  for _, row in ipairs(_rows[_activeTab]) do
+    row.widget:update(mx, my)
   end
-end
-
-local function drawActiveHighlight(btn)
-  love.graphics.setColor(Palette.accent[1], Palette.accent[2], Palette.accent[3], 0.25)
-  love.graphics.rectangle("fill", btn.x, btn.y, btn.w, btn.h, 12 * SCALE_X, 12 * SCALE_Y)
 end
 
 function optionsMenu.draw()
@@ -181,19 +361,7 @@ function optionsMenu.draw()
     20 * SCALE_X, 20 * SCALE_Y)
   love.graphics.setLineWidth(1)
 
-  -- Active tab background fill
-  local tw = PW / #TABS
-  for i = 1, #TABS do
-    if _activeTab == TABS_LOWER[i] then
-      love.graphics.setColor(Palette.primary)
-      love.graphics.rectangle("fill",
-        (PX + (i - 1) * tw) * SCALE_X, PY * SCALE_Y,
-        tw * SCALE_X, TAB_H * SCALE_Y)
-      break
-    end
-  end
-
-  for _, btn in ipairs(_tabButtons) do btn:draw() end
+  _tabGroup:draw()
 
   -- Separator line under tabs
   love.graphics.setColor(Palette.primary)
@@ -203,34 +371,15 @@ function optionsMenu.draw()
     (PX + PW) * SCALE_X, (PY + TAB_H) * SCALE_Y)
   love.graphics.setLineWidth(1)
 
-  local font = Manifest.getFont(72)
+  local font = Manifest.getFont(LABEL_FONT_SIZE)
   love.graphics.setFont(font)
+  love.graphics.setColor(Palette.muted)
+  for _, row in ipairs(_rows[_activeTab]) do
+    love.graphics.printf(row.label, PX * SCALE_X, row.labelY * SCALE_Y, PW * SCALE_X, "center")
+  end
 
-  if _activeTab == "game" then
-    love.graphics.setColor(Palette.muted)
-    love.graphics.printf("Game Speed", PX * SCALE_X, LABEL_Y * SCALE_Y, PW * SCALE_X, "center")
-    for i, btn in ipairs(_speedButtons) do
-      if i == config.speedIndex then drawActiveHighlight(btn) end
-      btn:draw()
-    end
-
-  elseif _activeTab == "video" then
-    love.graphics.setColor(Palette.muted)
-    love.graphics.printf("Glow Quality", PX * SCALE_X, LABEL_Y * SCALE_Y, PW * SCALE_X, "center")
-    local cur = _getGlowQuality and _getGlowQuality() or ""
-    for _, btn in ipairs(_qualityButtons) do
-      if btn._value == cur then drawActiveHighlight(btn) end
-      btn:draw()
-    end
-
-  elseif _activeTab == "audio" then
-    love.graphics.setColor(Palette.muted)
-    love.graphics.printf("Volume", PX * SCALE_X, LABEL_Y * SCALE_Y, PW * SCALE_X, "center")
-    local curVol = love.audio.getVolume()
-    for _, btn in ipairs(_volumeButtons) do
-      if math.abs(btn._volume - curVol) < 0.01 then drawActiveHighlight(btn) end
-      btn:draw()
-    end
+  for _, row in ipairs(_rows[_activeTab]) do
+    row.widget:draw()
   end
 
   _closeButton:draw()
@@ -239,22 +388,10 @@ end
 
 function optionsMenu.mousepressed(x, y, button)
   if not _active then return false end
-  for _, btn in ipairs(_tabButtons) do
-    if btn:mousepressed(x, y, button) then return true end
-  end
+  if _tabGroup:mousepressed(x, y, button) then return true end
   if _closeButton:mousepressed(x, y, button) then return true end
-  if _activeTab == "game" then
-    for _, btn in ipairs(_speedButtons) do
-      if btn:mousepressed(x, y, button) then return true end
-    end
-  elseif _activeTab == "video" then
-    for _, btn in ipairs(_qualityButtons) do
-      if btn:mousepressed(x, y, button) then return true end
-    end
-  elseif _activeTab == "audio" then
-    for _, btn in ipairs(_volumeButtons) do
-      if btn:mousepressed(x, y, button) then return true end
-    end
+  for _, row in ipairs(_rows[_activeTab]) do
+    if row.widget:mousepressed(x, y, button) then return true end
   end
   return true  -- consume all clicks when open to prevent menu click-through
 end

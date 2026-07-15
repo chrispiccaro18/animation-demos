@@ -5,13 +5,13 @@ tokens are small unlocks, starting decks are bigger unlocks (winning a run)
 BUT need to add more cards to each deck's pools
 
 NEXT
-Options Menu
-Design
-when using keyboard/touch shortcut to change speed message text will appear
+Window size vs resolution size
+
+going to main menu will reset state for sandbox (bug)
 
 add deck tooltip with # of cards
 
-update env effect tooltip
+deck selection into carousel
 
 chain tokens:
 multiply need to set a rule for sequential, same token type firing
@@ -34,13 +34,6 @@ card tooltip collision with bottom of canvas, move arrow down
 
 scanner just goes down
 
-game menu with
-  reset
-  tutorial/rules
-  options/speed
-  main menu
-  quit
-  feedback
 
 
 fix token physics (pre determined path and what's drawn are the same)

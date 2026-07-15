@@ -356,7 +356,7 @@ function M.collectTooltipRequests(ht)
       if d then
         local b = EnvEffects.getIconHitBounds(idx)
         local lines = {}
-        lines[#lines + 1] = "TRIGGER: Beginning of Turn"
+        lines[#lines + 1] = "TRIGGER: Start of Turn"
         -- local status = (d.isActive or d.isNegative) and "Active" or "Inactive"
         -- lines[#lines + 1] = "STATUS: " .. status
         local Run = require("core.run")
@@ -379,10 +379,10 @@ function M.collectTooltipRequests(ht)
           side         = "right",
           anchorX      = b.cx + b.hw,
           anchorY      = iconTop,
-          title        = "Threat per Level",
+          title        = "Tokens per Level",
           -- title        = d.name,
           titleColor   = titleColor,
-          effects      = d.effects,
+          -- effects      = d.effects,
           lines        = lines,
           arrowYOffset = (60 * SCALE_Y),
         })

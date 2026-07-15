@@ -30,6 +30,7 @@ local Audio = require("assets.audio")
 
 local Color        = require("lib.color")
 local Palette      = require("lib.palette")
+local WindowMode   = require("lib.windowMode")
 local Glow         = require("lib.glow.Glow")
 local glowRequests = require("core.glowRequests")
 local pulse        = require("lib.pulse")
@@ -53,6 +54,8 @@ local deckSelectScreen = require("core.deckSelectScreen")
 local deckUnlockCeremony = require("core.deckUnlockCeremony")
 local sandbox         = require("core.sandbox")
 local optionsMenu     = require("core.optionsMenu")
+local pauseMenu       = require("core.pauseMenu")
+local speedManager    = require("lib.speedManager")
 
 local appState = "menu"
 
@@ -74,7 +77,6 @@ local deck = nil
 local boardAsset = nil
 local camera = nil
 
-local previousSpeed = config.speed
 
 local gameCanvas = nil
 local menuCanvas = nil
@@ -84,7 +86,7 @@ local viewX      = 0
 local viewY      = 0
 local viewScale  = 1
 
-local tutorialActive      = true
+local tutorialActive      = false
 local _levelCompleteTimer = nil
 local _lossBoardCleared   = false
 -- Hold after the board clears (post-flourish, see core/newSequences.lua's
@@ -364,7 +366,29 @@ local function abandonRunToMenu()
   _lossBoardCleared      = false
 end
 
+-- "Main Menu" exit mid-game (hud pause menu, escape key): returns to the
+-- main menu but keeps the save on disk, so menuScreen's "Continue" can
+-- resume from the last beginTurn snapshot -- unlike abandonRunToMenu above,
+-- which deletes it.
+local function exitToMenuMidGame()
+  pauseMenu.hide()
+  resetBoardState()
+  gameOver              = nil
+  _levelCompleteTimer   = nil
+  _lossBoardCleared      = false
+  appState = "menu"
+  showMenu()
+end
+
 function love.load()
+  -- Restore the persisted window mode/resolution/vsync *before* sizing the
+  -- design-resolution canvas below, so the canvas is computed from the
+  -- actual restored window size rather than conf.lua's static boot defaults.
+  local settings = Settings.load()
+  Palette.setVariant(settings.paletteVariant)
+  WindowMode.apply(settings.windowMode, settings.resolutionW, settings.resolutionH)
+  WindowMode.setVsync(settings.vsync)
+
   local n = math.max(1, math.min(
     math.floor(love.graphics.getWidth() / 640),
     math.floor(love.graphics.getHeight() / 360)
@@ -384,7 +408,6 @@ function love.load()
   AssetManifest.load()
   RichText.load()
   Audio.load()
-  local settings = Settings.load()
   love.audio.setVolume(settings.volume)
   config.speedIndex = settings.speedIndex
   config.speed      = config.speedPresets[settings.speedIndex] or config.speed
@@ -422,6 +445,7 @@ function love.load()
   events.loadAll()
   overlayStats.load()
   speedControl.load()
+  speedManager.load(hand)
 
   gameCanvas = love.graphics.newCanvas(canvasW, canvasH)
   menuCanvas = love.graphics.newCanvas(canvasW, canvasH)
@@ -431,9 +455,21 @@ function love.load()
   glow = Glow.load(canvasW, canvasH)
   glow:setQuality(settings.glowQuality, canvasW, canvasH)
   hud.load(
-    function() tutorialActive = true end,
-    fullReset,
+    function() pauseMenu.show() end,
     function() love.system.openURL("https://forms.gle/sjbzYgS94u2w27iq5") end
+  )
+  pauseMenu.load(
+    function() pauseMenu.hide() end,  -- Continue
+    function() optionsMenu.show() end,  -- Options
+    function ()
+      exitToMenuMidGame()
+      sandbox.init()
+    end,  -- Main Menu
+    love.system.getOS() ~= "Web" and function() love.event.quit() end or nil,  -- Quit
+    function()  -- Reset Run
+      pauseMenu.hide()
+      fullReset()
+    end
   )
   gameOverScreen.load(fullReset)
   cardPickScreen.load(resetGame)
@@ -558,11 +594,14 @@ function love.draw()
     cardTooltip.draw()
     love.graphics.pop()
     hud.draw()
+    pauseMenu.draw()
+    optionsMenu.draw()
     if tutorialActive then tutorial.draw() end
 
     activeCanvas = gameCanvas
   end
 
+  speedManager.draw()
   overlayStats.draw()
   love.graphics.setCanvas()
 
@@ -588,6 +627,7 @@ function love.update(dt)
   local mouseX, mouseY = toGame(mx, my)
   Audio.update()
   overlayStats.update(dt)
+  speedManager.update(dt)
 
   if appState == "menu" then
     if optionsMenu.isActive() then
@@ -617,6 +657,15 @@ function love.update(dt)
   end
 
   if tutorialActive then return end
+
+  if optionsMenu.isActive() then
+    optionsMenu.update(mouseX, mouseY)
+    return
+  end
+  if pauseMenu.isActive() then
+    pauseMenu.update(mouseX, mouseY)
+    return
+  end
 
   hud.update(mouseX, mouseY)
   pulse.update(realDt)
@@ -807,6 +856,14 @@ function love.mousepressed(x, y, button, istouch, presses)
     return
   end
   if gameOverScreen.mousepressed(gx, gy, button) then return end
+  if optionsMenu.isActive() then
+    optionsMenu.mousepressed(gx, gy, button)
+    return
+  end
+  if pauseMenu.isActive() then
+    pauseMenu.mousepressed(gx, gy, button)
+    return
+  end
   if hud.mousepressed(gx, gy, button) then return end
   Debris.mousePressed(gx, gy, button)
   hand:mousepressed(gx, gy, button, istouch)
@@ -814,7 +871,7 @@ end
 
 function love.keyreleased(key)
   if key == "space" then
-    config.speed = previousSpeed
+    speedManager.keyboardBoostEnd()
     speedControl.setSpaceHeld(false)
   end
 end
@@ -826,13 +883,11 @@ function love.keypressed(key)
     elseif deckSelectScreen.isActive() then
       deckSelectScreen.hide()
       menuScreen.show()
+    elseif pauseMenu.isActive() then
+      pauseMenu.hide()
     elseif appState == "game" then
-      resetBoardState()
-      gameOver              = nil
-      _levelCompleteTimer   = nil
-      _lossBoardCleared      = false
-      appState = "menu"
-      showMenu()
+      -- exitToMenuMidGame()
+      pauseMenu.show()
     else
       love.event.quit()
     end
@@ -854,10 +909,9 @@ function love.keypressed(key)
   elseif key == "w" then
     areas.scanner.right.active = not areas.scanner.right.active
   elseif key == "tab" then
-    config.cycleSpeed()
+    speedManager.cycleSpeed()
   elseif key == "space" then
-    previousSpeed = config.speed
-    config.speed = 3.0
+    speedManager.keyboardBoostStart()
     speedControl.setSpaceHeld(true)
   elseif key == "left" or key == "right" then
     local names   = Palette.variantNames()
@@ -917,6 +971,9 @@ function love.touchpressed(id, x, y, dx, dy, pressure)
   for _ in pairs(touches) do count = count + 1 end
   maxTouches = math.max(maxTouches, count)
   overlayStats.handleTouch(id, x, y, dx, dy, pressure)
+
+  local gx, gy = toGame(x, y)
+  speedManager.touchDown(id, x, y, gx, gy)
 end
 
 function love.touchmoved(id, x, y)
@@ -927,15 +984,17 @@ end
 
 function love.touchreleased(id, x, y, dx, dy, pressure)
   touches[id] = nil
+  speedManager.touchUp(id)
   if next(touches) == nil then
     local elapsed = love.timer.getTime() - touchStartTime
+    local gx, gy = toGame(x, y)
     if elapsed < TAP_THRESHOLD then
+      speedManager.onTap(maxTouches, x, gx, gy)
       if maxTouches == 3 then
         if appState == "game" then fullReset() end
-      elseif maxTouches == 2 then
-        if appState == "game" then tutorialActive = not tutorialActive end
+      -- 2-finger tap tutorial toggle removed: collided with the 2-finger
+      -- double-tap speed-cycle gesture, and the tutorial is being reworked.
       elseif maxTouches == 1 then
-        local gx, gy = toGame(x, y)
         if appState == "menu" then
           if optionsMenu.isActive() then
             optionsMenu.touchpressed(gx, gy)
@@ -954,6 +1013,10 @@ function love.touchreleased(id, x, y, dx, dy, pressure)
           cardPickScreen.touchpressed(gx, gy)
         elseif gameOverScreen.touchpressed(gx, gy) then
           -- handled
+        elseif optionsMenu.isActive() then
+          optionsMenu.touchpressed(gx, gy)
+        elseif pauseMenu.isActive() then
+          pauseMenu.touchpressed(gx, gy)
         else
           hud.touchpressed(gx, gy)
         end

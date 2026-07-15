@@ -143,7 +143,7 @@ end
 
 local OUTCOME_VANISH_DURATION = 0.25
 local OUTCOME_FLOURISH_HOLD   = 1.2
-local OUTCOME_BURST2_DELAY    = 0.5 -- time after the first burst that the second fires
+local OUTCOME_BURST2_DELAY    = 0.45 -- time after the first burst that the second fires
 
 -- Guards against a second progress/threat token (still arriving in the
 -- same cascade) re-triggering this while the first is already resolving.
@@ -183,7 +183,7 @@ local function resolveOutcome(kind, token)
         message.current.alpha = 1.0
         message.target.alpha  = 1.0
         Audio.playSuccess()
-        particles.emit("progress", cx, cy, 60, { speed = 1400 })
+        particles.emit("progress", cx, cy, 60, { speed = 450 })
         screenshake.trigger(6, 0.4)
         Camera:setColor(Color("#6ED59E"))
       else
@@ -195,7 +195,7 @@ local function resolveOutcome(kind, token)
         message.current.alpha = 1.0
         message.target.alpha  = 1.0
         Audio.playFailure()
-        particles.emit("threat", cx, cy, 60, { speed = 1400 })
+        particles.emit("threat", cx, cy, 60, { speed = 450 })
         screenshake.trigger(14, 0.5)
         Camera:setColor(Color("#9C2B2B"))
       end
@@ -206,6 +206,16 @@ local function resolveOutcome(kind, token)
 
   -- Second burst, staggered after the first so the flourish reads as two
   -- beats instead of one flat pop.
+  events.push({
+    fn = function()
+      local cx, cy = SCALE_X * 1920, SCALE_Y * 1080
+      local burstType = kind == "levelComplete" and "progress" or "threat"
+      particles.emit(burstType, cx, cy, 90, { speed = 1200 })
+      screenshake.triggerH(kind == "levelComplete" and 4 or 8)
+    end,
+    blocking = true, blockable = true, persistent = false,
+    delay = OUTCOME_BURST2_DELAY, type = "before",
+  }, "terminalArrive")
   events.push({
     fn = function()
       local cx, cy = SCALE_X * 1920, SCALE_Y * 1080
