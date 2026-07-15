@@ -171,6 +171,11 @@ local function resetBoardState(opts)
   hover.setDeck(deck)
   sequences.setDeck(deck)
   sequences.setHand(hand)
+  -- Keep sandbox's deck/hand refs in lockstep -- otherwise it keeps pointing
+  -- at whatever objects were current when it was last synced (love.load, or
+  -- the previous resetBoardState), while sequences deals from the new ones,
+  -- so sandbox draw tokens add cards to a deck sequences never sees.
+  sandbox.setDeckAndHand(deck, hand)
 end
 
 resetGame = function()

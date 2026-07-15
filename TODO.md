@@ -7,7 +7,8 @@ BUT need to add more cards to each deck's pools
 NEXT
 Window size vs resolution size
 
-going to main menu will reset state for sandbox (bug)
+BUG need to prevent discard/play until beggining of turn tokens have completed see drat to dtor and discarding a card before draw to dtor finishes
+OR 
 
 add deck tooltip with # of cards
 
@@ -34,8 +35,6 @@ card tooltip collision with bottom of canvas, move arrow down
 
 scanner just goes down
 
-
-
 fix token physics (pre determined path and what's drawn are the same)
 
 CONTENT IDEAS
@@ -44,7 +43,6 @@ COINS/MONEY: META GAME
 
 WHAT'S NOT WORKING
 win/loss condition only represented by tallies - should communicate the goal
-no clear way for combos/breaking the game
 play movement feels weak - going into slot then coming out
 ram pool area feels arbitrary
 ram holes on play/ram on discard
@@ -56,14 +54,24 @@ multiplier/combos are usually from dtor parts of the card
 maybe env effects too
 
 
-
 the greater the risk (threat level) the greater the reward (progress increase amplified)
 race car example: risk is velocity/acceleration. too much and you crash, but it means you are getting to the finish line sooner
 every few turns or so, you need to slow down, lower threat/velocity to make the turn or crash
 play would be to increase velocity, play as much progress, then lower threat down
 
-
 threat/risk goes up when you play cards (they score immediately)
 higher threat, higher modifier for progress
 doesn't kill you until scoring/end of score so player has a chance to save themselves
 
+SCORING MECHANIC
+Lean into the scifi hacker with the camera being the representation of both win and loss conditions
+
+Building parts of something each level and completing all levels builds the whole thing
+
+Creation, destruction, revival
+
+Race car. Progress is movement mult by threat aka heat or rpm to create 
+
+movement is speed over time. a turn is a fixed time, you can only control your speed. speed is a factor of your 
+
+progress is time, threat is speed
