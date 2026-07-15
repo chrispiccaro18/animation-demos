@@ -43,12 +43,14 @@ local gameOverScreen  = require("core.gameOverScreen")
 local Run             = require("core.run")
 local Profile         = require("core.profile")
 local Unlocks         = require("core.unlocks")
+local DeckUnlocks     = require("core.deckUnlocks")
 local Escalation      = require("core.escalation")
 local Settings        = require("lib.settings")
 local cardPickScreen  = require("core.cardPickScreen")
 local unlockCeremony  = require("core.unlockCeremony")
 local menuScreen      = require("core.menuScreen")
 local deckSelectScreen = require("core.deckSelectScreen")
+local deckUnlockCeremony = require("core.deckUnlockCeremony")
 local sandbox         = require("core.sandbox")
 local optionsMenu     = require("core.optionsMenu")
 
@@ -348,6 +350,20 @@ local function loadGame()
   envEffects.syncState()
 end
 
+-- "MAIN MENU" exit from core/deckUnlockCeremony.lua: abandons the
+-- in-progress run (deletes its save -- Continue won't offer it again) and
+-- returns to the main menu, mirroring the escape-key mid-game handler
+-- below except the run is deleted rather than left resumable.
+local function abandonRunToMenu()
+  Run.deleteSave()
+  resetBoardState()
+  appState = "menu"
+  showMenu()
+  gameOver              = nil
+  _levelCompleteTimer   = nil
+  _lossBoardCleared      = false
+end
+
 function love.load()
   local n = math.max(1, math.min(
     math.floor(love.graphics.getWidth() / 640),
@@ -422,6 +438,7 @@ function love.load()
   gameOverScreen.load(fullReset)
   cardPickScreen.load(resetGame)
   unlockCeremony.load()
+  deckUnlockCeremony.load(abandonRunToMenu)
 
   Profile.setActive(1) -- no profile picker yet; always resume/create profile 1
   Run.newRun("original") -- gives sandbox/menu a defined deck before any player choice
@@ -534,6 +551,7 @@ function love.draw()
     hand:drawDragged()
     gameOverScreen.draw()
     unlockCeremony.draw()
+    deckUnlockCeremony.draw()
     cardPickScreen.draw()
     glow:renderTop()
     hoverTooltip.draw()
@@ -559,6 +577,7 @@ local function collectGlowRequests(mx, my)
   cardTooltip.collectGlowRequests(glow)
   cardPickScreen.collectGlowRequests(glow)
   unlockCeremony.collectGlowRequests(glow)
+  deckUnlockCeremony.collectGlowRequests(glow)
 end
 
 function love.update(dt)
@@ -623,16 +642,25 @@ function love.update(dt)
       local oldHighest = Profile.getHighestLevelReached(deckId)
       local newHighest = Run.getLevel() + 1 -- level the player is about to start
       Profile.reportLevelReached(deckId, newHighest)
-      local newlyUnlocked = Unlocks.newlyUnlocked(deckId, oldHighest, newHighest)
+      local newlyUnlocked     = Unlocks.newlyUnlocked(deckId, oldHighest, newHighest)
+      local newlyUnlockedDecks = DeckUnlocks.newlyUnlocked(deckId, oldHighest, newHighest)
 
       local function showPick()
         cardPickScreen.show(Run.getOfferCards(Profile.getHighestLevelReached(deckId)))
       end
 
+      local function showDeckCeremonyOrPick()
+        if #newlyUnlockedDecks > 0 then
+          deckUnlockCeremony.show(newlyUnlockedDecks, showPick)
+        else
+          showPick()
+        end
+      end
+
       if #newlyUnlocked > 0 then
-        unlockCeremony.show(newlyUnlocked, showPick)
+        unlockCeremony.show(newlyUnlocked, showDeckCeremonyOrPick)
       else
-        showPick()
+        showDeckCeremonyOrPick()
       end
     end
     return
@@ -644,6 +672,19 @@ function love.update(dt)
     cardTooltip.clear()
     hoverTooltip.clear()
     unlockCeremony.collectTooltipRequests()
+    cardTooltip.update(mouseX, mouseY)
+    hoverTooltip.update()
+    collectGlowRequests(mouseX, mouseY)
+    glow:update(realDt)
+    return
+  end
+
+  -- Deck unlock ceremony: handle its own update + tooltips
+  if deckUnlockCeremony.isActive() then
+    deckUnlockCeremony.update(realDt, mouseX, mouseY)
+    cardTooltip.clear()
+    hoverTooltip.clear()
+    deckUnlockCeremony.collectTooltipRequests()
     cardTooltip.update(mouseX, mouseY)
     hoverTooltip.update()
     collectGlowRequests(mouseX, mouseY)
@@ -755,6 +796,10 @@ function love.mousepressed(x, y, button, istouch, presses)
   end
   if unlockCeremony.isActive() then
     unlockCeremony.mousepressed(gx, gy, button)
+    return
+  end
+  if deckUnlockCeremony.isActive() then
+    deckUnlockCeremony.mousepressed(gx, gy, button)
     return
   end
   if cardPickScreen.isActive() then
@@ -903,6 +948,8 @@ function love.touchreleased(id, x, y, dx, dy, pressure)
           tutorial.touchpressed(gx, gy)
         elseif unlockCeremony.isActive() then
           unlockCeremony.touchpressed(gx, gy)
+        elseif deckUnlockCeremony.isActive() then
+          deckUnlockCeremony.touchpressed(gx, gy)
         elseif cardPickScreen.isActive() then
           cardPickScreen.touchpressed(gx, gy)
         elseif gameOverScreen.touchpressed(gx, gy) then

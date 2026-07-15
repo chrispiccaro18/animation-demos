@@ -26,4 +26,22 @@ function DeckUnlocks.requirementText(deckId)
   return "Reach Level " .. req.requiresLevel .. " with " .. deckName .. " Deck"
 end
 
+-- Deck ids whose requirement is satisfied by `sourceDeckId` reaching a level
+-- in (oldHighest, newHighest] -- i.e. every deck that became newly unlocked
+-- by playing sourceDeckId up to newHighest. Mirrors core/unlocks.lua's
+-- Unlocks.newlyUnlocked; consumed by main.lua's level-complete flow to
+-- trigger core/deckUnlockCeremony.lua.
+function DeckUnlocks.newlyUnlocked(sourceDeckId, oldHighest, newHighest)
+  local list = {}
+  for lockedDeckId, req in pairs(DeckUnlockReqs) do
+    if req.requiresDeck == sourceDeckId
+       and req.requiresLevel > (oldHighest or 0)
+       and req.requiresLevel <= (newHighest or 0) then
+      list[#list + 1] = lockedDeckId
+    end
+  end
+  table.sort(list)
+  return list
+end
+
 return DeckUnlocks

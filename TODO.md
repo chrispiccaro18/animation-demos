@@ -1,9 +1,13 @@
 
-NEXT run/level/starting deck - determines what gets flung at beginning of turn
+DONE run/level/starting deck - determines what gets flung at beginning of turn
 need a way to end the run - just when everything has been unlocked? optional endless mode after
 tokens are small unlocks, starting decks are bigger unlocks (winning a run)
+BUT need to add more cards to each deck's pools
 
-new starting deck unlock ceremony
+NEXT
+Options Menu
+Design
+when using keyboard/touch shortcut to change speed message text will appear
 
 add deck tooltip with # of cards
 
@@ -28,13 +32,7 @@ hovering tokens gives a count
 
 card tooltip collision with bottom of canvas, move arrow down
 
-Options Menu
-Design
-
 scanner just goes down
-
-currated card pool for first few levels
-bigger pool in later levels
 
 game menu with
   reset
@@ -44,12 +42,12 @@ game menu with
   quit
   feedback
 
-when using keyboard/touch shortcut to change speed message text will appear
+
+fix token physics (pre determined path and what's drawn are the same)
 
 CONTENT IDEAS
 Dynamic scoring Make bars bigger? Or meter
 COINS/MONEY: META GAME
-Each run has different envtokens per level? per turn?
 
 WHAT'S NOT WORKING
 win/loss condition only represented by tallies - should communicate the goal
@@ -75,18 +73,4 @@ play would be to increase velocity, play as much progress, then lower threat dow
 threat/risk goes up when you play cards (they score immediately)
 higher threat, higher modifier for progress
 doesn't kill you until scoring/end of score so player has a chance to save themselves
-
-scoring
-
-
-env effects also fling tokens/affect flung tokens
-
-work on glow
-onboarding
-
-hover dtor shows terminal destinations
-
-tooltips
-
-onboarding
 
