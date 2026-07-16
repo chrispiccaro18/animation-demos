@@ -20,8 +20,14 @@ local function rejectAll(first)
   _terminal = false
 end
 
+-- bypassTerminal: lets an item queue even while an end-turn action is
+-- terminal (e.g. a card action queuing behind beginTurn's still-resolving
+-- escalation/drawToDtor ceremony once dealing itself has finished — see
+-- newHand.lua, gated there on areas.endTurn.frozen). Only card actions set
+-- this; the end-turn push itself never does, so a second End Turn press
+-- while one is already resolving still gets rejected as before.
 function ActionQueue.push(item)
-  if _terminal then return false end
+  if _terminal and not item.bypassTerminal then return false end
   _queue[#_queue + 1] = item
   if item.terminal then _terminal = true end
   return true

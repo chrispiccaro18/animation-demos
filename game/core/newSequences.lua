@@ -18,6 +18,7 @@ local Deck = require("core.deck")
 local Palette = require("lib.palette")
 local Shatter = require("core.shatter")
 local Debris  = require("core.debris")
+local ActionQueue = require("core.actionQueue")
 
 local COUNT_MIN = 10
 local COUNT_MAX = 20
@@ -529,6 +530,40 @@ local function startTerminalAttract(tokenType, target, acc)
   Token.attractDone(tokenType, target, tokenOptions)
 end
 
+-- drawToDtor's terminal ceremony (deal a card, laser zap, shatter, attract
+-- into a Dtor slot) drives the same Camera/laser singletons that
+-- sequences.play/discard do. The token's attract-flight toward the deck
+-- (before terminalEvent's ceremony even starts pushing to "terminalArrive")
+-- is pure Token physics with nothing on any events queue, so ActionQueue's
+-- underlyingDone() can read as idle mid-flight and let a dropped card start
+-- a concurrent play/discard that fights the ceremony over those singletons.
+-- Routing the whole flight+ceremony through ActionQueue — with a poll event
+-- holding "terminalArrive" busy for the flight portion — closes that gap:
+-- a card dropped mid-sequence queues behind it instead of racing it.
+local function startDrawToDtorCeremony(target, acc)
+  local function begin()
+    startTerminalAttract("drawToDtor", target, acc)
+    events.push({
+      fn = function() return Token.allDone("drawToDtor") end,
+      blocking = true, blockable = true, persistent = false,
+      delay = 0, type = "poll",
+    }, "terminalArrive")
+  end
+
+  if ActionQueue.isTerminal() then
+    -- Reached during endTurn/beginTurn's own terminal ActionQueue item
+    -- (main.lua's End Turn push sets terminal=true for the whole
+    -- resolution). ActionQueue.push refuses new items while terminal, which
+    -- would silently drop this and strand the token. Player input is
+    -- already blocked during this phase (isTerminal() checks in
+    -- newHand.lua), so there's no concurrent action to guard against here —
+    -- just run the ceremony directly.
+    begin()
+  else
+    ActionQueue.push({ fn = begin })
+  end
+end
+
 local function resolveTerminalDestination(tokenType)
   if tokenType == "progress" or tokenType == "progressNegative" then
     return areas.progressDestination
@@ -553,6 +588,39 @@ end
 local _immediateAcc = Token.makeCascadeAccumulator()
 function sequences.resetImmediateAcc() _immediateAcc = Token.makeCascadeAccumulator() end
 
+-- Reserves an ActionQueue slot the instant a drawToDtor token is created
+-- (Token.new_fling), before it even starts flinging — not just once it
+-- settles. A token created outside any already-_active action (beginTurn's
+-- escalation cascade on turn 1, called directly from main.lua's
+-- resetGame() rather than through endTurn's terminal ActionQueue item; or a
+-- sandbox icon fling) otherwise leaves ActionQueue idle for the token's
+-- entire flight. A card the player drops in that window would claim
+-- _active first and run to completion before the token even lands, instead
+-- of stacking behind it (the "discard finishes, then drawToDtor plays"
+-- ordering bug). The poll tracks Token.allDone("drawToDtor") continuously
+-- through fling -> settle -> attract -> ceremony-start; it's safe to hold a
+-- single poll across that whole span because the fling-settle -> attract
+-- remount (in Token.registerImmediateSettle below) happens synchronously
+-- within the same Token.updateAll() call, before this poll is ever
+-- evaluated -- see core/token.lua's immediate-settle handling.
+Token.registerImmediateCreate({ "drawToDtor" }, function(_token)
+  if ActionQueue.isTerminal() then
+    -- Already inside endTurn's terminal window, which blocks player input
+    -- on its own (see actionQueue.isTerminal() checks in newHand.lua) —
+    -- nothing to reserve, and ActionQueue.push would silently no-op anyway.
+    return
+  end
+  ActionQueue.push({
+    fn = function()
+      events.push({
+        fn = function() return Token.allDone("drawToDtor") end,
+        blocking = true, blockable = true, persistent = false,
+        delay = 0, type = "poll",
+      }, "terminalArrive")
+    end,
+  })
+end)
+
 -- Token types that skip the end-of-turn scan: on fling-settle they
 -- immediately start their terminal attract animation toward the same
 -- destination as the regular end-of-turn path, then fire the effect on arrival.
@@ -572,7 +640,7 @@ local function terminalAttract()
   startTerminalAttract("ram", areas.pool, acc)
   startTerminalAttract("nullify", Dtor.nextUnnullifiedSlot(), acc)
   startTerminalAttract("shuffle", Dtor.topSlot(), acc)
-  startTerminalAttract("drawToDtor", _deck:centerPosition(), acc)
+  startDrawToDtorCeremony(_deck:centerPosition(), acc)
   startTerminalAttract("drawToHand", _deck:centerPosition(), acc)
 end
 

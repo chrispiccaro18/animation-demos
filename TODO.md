@@ -7,8 +7,7 @@ BUT need to add more cards to each deck's pools
 NEXT
 Window size vs resolution size
 
-BUG need to prevent discard/play until beggining of turn tokens have completed see drat to dtor and discarding a card before draw to dtor finishes
-OR 
+Node map plumbing
 
 add deck tooltip with # of cards
 
@@ -75,3 +74,5 @@ Race car. Progress is movement mult by threat aka heat or rpm to create
 movement is speed over time. a turn is a fixed time, you can only control your speed. speed is a factor of your 
 
 progress is time, threat is speed
+
+threat is something moving towards you (indiana jones boulder) while progress is opening a door or breaking through a wall

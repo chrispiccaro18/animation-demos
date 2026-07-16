@@ -657,6 +657,7 @@ function love.update(dt)
     progressBar.update(realDt)
     threatBar.update(realDt)
     events.updateAll()
+    actionQueue.update()
     glow:update(realDt)
     return
   end

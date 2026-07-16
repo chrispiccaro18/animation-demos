@@ -39,6 +39,9 @@ local _dtorBounds = nil
 local _immediateTypes   = {}
 local _immediateHandler = nil
 
+local _immediateCreateTypes   = {}
+local _immediateCreateHandler = nil
+
 ------------------------------------------------------------------------
 -- Register token types that fire their terminal effect immediately on
 -- fling settle rather than waiting for the end-of-turn scan.
@@ -48,6 +51,19 @@ function Token.registerImmediateSettle(types, handler)
     _immediateTypes = {}
     for _, t in ipairs(types) do _immediateTypes[t] = true end
     _immediateHandler = handler
+end
+
+------------------------------------------------------------------------
+-- Register token types that fire a hook the instant they're created
+-- (Token.new_fling), before any fling physics/settling happens. Unlike
+-- registerImmediateSettle, this fires even while the token is still
+-- mid-flight. handler(token) is called once per newly-created token of a
+-- registered type.
+------------------------------------------------------------------------
+function Token.registerImmediateCreate(types, handler)
+    _immediateCreateTypes = {}
+    for _, t in ipairs(types) do _immediateCreateTypes[t] = true end
+    _immediateCreateHandler = handler
 end
 
 function Token.setDtorBounds(x, y, w, h)
@@ -331,6 +347,9 @@ function Token.new_fling(start_x, start_y, rect, options)
     applyFlingPhysics(self, rect, options)
 
     table.insert(instances, self)
+    if _immediateCreateHandler and _immediateCreateTypes[self.token_type] then
+        _immediateCreateHandler(self)
+    end
     return self
 end
 

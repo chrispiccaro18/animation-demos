@@ -230,8 +230,8 @@ function Hand:update(mouseX, mouseY)
       -- self:layout()
 
       if areas.mouseInPlay(mouseX, mouseY, wasTouch) then
-        if actionQueue.isTerminal() then
-          -- end turn already queued — return card immediately
+        if actionQueue.isTerminal() and areas.endTurn.frozen then
+          -- still actively dealing the new turn's hand — return card immediately
           returnCardToHand(card, self)
         elseif not actionQueue.isRunning() and
           #areas.pool.chips < card.energy then
@@ -250,6 +250,7 @@ function Hand:update(mouseX, mouseY)
           local pushed = actionQueue.push({
             card     = card,
             terminal = false,
+            bypassTerminal = true,
             check    = function()
               if #areas.pool.chips < card.energy then return "rejectAll" end
               return "ok"
@@ -276,14 +277,15 @@ function Hand:update(mouseX, mouseY)
         end
 
       elseif areas.mouseInDiscard(mouseX, mouseY, wasTouch) then
-        if actionQueue.isTerminal() then
-          -- end turn already queued — return card immediately
+        if actionQueue.isTerminal() and areas.endTurn.frozen then
+          -- still actively dealing the new turn's hand — return card immediately
           returnCardToHand(card, self)
         else
           local hand = self
           local pushed = actionQueue.push({
             card     = card,
             terminal = false,
+            bypassTerminal = true,
             onReject = function(item)
               returnCardToHand(item.card, hand)
             end,
